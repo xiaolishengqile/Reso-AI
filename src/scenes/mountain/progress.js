@@ -83,6 +83,9 @@ function isValidProgress(progress, characterId) {
     && typeof progress.currentStageId === "string"
     && Array.isArray(progress.answers)
     && Array.isArray(progress.officialEvidence)
+    && progress.officialEvidence.every((evidence) => (
+      evidence && Array.isArray(evidence.dimensions)
+    ))
     && typeof progress.completed === "boolean",
   );
 }

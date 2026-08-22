@@ -121,6 +121,19 @@ test("损坏、版本不匹配或角色不匹配的存档会回退为初始进�
   }
 });
 
+test("包含损坏正式证据的存档会回退为初始进度", () => {
+  const corrupted = {
+    ...createMountainProgress("boy"),
+    officialEvidence: [{ island: "mountain", stageId: "invitation" }],
+  };
+  const loaded = loadMountainProgress(
+    memoryStorage({ [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(corrupted) }),
+    "boy",
+  );
+
+  assert.deepEqual(loaded, createMountainProgress("boy"));
+});
+
 test("保存和恢复有效进度，并在存储失败时返回 false", () => {
   const storage = memoryStorage();
   const progress = completeMountainProgress(advanceMountainProgress(
