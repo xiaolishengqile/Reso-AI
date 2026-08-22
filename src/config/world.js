@@ -65,8 +65,8 @@ function futureIsland(unlockOrder, sceneBounds) {
   });
 }
 
-const HOME_BOUNDS = bounds(1320, 1250, 740, 580);
-const MOUNTAIN_BOUNDS = bounds(650, 620, 760, 590);
+const HOME_BOUNDS = bounds(1750, 1580, 740, 580);
+const MOUNTAIN_BOUNDS = bounds(1080, 1050, 760, 590);
 const OFFICE_BOUNDS = bounds(80, 100, 760, 600);
 
 export const ISLANDS = Object.freeze([
@@ -242,7 +242,7 @@ export const WALKABLE_AREAS = Object.freeze([
   ...BRIDGES.map((bridge) => bridgeArea(bridge)),
 ]);
 
-export const PLAYER_START = Object.freeze({ x: 1660, z: 1580 });
+export const PLAYER_START = Object.freeze({ x: 2130, z: 1880 });
 export const PLAYER_RADIUS = 15;
 export const PLAYER_SPEED = 145;
 
@@ -251,11 +251,11 @@ export const LOCATIONS = Object.freeze([
     id: "home",
     name: "家庭小屋",
     unlockOrder: 0,
-    x: 1690,
-    z: 1440,
+    x: 2120,
+    z: 1770,
     hitRadius: 130,
     interactionRadius: 235,
-    approach: Object.freeze({ x: 1660, z: 1580 }),
+    approach: Object.freeze({ x: 2130, z: 1880 }),
     accent: "#b77b56",
     description: "旅程从熟悉的家和院子开始。",
     sceneDescription: "这里是玩家的出生地和家庭场景，不需要解锁。",
@@ -265,11 +265,11 @@ export const LOCATIONS = Object.freeze([
     name: "爬山岛",
     unlockOrder: 1,
     unlocksOrder: 2,
-    x: 1080,
-    z: 860,
+    x: 1510,
+    z: 1290,
     hitRadius: 145,
     interactionRadius: 285,
-    approach: Object.freeze({ x: 880, z: 760 }),
+    approach: Object.freeze({ x: 1380, z: 1280 }),
     accent: "#9b745c",
     description: "第一站：沿着山路走向云端。",
     sceneDescription: "走过绳桥就能开始爬山。完成这段旅程后，工作岛将会解锁。",
@@ -292,7 +292,7 @@ export const LOCATIONS = Object.freeze([
 ]);
 
 export const OBSTACLES = Object.freeze([
-  Object.freeze({ x: 1690, z: 1440, radius: 88 }),
-  Object.freeze({ x: 1080, z: 860, radius: 90 }),
+  Object.freeze({ x: 2120, z: 1770, radius: 88 }),
+  Object.freeze({ x: 1510, z: 1290, radius: 90 }),
   Object.freeze({ x: 500, z: 300, radius: 92 }),
 ]);
