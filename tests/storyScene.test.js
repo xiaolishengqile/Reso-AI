@@ -5,6 +5,7 @@ import { getStoryFrameState } from "../src/scenes/story/storyRenderer.js";
 import { createChoice } from "../src/scenes/story/story.js";
 import {
   advanceStoryProgress,
+  completeStoryProgress,
   createStoryProgress,
   saveStoryProgress,
 } from "../src/scenes/story/progress.js";
@@ -103,10 +104,10 @@ function story() {
   };
 }
 
-function fixture(storage = memoryStorage()) {
+function fixture(storage = memoryStorage(), options = {}) {
   const elements = {
     root: new FakeElement(),
-    canvas: null,
+    canvas: options.canvas ?? null,
     progress: new FakeElement(),
     title: new FakeElement(),
     text: new FakeElement(),
@@ -121,6 +122,7 @@ function fixture(storage = memoryStorage()) {
     storage,
     documentTarget: { createElement: () => new FakeElement() },
     windowTarget: { performance: { now: () => 500 }, addEventListener() {}, removeEventListener() {} },
+    drawFrame: options.drawFrame,
   });
   return { elements, scene, storage };
 }
@@ -153,6 +155,32 @@ test("刷新后恢复已保存阶段", () => {
   scene.dispose();
 });
 
+test("重玩已完成剧情时不会把上一轮结尾情绪带回序幕", () => {
+  const storage = memoryStorage();
+  saveStoryProgress(storage, {
+    ...completeStoryProgress(createStoryProgress("boy", "office", "one"), 1000),
+    companionMood: "疏离",
+  });
+  const frames = [];
+  const canvas = {
+    width: 600,
+    height: 400,
+    clientWidth: 600,
+    clientHeight: 400,
+    getContext() { return { setTransform() {} }; },
+    getBoundingClientRect() { return { width: 600, height: 400 }; },
+  };
+  const { scene } = fixture(storage, {
+    canvas,
+    drawFrame(_context, frame) { frames.push(frame); },
+  });
+
+  scene.open(story(), { complete() {}, close() {} });
+
+  assert.equal(frames.at(-1).companionMood, "");
+  scene.dispose();
+});
+
 test("完成六组选择后只通知地图一次", () => {
   const currentStory = story();
   const { elements, scene } = fixture();
@@ -167,6 +195,38 @@ test("完成六组选择后只通知地图一次", () => {
   elements.continueButton.click();
   elements.continueButton.click();
   assert.equal(completed, 1);
+  scene.dispose();
+});
+
+test("完成存档失败时不解锁，允许原地重试", () => {
+  let allowCompletion = false;
+  const base = memoryStorage();
+  const storage = {
+    getItem: base.getItem,
+    setItem(key, value) {
+      const parsed = JSON.parse(value);
+      if (parsed.players?.boy?.office?.completed && !allowCompletion) throw new Error("quota");
+      base.setItem(key, value);
+    },
+  };
+  const { elements, scene } = fixture(storage);
+  let completed = 0;
+  scene.open(story(), { complete() { completed += 1; }, close() {} });
+  for (let index = 0; index < 6; index += 1) {
+    elements.choices.children[0].click();
+    elements.continueButton.click();
+  }
+
+  elements.continueButton.click();
+  assert.equal(completed, 0);
+  assert.equal(elements.root.hidden, false);
+  assert.equal(elements.saveWarning.hidden, false);
+  assert.equal(elements.continueButton.disabled, false);
+
+  allowCompletion = true;
+  elements.continueButton.click();
+  assert.equal(completed, 1);
+  assert.equal(elements.root.hidden, true);
   scene.dispose();
 });
 

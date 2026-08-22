@@ -62,7 +62,7 @@ test("图例状态由场景定义和解锁进度共同决定", async () => {
   assert.equal(registry.getSceneLegendState(office, false, 1), "未解锁");
   assert.equal(registry.getSceneLegendState(office, true, 2), "已解锁");
   assert.equal(registry.getSceneLegendState(future, true, 9), "已完成");
-  assert.equal(registry.getSceneLegendState(wish, true, 9), "画像待生成");
+  assert.equal(registry.getSceneLegendState(wish, true, 9), "画像生成处");
 });
 
 test("探索提示由场景列表动态生成而不依赖主控制器文案", async () => {

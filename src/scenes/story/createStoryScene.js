@@ -171,8 +171,12 @@ export function createStoryScene({
 
   function finish() {
     if (completedCallbackSent) return;
+    elements.continueButton.disabled = true;
+    if (!persist(completeStoryProgress(progress))) {
+      elements.continueButton.disabled = false;
+      return;
+    }
     completedCallbackSent = true;
-    persist(completeStoryProgress(progress));
     const completeCallback = callbacks?.complete;
     hide(false);
     completeCallback?.();
@@ -192,7 +196,6 @@ export function createStoryScene({
     story = nextStory;
     callbacks = nextCallbacks;
     completedCallbackSent = false;
-    companionMood = "";
     progress = loadStoryProgress(
       storage,
       characterId,
@@ -209,6 +212,7 @@ export function createStoryScene({
       persist(progress);
       currentStage = getStoryStage(story, story.initialStageId);
     }
+    companionMood = progress.companionMood ?? "";
     isOpen = true;
     setHidden(elements.root, false);
     setHidden(elements.saveWarning, true);

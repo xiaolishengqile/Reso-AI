@@ -4,6 +4,7 @@ import { createEvidence } from "../src/profile/evidence.js";
 import { generateLocalPortrait } from "../src/profile/portrait.js";
 import { createTravelerProfile, saveTravelerProfile } from "../src/profile/travelerProfile.js";
 import { createMountainProgress, saveMountainProgress } from "../src/scenes/mountain/progress.js";
+import { MOUNTAIN_STAGES } from "../src/scenes/mountain/storyContent.js";
 import { getAllStories } from "../src/scenes/story/catalog.js";
 import { createStoryProgress, saveStoryProgress } from "../src/scenes/story/progress.js";
 import { createWishScene } from "../src/scenes/wish/createWishScene.js";
@@ -34,15 +35,16 @@ function memoryStorage() {
   };
 }
 
-function makeEvidence(islandId, index) {
+function makeEvidence(islandId, stage, index) {
+  const option = stage.choices[index % stage.choices.length];
   return createEvidence({
     islandId,
-    stageId: `${islandId}-${index}`,
-    optionId: `choice-${index}`,
-    optionText: `选择 ${index}`,
-    target: ["self", "partner", "joint"][index % 3],
-    summary: `${islandId}的关系偏好 ${index}`,
-    signals: [{ dimension: "communication", value: index % 2 ? "direct" : "calm", weight: 2 }],
+    stageId: stage.id,
+    optionId: option.id,
+    optionText: option.text,
+    target: option.target ?? "self",
+    summary: option.summary ?? `${islandId}的关系偏好 ${index}`,
+    signals: option.signals ?? [{ dimension: "communication", value: index % 2 ? "direct" : "calm", weight: 2 }],
     contextTags: [islandId],
     pressure: "medium",
     answeredAt: 1000 + index,
@@ -60,7 +62,9 @@ function completeStorage() {
   }, 500));
   saveMountainProgress(storage, {
     ...createMountainProgress("girl"),
-    officialEvidence: Array.from({ length: 7 }, (_, index) => makeEvidence("mountain", index)),
+    officialEvidence: MOUNTAIN_STAGES
+      .filter(({ recordsEvidence }) => recordsEvidence)
+      .map((stage, index) => makeEvidence("mountain", stage, index)),
     completed: true,
     firstCompletedAt: 2000,
     completedAt: 2000,
@@ -68,7 +72,9 @@ function completeStorage() {
   for (const story of getAllStories()) {
     saveStoryProgress(storage, {
       ...createStoryProgress("girl", story.id, story.initialStageId),
-      officialEvidence: Array.from({ length: 6 }, (_, index) => makeEvidence(story.id, index)),
+      officialEvidence: story.stages
+        .filter(({ recordsEvidence }) => recordsEvidence)
+        .map((stage, index) => makeEvidence(story.id, stage, index)),
       completed: true,
       firstCompletedAt: 3000,
       completedAt: 3000,
@@ -158,6 +164,25 @@ test("远程生成失败时保留证据并允许重试", async () => {
   await flushPromises();
   assert.equal(requestCount, 2);
   assert.match(elements.status.textContent, /本地安全画像|已经生成/);
+  assert.equal(elements.result.children.length, 12);
+  scene.dispose();
+});
+
+test("远程结果缺少证据引用时不会渲染坏数据，而会回退本地画像", async () => {
+  const { scene, elements } = fixture({
+    requestPortrait: async () => ({
+      summary: "没有结构的远程结果",
+      sections: Array.from({ length: 12 }, () => ({ content: "缺少引用" })),
+      confidence: "high",
+      generatedAt: 1000,
+      generatorVersion: 2,
+    }),
+  });
+
+  scene.open({ close() {} });
+  await flushPromises();
+
+  assert.match(elements.status.textContent, /未通过安全校验.*本地安全画像/);
   assert.equal(elements.result.children.length, 12);
   scene.dispose();
 });

@@ -3,10 +3,11 @@ import {
   normalizeEvidence,
   validateEvidence,
 } from "../../profile/evidence.js";
+import { getMountainEvidenceDefinition } from "./evidenceSchema.js";
 
 export const MOUNTAIN_PROGRESS_KEY = "reso-ai.mountain-progress";
 
-const PROGRESS_VERSION = 1;
+const PROGRESS_VERSION = 2;
 const INITIAL_STAGE_ID = "invitation";
 
 function copyEvidence(evidence) {
@@ -18,18 +19,16 @@ function copyEvidence(evidence) {
 }
 
 function createMountainEvidence(stage, option, details) {
+  const definition = getMountainEvidenceDefinition(stage.id, option.id);
+  if (!definition) throw new Error(`缺少爬山岛证据定义：${stage.id}/${option.id}`);
   return createEvidence({
     islandId: "mountain",
     stageId: stage.id,
     optionId: option.id,
     optionText: option.text,
-    target: stage.evidenceTarget ?? "self",
-    summary: option.summary ?? option.analysis,
-    signals: option.signals ?? option.dimensions.map((dimension) => ({
-      dimension,
-      value: "observed",
-      weight: 1,
-    })),
+    target: definition.target,
+    summary: definition.summary,
+    signals: definition.signals,
     contextTags: [stage.scene, ...(stage.contextTags ?? [])],
     pressure: stage.id === "slip" || stage.id === "storm-thought" ? "high" : "medium",
     companionMood: details.companionMood ?? null,
@@ -40,7 +39,7 @@ function createMountainEvidence(stage, option, details) {
 
 export function createMountainProgress(characterId, previous = null) {
   const isReplay = Boolean(
-    previous?.completed
+    Number.isFinite(previous?.firstCompletedAt)
     && previous.version === PROGRESS_VERSION
     && previous.characterId === characterId,
   );
@@ -55,6 +54,8 @@ export function createMountainProgress(characterId, previous = null) {
     actionId: null,
     isReplay,
     completed: false,
+    firstCompletedAt: isReplay ? previous.firstCompletedAt : null,
+    completedAt: null,
   };
 }
 
@@ -84,8 +85,13 @@ export function advanceMountainProgress(progress, nextStageId) {
   return { ...progress, currentStageId: nextStageId, currentAnswer: null };
 }
 
-export function completeMountainProgress(progress) {
-  return { ...progress, completed: true };
+export function completeMountainProgress(progress, now = Date.now()) {
+  return {
+    ...progress,
+    completed: true,
+    firstCompletedAt: progress.firstCompletedAt ?? now,
+    completedAt: now,
+  };
 }
 
 function isValidProgress(progress, characterId) {
@@ -97,8 +103,53 @@ function isValidProgress(progress, characterId) {
     && Array.isArray(progress.answers)
     && Array.isArray(progress.officialEvidence)
     && progress.officialEvidence.every((evidence) => validateEvidence(evidence).length === 0)
-    && typeof progress.completed === "boolean",
+    && typeof progress.completed === "boolean"
+    && (progress.firstCompletedAt === null || Number.isFinite(progress.firstCompletedAt))
+    && (progress.completedAt === null || Number.isFinite(progress.completedAt))
   );
+}
+
+function migrateLegacyEvidence(evidence) {
+  const definition = getMountainEvidenceDefinition(evidence?.stageId, evidence?.optionId);
+  if (!definition) return null;
+  return createEvidence({
+    ...evidence,
+    islandId: "mountain",
+    target: definition.target,
+    summary: definition.summary,
+    signals: definition.signals,
+  });
+}
+
+function migrateLegacyProgress(progress, characterId) {
+  if (
+    progress?.version !== 1
+    || progress.characterId !== characterId
+    || typeof progress.currentStageId !== "string"
+    || !Array.isArray(progress.answers)
+    || !Array.isArray(progress.officialEvidence)
+    || typeof progress.completed !== "boolean"
+  ) return null;
+  const officialEvidence = progress.officialEvidence.map(migrateLegacyEvidence);
+  if (officialEvidence.some((item) => !item)) return null;
+  const latestEvidenceAt = Math.max(
+    0,
+    ...officialEvidence.map(({ answeredAt }) => answeredAt).filter(Number.isFinite),
+  );
+  const replayEvidenceComplete = progress.isReplay === true
+    && officialEvidence.length === 7
+    && new Set(officialEvidence.map(({ stageId }) => stageId)).size === 7;
+  const firstCompletedAt = progress.completed || replayEvidenceComplete
+    ? (latestEvidenceAt || Date.now())
+    : null;
+  return {
+    ...progress,
+    version: PROGRESS_VERSION,
+    officialEvidence,
+    isReplay: Boolean(progress.isReplay),
+    firstCompletedAt,
+    completedAt: progress.completed ? firstCompletedAt : null,
+  };
 }
 
 export function loadMountainProgress(storage, characterId) {
@@ -106,11 +157,12 @@ export function loadMountainProgress(storage, characterId) {
     const stored = storage?.getItem(MOUNTAIN_PROGRESS_KEY);
     if (!stored) return createMountainProgress(characterId);
     const parsed = JSON.parse(stored);
+    const migrated = migrateLegacyProgress(parsed, characterId);
     const progress = {
-      ...parsed,
-      officialEvidence: Array.isArray(parsed?.officialEvidence)
-        ? parsed.officialEvidence.map((evidence) => normalizeEvidence(evidence))
-        : parsed?.officialEvidence,
+      ...(migrated ?? parsed),
+      officialEvidence: Array.isArray((migrated ?? parsed)?.officialEvidence)
+        ? (migrated ?? parsed).officialEvidence.map((evidence) => normalizeEvidence(evidence))
+        : (migrated ?? parsed)?.officialEvidence,
     };
     return isValidProgress(progress, characterId)
       ? progress
@@ -122,7 +174,7 @@ export function loadMountainProgress(storage, characterId) {
 
 export function saveMountainProgress(storage, progress) {
   try {
-    if (!storage?.setItem) return false;
+    if (!storage?.setItem || !isValidProgress(progress, progress?.characterId)) return false;
     storage.setItem(MOUNTAIN_PROGRESS_KEY, JSON.stringify(progress));
     return true;
   } catch {

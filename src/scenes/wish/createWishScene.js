@@ -5,6 +5,7 @@ import {
   validatePortraitReadiness,
   validatePortraitResult,
 } from "../../profile/portrait.js";
+import { normalizeTravelerEvidence } from "../../profile/evidence.js";
 import { loadTravelerProfile } from "../../profile/travelerProfile.js";
 import { loadMountainProgress } from "../mountain/progress.js";
 import { getAllStories } from "../story/catalog.js";
@@ -28,6 +29,7 @@ function loadJourney(storage, characterId) {
     loadStoryProgress(storage, characterId, story.id, story.initialStageId),
   ]));
   return {
+    characterId,
     profile: loadTravelerProfile(storage),
     mountainProgress: loadMountainProgress(storage, characterId),
     storyProgress,
@@ -87,6 +89,8 @@ export function createWishScene({
     }
 
     const evidence = collectOfficialEvidence(journey);
+    const baselineEvidence = normalizeTravelerEvidence(journey.profile);
+    const validationSource = { evidence, baselineEvidence };
     elements.status.textContent = requestPortrait
       ? "正在根据八座剧情岛的证据生成画像……"
       : "正在离线整理八座剧情岛的证据……";
@@ -100,13 +104,17 @@ export function createWishScene({
         result = await requestPortrait(createPortraitRequest({
           profile: journey.profile,
           evidence,
+          baselineEvidence,
         }));
-        if (validatePortraitResult(result, evidence).length > 0) {
-          result = generateLocalPortrait({ profile: journey.profile, evidence });
+        if (validatePortraitResult(result, validationSource).length > 0) {
+          result = generateLocalPortrait({ profile: journey.profile, evidence, baselineEvidence });
           usedFallback = true;
         }
       } else {
-        result = generateLocalPortrait({ profile: journey.profile, evidence });
+        result = generateLocalPortrait({ profile: journey.profile, evidence, baselineEvidence });
+      }
+      if (validatePortraitResult(result, validationSource).length > 0) {
+        throw new Error("画像结果未通过结构校验");
       }
 
       if (!isOpen || currentGeneration !== generationId) return;

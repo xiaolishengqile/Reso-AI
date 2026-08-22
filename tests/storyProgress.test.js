@@ -54,10 +54,26 @@ test("首次选择只记录一次且保存后可以恢复", () => {
 
   assert.equal(twice.answers.length, 1);
   assert.equal(twice.officialEvidence.length, 1);
+  assert.equal(twice.companionMood, null);
   assert.equal(saveStoryProgress(storage, advanced), true);
   assert.deepEqual(
     loadStoryProgress(storage, "girl", "office", "overtime"),
     advanced,
+  );
+});
+
+test("剧情进度会保存同行者情绪供刷新后恢复画面", () => {
+  const selected = recordStoryChoice(
+    createStoryProgress("girl", "office", "overtime"),
+    { ...evidence(), companionMood: "被理解" },
+  );
+  const storage = memoryStorage();
+  saveStoryProgress(storage, selected);
+
+  assert.equal(selected.companionMood, "被理解");
+  assert.equal(
+    loadStoryProgress(storage, "girl", "office", "overtime").companionMood,
+    "被理解",
   );
 });
 

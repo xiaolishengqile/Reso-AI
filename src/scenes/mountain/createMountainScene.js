@@ -298,9 +298,12 @@ export function createMountainScene({
 
   function finish() {
     if (!isOpen || completed) return;
-    completed = true;
     elements.continueButton.disabled = true;
-    persist(completeMountainProgress(progress));
+    if (!persist(completeMountainProgress(progress))) {
+      elements.continueButton.disabled = false;
+      return;
+    }
+    completed = true;
     callbacks?.complete?.();
     hide(false);
   }
@@ -346,12 +349,12 @@ export function createMountainScene({
     callbacks = nextCallbacks;
     completed = false;
     progress = loadMountainProgress(storage, characterId);
-    journeyMode = progress.completed
+    journeyMode = Number.isFinite(progress.firstCompletedAt)
       ? "重温旅程"
       : progress.currentStageId !== "invitation" || progress.answers.length > 0
         ? "继续上次旅程"
         : null;
-    if (progress.completed) {
+    if (Number.isFinite(progress.firstCompletedAt)) {
       // 重新进入已完成剧情时保留首次正式证据，并从序幕开始重玩。
       progress = createMountainProgress(characterId, progress);
       persist(progress);

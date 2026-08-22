@@ -8,6 +8,7 @@ import {
 } from "../src/scenes/mountain/createMountainScene.js";
 import {
   advanceMountainProgress,
+  completeMountainProgress,
   createMountainProgress,
   recordMountainSelection,
 } from "../src/scenes/mountain/progress.js";
@@ -148,10 +149,7 @@ test("打开剧情会恢复到保存的阶段并匹配异性同行者", () => {
 });
 
 test("已完成剧情重玩时明确显示为重温旅程", () => {
-  const completed = {
-    ...createMountainProgress("boy"),
-    completed: true,
-  };
+  const completed = completeMountainProgress(createMountainProgress("boy"), 2000);
   const fixture = createSceneFixture(createMemoryStorage({
     [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(completed),
   }));
@@ -231,6 +229,37 @@ test("完成阶段只通知世界地图一次", () => {
   fixture.elements.continueButton.click();
 
   assert.equal(completed, 1);
+  fixture.scene.dispose();
+});
+
+test("完成存档失败时留在当前页面，重试成功后才通知地图", () => {
+  let allowCompletion = false;
+  const base = createMemoryStorage({
+    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(
+      advanceMountainProgress(createMountainProgress("boy"), "complete"),
+    ),
+  });
+  const storage = {
+    getItem: base.getItem,
+    setItem(key, value) {
+      if (JSON.parse(value).completed && !allowCompletion) throw new Error("quota");
+      base.setItem(key, value);
+    },
+  };
+  const fixture = createSceneFixture(storage);
+  let completed = 0;
+  fixture.scene.open({ complete() { completed += 1; }, close() {} });
+
+  fixture.elements.continueButton.click();
+  assert.equal(completed, 0);
+  assert.equal(fixture.elements.root.hidden, false);
+  assert.equal(fixture.elements.saveWarning.hidden, false);
+  assert.equal(fixture.elements.continueButton.disabled, false);
+
+  allowCompletion = true;
+  fixture.elements.continueButton.click();
+  assert.equal(completed, 1);
+  assert.equal(fixture.elements.root.hidden, true);
   fixture.scene.dispose();
 });
 

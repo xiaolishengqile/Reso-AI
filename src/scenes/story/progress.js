@@ -36,6 +36,7 @@ export function createStoryProgress(
     completed: false,
     firstCompletedAt: isReplay ? previous.firstCompletedAt : null,
     completedAt: null,
+    companionMood: null,
   };
 }
 
@@ -51,6 +52,7 @@ export function recordStoryChoice(progress, evidence) {
     officialEvidence: progress.isReplay
       ? progress.officialEvidence
       : [...progress.officialEvidence, evidence],
+    companionMood: evidence.companionMood ?? null,
   };
 }
 
@@ -88,6 +90,7 @@ function validProgress(progress, characterId, islandId) {
     && typeof progress.completed === "boolean"
     && (progress.firstCompletedAt === null || Number.isFinite(progress.firstCompletedAt))
     && (progress.completedAt === null || Number.isFinite(progress.completedAt))
+    && (progress.companionMood === null || typeof progress.companionMood === "string")
   );
 }
 
@@ -105,7 +108,10 @@ function loadStore(storage) {
 }
 
 export function loadStoryProgress(storage, characterId, islandId, initialStageId) {
-  const progress = loadStore(storage).players?.[characterId]?.[islandId];
+  const stored = loadStore(storage).players?.[characterId]?.[islandId];
+  const progress = stored && stored.companionMood === undefined
+    ? { ...stored, companionMood: null }
+    : stored;
   return validProgress(progress, characterId, islandId)
     ? progress
     : createStoryProgress(characterId, islandId, initialStageId);
