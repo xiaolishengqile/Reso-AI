@@ -80,6 +80,10 @@ export function getLocationInteraction(
   });
 }
 
+export function getLocationSceneType(location) {
+  return location?.id === "mountain" ? "mountain-story" : "dialog";
+}
+
 export function findLocationAtPoint(point, locations) {
   return locations
     .map((location) => ({
@@ -133,6 +137,7 @@ export function createGame({
   canvas,
   ui,
   characterId,
+  onEnterMountain = null,
   windowTarget = window,
 }) {
   const context = canvas.getContext("2d");
@@ -165,6 +170,7 @@ export function createGame({
   let frameId = 0;
   let started = false;
   let overviewRequested = false;
+  let mountainSceneActive = false;
 
   function setOverviewRequested(requested) {
     overviewRequested = requested;
@@ -250,11 +256,25 @@ export function createGame({
   }
 
   function onPointerMove(event) {
+    if (mountainSceneActive) return;
     setHoveredLocation(findLocationAtPoint(eventToMap(event), LOCATIONS));
   }
 
   function onPointerLeave() {
+    if (mountainSceneActive) return;
     setHoveredLocation(null);
+  }
+
+  function closeMountainScene() {
+    mountainSceneActive = false;
+    activeLocation = null;
+    setStatus("已返回世界地图，爬山进度会在下次进入时恢复。", 1800);
+  }
+
+  function completeMountainScene() {
+    if (!mountainSceneActive) return;
+    mountainSceneActive = false;
+    completeLocation();
   }
 
   function openLocationDialog(location) {
@@ -286,6 +306,7 @@ export function createGame({
   }
 
   function onCanvasClick(event) {
+    if (mountainSceneActive) return;
     const point = eventToMap(event);
     const location = findLocationAtPoint(point, LOCATIONS);
     if (location) {
@@ -299,7 +320,13 @@ export function createGame({
         pointerTarget = null;
         targetLocationId = null;
         stalledSeconds = 0;
-        openLocationDialog(location);
+        if (getLocationSceneType(location) === "mountain-story" && onEnterMountain) {
+          activeLocation = location;
+          mountainSceneActive = true;
+          onEnterMountain({ complete: completeMountainScene, close: closeMountainScene });
+        } else {
+          openLocationDialog(location);
+        }
       } else if (interaction.canApproach) {
         pointerTarget = location.approach;
         targetLocationId = location.id;
@@ -354,6 +381,7 @@ export function createGame({
   }
 
   function update(deltaSeconds) {
+    if (mountainSceneActive) return false;
     let direction = input.getDirection();
     if (direction.x !== 0 || direction.z !== 0) {
       pointerTarget = null;

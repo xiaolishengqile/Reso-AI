@@ -2,6 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as game from "../src/game/createGame.js";
 
+test("爬山地点交给独立剧情，家庭和工作地点保留入口面板", () => {
+  assert.equal(game.getLocationSceneType({ id: "mountain" }), "mountain-story");
+  assert.equal(game.getLocationSceneType({ id: "home" }), "dialog");
+  assert.equal(game.getLocationSceneType({ id: "office" }), "dialog");
+});
+
 test("只有点击地点与玩家附近地点相同时才允许进入", () => {
   const mountain = { id: "mountain", name: "爬山岛" };
   const office = { id: "office", name: "工作岛" };

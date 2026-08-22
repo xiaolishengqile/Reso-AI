@@ -1,16 +1,33 @@
 import "./styles.css";
+import "./scenes/mountain/mountainScene.css";
 import { renderCharacterPreview } from "./entities/character.js";
 import { createGame } from "./game/createGame.js";
+import { createMountainScene } from "./scenes/mountain/createMountainScene.js";
 
 const canvas = document.querySelector("#world-canvas");
 const compatibilityError = document.querySelector("#compatibility-error");
 const characterDialog = document.querySelector("#character-dialog");
 const characterButtons = [...document.querySelectorAll("[data-character]")];
 let game = null;
+let mountainScene = null;
 
 function startGame(characterId) {
   if (game) return;
   try {
+    mountainScene = createMountainScene({
+      characterId,
+      elements: {
+        root: document.querySelector("#mountain-scene"),
+        canvas: document.querySelector("#mountain-scene-canvas"),
+        title: document.querySelector("#mountain-stage-title"),
+        text: document.querySelector("#mountain-story-text"),
+        choices: document.querySelector("#mountain-choices"),
+        continueButton: document.querySelector("#mountain-continue"),
+        closeButton: document.querySelector("#mountain-close"),
+        saveWarning: document.querySelector("#mountain-save-warning"),
+        progress: document.querySelector("#mountain-progress"),
+      },
+    });
     game = createGame({
       canvas,
       characterId,
@@ -29,12 +46,15 @@ function startGame(characterId) {
         closeButton: document.querySelector("#dialog-close"),
         overviewButton: document.querySelector("#overview-button"),
       },
+      onEnterMountain: (callbacks) => mountainScene.open(callbacks),
     });
     characterDialog.close?.();
     characterDialog.removeAttribute("open");
     game.start();
   } catch (error) {
     console.error("创建世界地图失败", error);
+    mountainScene?.dispose();
+    mountainScene = null;
     game?.dispose();
     game = null;
     characterDialog.close?.();
@@ -55,4 +75,7 @@ characterDialog.addEventListener("cancel", (event) => event.preventDefault());
 if (typeof characterDialog.showModal === "function") characterDialog.showModal();
 else characterDialog.setAttribute("open", "");
 
-window.addEventListener("beforeunload", () => game?.dispose(), { once: true });
+window.addEventListener("beforeunload", () => {
+  mountainScene?.dispose();
+  game?.dispose();
+}, { once: true });

@@ -105,6 +105,23 @@
         </button>
       </dialog>
 
+      <section id="mountain-scene" class="mountain-scene" aria-label="爬山岛剧情" hidden>
+        <canvas id="mountain-scene-canvas" class="mountain-scene__canvas" aria-hidden="true"></canvas>
+        <div class="mountain-scene__panel">
+          <p id="mountain-progress" class="mountain-scene__progress"></p>
+          <h2 id="mountain-stage-title"></h2>
+          <p id="mountain-story-text" aria-live="polite"></p>
+          <div id="mountain-choices" class="mountain-scene__choices" aria-label="剧情选择"></div>
+          <p id="mountain-save-warning" class="mountain-scene__warning" role="alert" hidden>
+            当前选择暂未保存，请不要关闭页面，完成旅程后将再次尝试保存。
+          </p>
+          <div class="mountain-scene__footer">
+            <button id="mountain-continue" type="button" hidden></button>
+            <button id="mountain-close" type="button">返回世界地图</button>
+          </div>
+        </div>
+      </section>
+
       <section id="compatibility-error" class="compatibility-error" hidden>
         <h2>地图暂时无法展开</h2>
         <p>当前浏览器无法创建二维画布，请尝试更新浏览器。</p>
