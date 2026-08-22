@@ -43,6 +43,11 @@ import {
   INITIAL_UNLOCK_ORDER,
   isLocationUnlocked,
 } from "../systems/progression.js";
+import { createSceneManager } from "../scenes/createSceneManager.js";
+import {
+  createSceneLocations,
+  getSceneLegendState,
+} from "../scenes/registry.js";
 
 const BACKGROUND_ERROR_MESSAGE = "手绘地图底图加载失败，请刷新页面重试。";
 
@@ -139,6 +144,7 @@ export function createGame({
   if (!context) throw new Error("当前浏览器无法创建二维画布");
 
   const input = createInput(windowTarget);
+  const locations = createSceneLocations(LOCATIONS);
   const player = { x: PLAYER_START.x, z: PLAYER_START.z };
   let transform = createOverviewTransform(
     1,
@@ -153,7 +159,6 @@ export function createGame({
   let targetLocationId = null;
   let hoveredLocation = null;
   let nearbyLocation = null;
-  let activeLocation = null;
   let unlockedOrder = INITIAL_UNLOCK_ORDER;
   let backgroundFailed = false;
   let failedAssetName = null;
@@ -165,6 +170,17 @@ export function createGame({
   let frameId = 0;
   let started = false;
   let overviewRequested = false;
+
+  function completeScene(scene) {
+    const nextOrder = advanceUnlockOrder(unlockedOrder, scene);
+    if (nextOrder === unlockedOrder) return;
+    unlockedOrder = nextOrder;
+    updateLegend();
+    showLocationCard(hoveredLocation);
+    setStatus(scene.completionMessage ?? "场景已完成。", 2600);
+  }
+
+  const sceneManager = createSceneManager({ ui, onComplete: completeScene });
 
   function setOverviewRequested(requested) {
     overviewRequested = requested;
@@ -204,17 +220,17 @@ export function createGame({
 
   function updateLegend() {
     for (const item of ui.legendItems ?? []) {
-      const location = LOCATIONS.find(({ id }) => id === item.dataset.locationId);
+      const location = locations.find(({ id }) => id === item.dataset.locationId);
       if (!location) continue;
       const unlocked = isLocationUnlocked(location, unlockedOrder);
       item.classList.toggle("is-locked", !unlocked);
       const state = item.querySelector("[data-location-state]");
       if (!state) continue;
-      if (location.id === "home") state.textContent = "出生地";
-      else if (!unlocked) state.textContent = "未解锁";
-      else if (location.id === "mountain" && unlockedOrder >= 2) {
-        state.textContent = "已完成";
-      } else state.textContent = location.id === "mountain" ? "下一站" : "已解锁";
+      state.textContent = getSceneLegendState(
+        location,
+        unlocked,
+        unlockedOrder,
+      );
     }
   }
 
@@ -250,44 +266,16 @@ export function createGame({
   }
 
   function onPointerMove(event) {
-    setHoveredLocation(findLocationAtPoint(eventToMap(event), LOCATIONS));
+    setHoveredLocation(findLocationAtPoint(eventToMap(event), locations));
   }
 
   function onPointerLeave() {
     setHoveredLocation(null);
   }
 
-  function openLocationDialog(location) {
-    activeLocation = location;
-    if (ui.dialogTitle) ui.dialogTitle.textContent = location.name;
-    if (ui.dialogLabel) {
-      ui.dialogLabel.textContent = location.id === "home"
-        ? "出 生 地 · 家 庭 场 景"
-        : location.id === "mountain"
-          ? "第 一 站 · 爬 山 场 景"
-          : "第 二 站 · 工 作 场 景";
-    }
-    if (ui.dialogDescription) {
-      ui.dialogDescription.textContent = location.sceneDescription;
-    }
-    if (ui.completeButton) {
-      const canComplete = Boolean(
-        location.completionLabel && unlockedOrder < location.unlocksOrder,
-      );
-      ui.completeButton.hidden = !canComplete;
-      ui.completeButton.textContent = location.completionLabel ?? "";
-    }
-    ui.dialog?.style.setProperty("--scene-accent", location.accent);
-    if (typeof ui.dialog?.showModal === "function" && !ui.dialog.open) {
-      ui.dialog.showModal();
-    } else {
-      ui.dialog?.setAttribute("open", "");
-    }
-  }
-
   function onCanvasClick(event) {
     const point = eventToMap(event);
-    const location = findLocationAtPoint(point, LOCATIONS);
+    const location = findLocationAtPoint(point, locations);
     if (location) {
       const interaction = getLocationInteraction(
         location,
@@ -299,7 +287,12 @@ export function createGame({
         pointerTarget = null;
         targetLocationId = null;
         stalledSeconds = 0;
-        openLocationDialog(location);
+        sceneManager.open(location, {
+          canComplete: Boolean(
+            location.completionLabel
+              && unlockedOrder < location.unlocksOrder,
+          ),
+        });
       } else if (interaction.canApproach) {
         pointerTarget = location.approach;
         targetLocationId = location.id;
@@ -316,26 +309,6 @@ export function createGame({
     } else {
       setStatus("那里是云海，旅人无法抵达。", 1300);
     }
-  }
-
-  function closeDialog() {
-    if (typeof ui.dialog?.close === "function" && ui.dialog.open) {
-      ui.dialog.close();
-    } else {
-      ui.dialog?.removeAttribute("open");
-    }
-    activeLocation = null;
-  }
-
-  function completeLocation() {
-    if (!activeLocation) return;
-    const nextOrder = advanceUnlockOrder(unlockedOrder, activeLocation);
-    if (nextOrder === unlockedOrder) return;
-    unlockedOrder = nextOrder;
-    updateLegend();
-    showLocationCard(hoveredLocation);
-    closeDialog();
-    setStatus("爬山已完成，通往工作岛的桥已解锁。", 2600);
   }
 
   function resize() {
@@ -363,7 +336,7 @@ export function createGame({
       const targetDirection = directionToTarget(player, pointerTarget, 8);
       direction = targetDirection;
       if (targetDirection.arrived) {
-        const arrivedLocation = LOCATIONS.find(
+        const arrivedLocation = locations.find(
           ({ id }) => id === targetLocationId,
         );
         pointerTarget = null;
@@ -413,7 +386,7 @@ export function createGame({
       }
     }
 
-    nearbyLocation = findNearbyLocation(player, LOCATIONS);
+    nearbyLocation = findNearbyLocation(player, locations);
     if (windowTarget.performance.now() >= statusLockedUntil) {
       setStatus(getExplorationStatus({
         backgroundFailed,
@@ -445,7 +418,7 @@ export function createGame({
       elapsedSeconds,
       effectImages.get("cloud-cover"),
     );
-    for (const location of LOCATIONS) {
+    for (const location of locations) {
       if (isLocationUnlocked(location, unlockedOrder)) {
         drawLocationGlow(
           context,
@@ -499,13 +472,11 @@ export function createGame({
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerleave", onPointerLeave);
   canvas.addEventListener("click", onCanvasClick);
-  ui.closeButton?.addEventListener("click", closeDialog);
-  ui.completeButton?.addEventListener("click", completeLocation);
   ui.overviewButton?.addEventListener("click", toggleOverview);
   windowTarget.addEventListener("resize", resize);
   const islandImages = createIslandImageStore(windowTarget, ISLANDS, (island) => {
     backgroundFailed = true;
-    failedAssetName = LOCATIONS.find(({ id }) => id === island.id)?.name
+    failedAssetName = locations.find(({ id }) => id === island.id)?.name
       ?? island.id;
     setStatus(getExplorationStatus({
       backgroundFailed,
@@ -532,12 +503,11 @@ export function createGame({
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("click", onCanvasClick);
-      ui.closeButton?.removeEventListener("click", closeDialog);
-      ui.completeButton?.removeEventListener("click", completeLocation);
       ui.overviewButton?.removeEventListener("click", toggleOverview);
       windowTarget.removeEventListener("resize", resize);
       islandImages.dispose();
       effectImages.dispose();
+      sceneManager.dispose();
       input.dispose();
     },
   });
