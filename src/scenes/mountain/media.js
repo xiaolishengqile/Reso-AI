@@ -54,4 +54,3 @@ export function validateMountainMedia(stages) {
   }
   return errors;
 }
-
