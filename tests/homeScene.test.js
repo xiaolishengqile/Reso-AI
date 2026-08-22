@@ -124,6 +124,19 @@ test("雾谷旁白在当前地图上逐段点击推进", () => {
   fixture.scene.dispose();
 });
 
+test("老人发出引路邀请时四个回应立即紧跟出现", () => {
+  const fixture = createFixture();
+  fixture.scene.open({ complete() {} });
+
+  for (let count = 0; count < 8 && !fixture.elements.text.textContent.includes("我可以告诉你该怎么走"); count += 1) {
+    fixture.elements.root.click(fixture.elements.text);
+  }
+
+  assert.match(fixture.elements.text.textContent, /我可以告诉你该怎么走/);
+  assert.equal(fixture.elements.choices.children.length, 4);
+  fixture.scene.dispose();
+});
+
 test("选项和表单点击不会误推进剧情", () => {
   const fixture = createFixture();
   fixture.scene.open({ complete() {} });
