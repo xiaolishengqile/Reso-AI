@@ -1,4 +1,6 @@
 import {
+  BRIDGES,
+  ISLANDS,
   LOCATIONS,
   LOCKED_GATES,
   MAP_SIZE,
@@ -11,13 +13,20 @@ import {
 } from "../config/world.js";
 import { drawCharacter } from "../entities/character.js";
 import {
+  createIslandImageStore,
+  drawBridges,
+  drawIslandLayers,
   drawLocationGlow,
-  drawLockedLocation,
   drawTarget,
+  drawWorldBackdrop,
 } from "./mapRenderer.js";
+import {
+  createFollowTransform,
+  createOverviewTransform,
+  stepCamera,
+} from "../systems/camera.js";
 import { createInput } from "../systems/createInput.js";
 import {
-  createCoverTransform,
   directionFromMovement,
   directionToTarget,
   findNearbyLocation,
@@ -81,12 +90,15 @@ export function findLocationAtPoint(point, locations) {
 
 export function getExplorationStatus({
   backgroundFailed,
+  failedAssetName,
   nearbyLocation,
   nearbyUnlocked = true,
   unlockedOrder = INITIAL_UNLOCK_ORDER,
 }) {
   if (backgroundFailed) {
-    return BACKGROUND_ERROR_MESSAGE;
+    return failedAssetName
+      ? "“" + failedAssetName + "”素材加载失败，请刷新页面重试。"
+      : BACKGROUND_ERROR_MESSAGE;
   }
   if (nearbyLocation && !nearbyUnlocked) {
     return nearbyLocation.lockedDescription;
@@ -100,13 +112,16 @@ export function getExplorationStatus({
 
 export function resolveStatusUpdate({
   backgroundFailed,
+  failedAssetName,
   message,
   now,
   lockMilliseconds,
 }) {
   return backgroundFailed
     ? {
-        message: BACKGROUND_ERROR_MESSAGE,
+        message: failedAssetName
+          ? "“" + failedAssetName + "”素材加载失败，请刷新页面重试。"
+          : BACKGROUND_ERROR_MESSAGE,
         lockedUntil: Number.POSITIVE_INFINITY,
       }
     : { message, lockedUntil: now + lockMilliseconds };
@@ -117,15 +132,18 @@ export function createGame({
   ui,
   characterId,
   windowTarget = window,
-  imageUrl = "/assets/world-map-chain.jpg",
 }) {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("当前浏览器无法创建二维画布");
 
   const input = createInput(windowTarget);
-  const background = new windowTarget.Image();
   const player = { x: PLAYER_START.x, z: PLAYER_START.z };
-  let transform = createCoverTransform(1, 1, MAP_SIZE.width, MAP_SIZE.height);
+  let transform = createOverviewTransform(
+    1,
+    1,
+    MAP_SIZE.width,
+    MAP_SIZE.height,
+  );
   let width = 1;
   let height = 1;
   let pixelRatio = 1;
@@ -136,6 +154,7 @@ export function createGame({
   let activeLocation = null;
   let unlockedOrder = INITIAL_UNLOCK_ORDER;
   let backgroundFailed = false;
+  let failedAssetName = null;
   let stalledSeconds = 0;
   let lastDirection = { x: 0, z: 1 };
   let statusLockedUntil = 0;
@@ -145,12 +164,18 @@ export function createGame({
 
   function canStandAt(point) {
     return isCircleInPolygons(point, PLAYER_RADIUS, WALKABLE_AREAS)
-      && canTraversePoint(point, unlockedOrder, LOCKED_GATES);
+      && canTraversePoint(
+        point,
+        unlockedOrder,
+        LOCKED_GATES,
+        PLAYER_RADIUS,
+      );
   }
 
   function setStatus(message, lockMilliseconds = 0) {
     const update = resolveStatusUpdate({
       backgroundFailed,
+      failedAssetName,
       message,
       now: windowTarget.performance.now(),
       lockMilliseconds,
@@ -302,7 +327,12 @@ export function createGame({
     pixelRatio = Math.min(windowTarget.devicePixelRatio ?? 1, 2);
     canvas.width = Math.round(width * pixelRatio);
     canvas.height = Math.round(height * pixelRatio);
-    transform = createCoverTransform(width, height, MAP_SIZE.width, MAP_SIZE.height);
+    transform = createOverviewTransform(
+      width,
+      height,
+      MAP_SIZE.width,
+      MAP_SIZE.height,
+    );
   }
 
   function update(deltaSeconds) {
@@ -381,21 +411,21 @@ export function createGame({
   function render(elapsedSeconds, moving) {
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.clearRect(0, 0, width, height);
-    context.fillStyle = "#b9def0";
+    context.fillStyle = "#9ed8eb";
     context.fillRect(0, 0, width, height);
-    if (background.complete && background.naturalWidth > 0) {
-      context.drawImage(
-        background,
-        transform.offsetX,
-        transform.offsetY,
-        MAP_SIZE.width * transform.scale,
-        MAP_SIZE.height * transform.scale,
-      );
-    }
 
     context.save();
     context.translate(transform.offsetX, transform.offsetY);
     context.scale(transform.scale, transform.scale);
+    drawWorldBackdrop(context, MAP_SIZE, elapsedSeconds);
+    drawBridges(context, BRIDGES, unlockedOrder);
+    drawIslandLayers(
+      context,
+      ISLANDS,
+      islandImages,
+      unlockedOrder,
+      elapsedSeconds,
+    );
     for (const location of LOCATIONS) {
       if (isLocationUnlocked(location, unlockedOrder)) {
         drawLocationGlow(
@@ -404,8 +434,6 @@ export function createGame({
           location === hoveredLocation || location === nearbyLocation,
           elapsedSeconds,
         );
-      } else {
-        drawLockedLocation(context, location, elapsedSeconds);
       }
     }
     drawTarget(context, pointerTarget, elapsedSeconds);
@@ -423,6 +451,21 @@ export function createGame({
     const deltaSeconds = Math.min((time - previousTime) / 1000 || 0, 0.033);
     previousTime = time;
     const moving = update(deltaSeconds);
+    const cameraTarget = moving
+      ? createFollowTransform(
+          width,
+          height,
+          MAP_SIZE.width,
+          MAP_SIZE.height,
+          player,
+        )
+      : createOverviewTransform(
+          width,
+          height,
+          MAP_SIZE.width,
+          MAP_SIZE.height,
+        );
+    transform = stepCamera(transform, cameraTarget, deltaSeconds);
     render(time / 1000, moving);
     frameId = windowTarget.requestAnimationFrame(tick);
   }
@@ -433,12 +476,16 @@ export function createGame({
   ui.closeButton?.addEventListener("click", closeDialog);
   ui.completeButton?.addEventListener("click", completeLocation);
   windowTarget.addEventListener("resize", resize);
-  const onBackgroundError = () => {
+  const islandImages = createIslandImageStore(windowTarget, ISLANDS, (island) => {
     backgroundFailed = true;
-    setStatus(getExplorationStatus({ backgroundFailed, nearbyLocation }));
-  };
-  background.addEventListener("error", onBackgroundError);
-  background.src = imageUrl;
+    failedAssetName = LOCATIONS.find(({ id }) => id === island.id)?.name
+      ?? island.id;
+    setStatus(getExplorationStatus({
+      backgroundFailed,
+      failedAssetName,
+      nearbyLocation,
+    }));
+  });
 
   return Object.freeze({
     start() {
@@ -457,7 +504,7 @@ export function createGame({
       ui.closeButton?.removeEventListener("click", closeDialog);
       ui.completeButton?.removeEventListener("click", completeLocation);
       windowTarget.removeEventListener("resize", resize);
-      background.removeEventListener("error", onBackgroundError);
+      islandImages.dispose();
       input.dispose();
     },
   });

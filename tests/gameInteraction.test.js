@@ -45,6 +45,16 @@ test("底图加载失败时错误提示优先且持久显示", () => {
   );
 });
 
+test("单张岛屿素材失败时会指出具体地点", () => {
+  assert.equal(
+    game.getExplorationStatus({
+      backgroundFailed: true,
+      failedAssetName: "工作岛",
+    }),
+    "“工作岛”素材加载失败，请刷新页面重试。",
+  );
+});
+
 test("底图失败后普通点击提示不能覆盖错误", () => {
   assert.deepEqual(
     game.resolveStatusUpdate({
