@@ -29,3 +29,19 @@ export function getSceneLegendState(scene, unlocked, unlockedOrder) {
   }
   return scene.legendState;
 }
+
+export function getSceneJourneyStatus(locations, unlockedOrder) {
+  const orderedLocations = [...locations].sort(
+    (left, right) => left.unlockOrder - right.unlockOrder,
+  );
+  const origin = orderedLocations[0];
+  const current = orderedLocations
+    .filter((location) => location.unlockOrder <= unlockedOrder)
+    .at(-1);
+
+  if (!origin || !current) return "继续探索人生群岛";
+  if (current.unlockOrder <= 1) {
+    return `从${origin.name}出发，先前往${current.name}`;
+  }
+  return `${current.name}已解锁，沿着下一座桥继续前往`;
+}

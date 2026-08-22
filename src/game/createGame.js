@@ -46,6 +46,7 @@ import {
 import { createSceneManager } from "../scenes/createSceneManager.js";
 import {
   createSceneLocations,
+  getSceneJourneyStatus,
   getSceneLegendState,
 } from "../scenes/registry.js";
 
@@ -100,7 +101,7 @@ export function getExplorationStatus({
   failedAssetName,
   nearbyLocation,
   nearbyUnlocked = true,
-  unlockedOrder = INITIAL_UNLOCK_ORDER,
+  journeyStatus = "继续探索人生群岛",
 }) {
   if (backgroundFailed) {
     return failedAssetName
@@ -112,9 +113,7 @@ export function getExplorationStatus({
   }
   return nearbyLocation
     ? `已抵达「${nearbyLocation.name}」附近 · 点击地标进入`
-    : unlockedOrder >= 2
-      ? "工作岛已解锁，沿着第二座桥继续前往"
-      : "从家庭小屋出发，先前往爬山岛";
+    : journeyStatus;
 }
 
 export function resolveStatusUpdate({
@@ -393,7 +392,7 @@ export function createGame({
         nearbyLocation,
         nearbyUnlocked: !nearbyLocation
           || isLocationUnlocked(nearbyLocation, unlockedOrder),
-        unlockedOrder,
+        journeyStatus: getSceneJourneyStatus(locations, unlockedOrder),
       }));
     }
     return moving;

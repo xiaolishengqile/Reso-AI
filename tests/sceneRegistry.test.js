@@ -56,6 +56,20 @@ test("图例状态由场景定义和解锁进度共同决定", async () => {
   assert.equal(registry.getSceneLegendState(office, true, 2), "已解锁");
 });
 
+test("探索提示由场景列表动态生成而不依赖主控制器文案", async () => {
+  const registry = await loadRegistry();
+  const locations = registry.createSceneLocations(LOCATIONS);
+
+  assert.equal(
+    registry.getSceneJourneyStatus(locations, 1),
+    "从家庭小屋出发，先前往爬山岛",
+  );
+  assert.equal(
+    registry.getSceneJourneyStatus(locations, 2),
+    "工作岛已解锁，沿着下一座桥继续前往",
+  );
+});
+
 test("地图配置只保存空间与解锁顺序而不承载场景业务", async () => {
   const registry = await loadRegistry();
   const mountainLocation = LOCATIONS.find(({ id }) => id === "mountain");
