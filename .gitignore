@@ -20,3 +20,4 @@ credentials.json
 .vscode/
 *.swp
 .gstack/
+.worktrees/
