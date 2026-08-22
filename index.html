@@ -105,6 +105,43 @@
         </button>
       </dialog>
 
+      <section id="home-scene" class="home-scene" aria-label="雾谷序章" hidden>
+        <canvas id="home-scene-canvas" class="home-scene__canvas" aria-hidden="true"></canvas>
+        <div class="home-scene__panel">
+          <p id="home-progress" class="home-scene__progress"></p>
+          <h2 id="home-stage-title"></h2>
+          <p id="home-story-text" class="home-scene__story" aria-live="polite"></p>
+          <div id="home-choices" class="home-scene__choices" aria-label="回应选择"></div>
+
+          <form id="traveler-record" class="traveler-record" hidden>
+            <p class="traveler-record__intro">三项都会成为你在雾谷的第一笔正式记录。</p>
+            <label for="traveler-nickname">旅人昵称</label>
+            <input id="traveler-nickname" name="nickname" maxlength="20" autocomplete="nickname" placeholder="1—20 个字符" />
+            <small id="traveler-nickname-error" class="traveler-record__error"></small>
+
+            <label for="traveler-message">想留在册子上的一句话</label>
+            <textarea id="traveler-message" name="message" maxlength="80" rows="3" placeholder="1—80 个字符"></textarea>
+            <small id="traveler-message-error" class="traveler-record__error"></small>
+
+            <label for="traveler-mbti">你的性格类型</label>
+            <select id="traveler-mbti" name="mbtiType">
+              <option value="">请选择</option>
+              <option>ISTJ</option><option>ISFJ</option><option>INFJ</option><option>INTJ</option>
+              <option>ISTP</option><option>ISFP</option><option>INFP</option><option>INTP</option>
+              <option>ESTP</option><option>ESFP</option><option>ENFP</option><option>ENTP</option>
+              <option>ESTJ</option><option>ESFJ</option><option>ENFJ</option><option>ENTJ</option>
+            </select>
+            <small id="traveler-mbti-error" class="traveler-record__error"></small>
+            <button id="traveler-record-submit" type="submit">写入《旅人的记录》</button>
+          </form>
+
+          <p id="home-save-warning" class="home-scene__warning" role="alert" hidden>
+            记录暂时无法保存，请重试。
+          </p>
+          <button id="home-continue" class="home-scene__continue" type="button">继续</button>
+        </div>
+      </section>
+
       <section id="mountain-scene" class="mountain-scene" aria-label="爬山岛剧情" hidden>
         <canvas id="mountain-scene-canvas" class="mountain-scene__canvas" aria-hidden="true"></canvas>
         <div class="mountain-scene__panel">

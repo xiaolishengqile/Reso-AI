@@ -1,4 +1,5 @@
 import "./styles.css";
+import "./scenes/home/homeScene.css";
 import "./scenes/mountain/mountainScene.css";
 import { renderCharacterPreview } from "./entities/character.js";
 import { createGame } from "./game/createGame.js";
