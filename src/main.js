@@ -27,6 +27,7 @@ function startGame(characterId) {
         dialogDescription: document.querySelector("#dialog-description"),
         completeButton: document.querySelector("#dialog-complete"),
         closeButton: document.querySelector("#dialog-close"),
+        overviewButton: document.querySelector("#overview-button"),
       },
     });
     characterDialog.close?.();

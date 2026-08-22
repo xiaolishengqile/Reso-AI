@@ -3,17 +3,23 @@ export const CHARACTER_OPTIONS = Object.freeze([
     id: "boy",
     name: "男生",
     description: "蓬松短发、圆框眼镜和深色长裤",
-    hair: "#8d6d5a",
-    shirt: "#f2e8db",
-    trousers: "#625b54",
+    hairStyle: "short-tousled",
+    glasses: true,
+    sleeves: "long",
+    hair: "#806451",
+    shirt: "#f4ece1",
+    trousers: "#5d554d",
   }),
   Object.freeze({
     id: "girl",
     name: "女生",
-    description: "柔软长发、圆框眼镜和蓝灰长裤",
-    hair: "#95755f",
-    shirt: "#f3eee7",
-    trousers: "#737c86",
+    description: "棕色长卷发、粉色短袖和蓝灰长裤",
+    hairStyle: "long-wavy",
+    glasses: false,
+    sleeves: "short",
+    hair: "#765746",
+    shirt: "#d98f9b",
+    trousers: "#747b84",
   }),
 ]);
 
@@ -60,12 +66,41 @@ function drawBody(context, profile, sway) {
   context.fill();
   context.stroke();
 
+  if (profile.sleeves === "short") {
+    context.strokeStyle = profile.shirt;
+    context.lineWidth = 7;
+    context.beginPath();
+    context.moveTo(-8, -18);
+    context.lineTo(-11 - sway * 0.35, -13);
+    context.moveTo(8, -18);
+    context.lineTo(11 + sway * 0.35, -13);
+    context.stroke();
+
+    context.strokeStyle = "#f0cfb2";
+    context.lineWidth = 4.5;
+    context.beginPath();
+    context.moveTo(-11 - sway * 0.35, -12);
+    context.lineTo(-13 - sway, -5);
+    context.moveTo(11 + sway * 0.35, -12);
+    context.lineTo(13 + sway, -5);
+    context.stroke();
+    return;
+  }
+
+  context.strokeStyle = profile.shirt;
+  context.lineWidth = 6;
   context.beginPath();
   context.moveTo(-8, -18);
   context.lineTo(-12 - sway, -5);
   context.moveTo(8, -18);
   context.lineTo(12 + sway, -5);
   context.stroke();
+
+  context.fillStyle = "#f0cfb2";
+  context.beginPath();
+  context.arc(-12 - sway, -4, 2.2, 0, Math.PI * 2);
+  context.arc(12 + sway, -4, 2.2, 0, Math.PI * 2);
+  context.fill();
 }
 
 function drawHairBack(context, profile, view) {
@@ -74,11 +109,31 @@ function drawHairBack(context, profile, view) {
   context.lineWidth = 2;
   context.beginPath();
   if (profile.id === "girl") {
-    context.ellipse(view === "side" ? 1 : 0, -29, 14, 17, 0, 0, Math.PI * 2);
-    context.lineTo(12, -12);
-    context.quadraticCurveTo(0, -6, -12, -12);
+    if (view === "side") {
+      context.moveTo(-6, -40);
+      context.bezierCurveTo(14, -42, 17, -27, 12, -11);
+      context.quadraticCurveTo(7, -6, 3, -12);
+      context.quadraticCurveTo(-3, -8, -7, -14);
+      context.bezierCurveTo(-14, -25, -15, -35, -6, -40);
+    } else {
+      context.moveTo(-10, -40);
+      context.bezierCurveTo(-19, -34, -18, -19, -13, -9);
+      context.quadraticCurveTo(-8, -5, -4, -11);
+      context.quadraticCurveTo(0, -5, 4, -11);
+      context.quadraticCurveTo(8, -5, 13, -9);
+      context.bezierCurveTo(18, -19, 19, -34, 10, -40);
+      context.closePath();
+    }
   } else {
-    context.ellipse(view === "side" ? 1 : 0, -31, 13, 12, 0, 0, Math.PI * 2);
+    context.moveTo(-12, -33);
+    context.lineTo(-9, -40);
+    context.lineTo(-4, -38);
+    context.lineTo(0, -43);
+    context.lineTo(4, -38);
+    context.lineTo(10, -41);
+    context.lineTo(13, -33);
+    context.quadraticCurveTo(12, -22, 0, -20);
+    context.quadraticCurveTo(-12, -22, -12, -33);
   }
   context.closePath();
   context.fill();
@@ -116,20 +171,22 @@ function drawHead(context, profile, view) {
 
   if (view === "back") return;
 
-  context.strokeStyle = "#4d4541";
-  context.lineWidth = 1.4;
-  context.beginPath();
-  if (side) {
-    context.arc(5, -30, 3.7, 0, Math.PI * 2);
-    context.moveTo(1.4, -30);
-    context.lineTo(-3, -30);
-  } else {
-    context.arc(-4, -30, 3.5, 0, Math.PI * 2);
-    context.arc(4, -30, 3.5, 0, Math.PI * 2);
-    context.moveTo(-0.5, -30);
-    context.lineTo(0.5, -30);
+  if (profile.glasses) {
+    context.strokeStyle = "#4d4541";
+    context.lineWidth = 1.4;
+    context.beginPath();
+    if (side) {
+      context.arc(5, -30, 3.7, 0, Math.PI * 2);
+      context.moveTo(1.4, -30);
+      context.lineTo(-3, -30);
+    } else {
+      context.arc(-4, -30, 3.5, 0, Math.PI * 2);
+      context.arc(4, -30, 3.5, 0, Math.PI * 2);
+      context.moveTo(-0.5, -30);
+      context.lineTo(0.5, -30);
+    }
+    context.stroke();
   }
-  context.stroke();
 
   context.fillStyle = "#433d39";
   context.beginPath();
@@ -140,6 +197,13 @@ function drawHead(context, profile, view) {
     context.arc(4, -30, 1.1, 0, Math.PI * 2);
   }
   context.fill();
+
+  context.strokeStyle = "#51453f";
+  context.lineWidth = 1.2;
+  context.beginPath();
+  if (side) context.arc(4, -25, 3, 0.25, 1.65);
+  else context.arc(0, -25.5, 3.2, 0.3, Math.PI - 0.3);
+  context.stroke();
 
   context.fillStyle = "rgba(205, 111, 104, 0.38)";
   context.beginPath();

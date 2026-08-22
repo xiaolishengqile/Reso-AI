@@ -63,3 +63,27 @@ test("镜头会平滑接近目标而不会瞬间跳变", async () => {
   assert.ok(next.offsetX < current.offsetX && next.offsetX > target.offsetX);
   assert.ok(next.offsetY < current.offsetY && next.offsetY > target.offsetY);
 });
+
+test("开场短暂展示全景后即使静止也锁定人物近景", async () => {
+  const camera = await cameraPromise;
+  assert.equal(typeof camera.resolveCameraMode, "function");
+
+  assert.equal(camera.resolveCameraMode({ elapsedSeconds: 0 }), "overview");
+  assert.equal(camera.resolveCameraMode({ elapsedSeconds: 1.5 }), "follow");
+});
+
+test("全景按钮保持全景，但人物移动会立即恢复近景", async () => {
+  const camera = await cameraPromise;
+  assert.equal(typeof camera.resolveCameraMode, "function");
+
+  assert.equal(camera.resolveCameraMode({
+    elapsedSeconds: 3,
+    overviewRequested: true,
+    moving: false,
+  }), "overview");
+  assert.equal(camera.resolveCameraMode({
+    elapsedSeconds: 3,
+    overviewRequested: true,
+    moving: true,
+  }), "follow");
+});

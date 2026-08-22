@@ -159,74 +159,67 @@ function drawIslandAsset(context, island, image) {
   context.restore();
 }
 
-function roundedCloudBody(context, cover) {
-  const left = cover.x + cover.width * 0.06;
-  const right = cover.x + cover.width * 0.94;
-  const top = cover.z + cover.height * 0.1;
-  const bottom = cover.z + cover.height * 0.9;
-  const radius = Math.min(cover.width, cover.height) * 0.16;
-  context.beginPath();
-  context.moveTo(left + radius, top);
-  context.lineTo(right - radius, top);
-  context.quadraticCurveTo(right, top, right, top + radius);
-  context.lineTo(right, bottom - radius);
-  context.quadraticCurveTo(right, bottom, right - radius, bottom);
-  context.lineTo(left + radius, bottom);
-  context.quadraticCurveTo(left, bottom, left, bottom - radius);
-  context.lineTo(left, top + radius);
-  context.quadraticCurveTo(left, top, left + radius, top);
-  context.closePath();
-  context.fill();
+const CLOUD_PUFFS = Object.freeze([
+  [0.08, 0.46, 0.19, 0.28], [0.18, 0.27, 0.2, 0.3],
+  [0.32, 0.18, 0.22, 0.32], [0.5, 0.2, 0.24, 0.35],
+  [0.68, 0.17, 0.22, 0.32], [0.84, 0.28, 0.2, 0.3],
+  [0.93, 0.48, 0.18, 0.27], [0.79, 0.67, 0.23, 0.31],
+  [0.61, 0.76, 0.25, 0.3], [0.4, 0.75, 0.26, 0.31],
+  [0.21, 0.68, 0.22, 0.3], [0.49, 0.49, 0.4, 0.38],
+]);
+
+function drawCloudPuffs(context, cover, drift, size, alpha, color) {
+  context.globalAlpha = alpha;
+  context.fillStyle = color;
+  for (const [x, z, radiusX, radiusZ] of CLOUD_PUFFS) {
+    context.beginPath();
+    context.ellipse(
+      cover.x + cover.width * x + drift,
+      cover.z + cover.height * z,
+      cover.width * radiusX * size,
+      cover.height * radiusZ * size,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    context.fill();
+  }
 }
 
-export function drawCloudCover(context, island, elapsedSeconds) {
+export function drawCloudCover(
+  context,
+  island,
+  elapsedSeconds,
+  cloudImage = null,
+) {
   const cover = island.cloudCover;
   if (!cover) return;
   const drift = Math.sin(elapsedSeconds * 0.65 + island.unlockOrder) * 8;
-  const centerX = cover.x + cover.width / 2 + drift;
-  const centerZ = cover.z + cover.height / 2;
 
-  context.save();
-  context.globalAlpha = cover.opacity;
-  context.fillStyle = "#f4faf7";
-  context.shadowColor = "rgba(73, 110, 122, 0.32)";
-  context.shadowBlur = 32;
-  context.shadowOffsetY = 18;
-  roundedCloudBody(context, { ...cover, x: cover.x + drift });
-
-  const puffRadius = cover.width / 7.4;
-  for (let row = 0; row < 3; row += 1) {
-    const z = cover.z + cover.height * (0.25 + row * 0.24);
-    const count = row === 1 ? 6 : 5;
-    for (let index = 0; index < count; index += 1) {
-      const x = cover.x
-        + cover.width * ((index + 0.5) / count)
-        + drift
-        + (row % 2 ? 0 : puffRadius * 0.12);
-      const radius = puffRadius * (0.88 + ((index + row) % 3) * 0.12);
-      context.beginPath();
-      context.ellipse(x, z, radius, radius * 0.68, 0, 0, Math.PI * 2);
-      context.fill();
-    }
+  if (cloudImage?.complete && cloudImage.naturalWidth) {
+    context.save();
+    context.globalAlpha = cover.opacity;
+    context.drawImage(
+      cloudImage,
+      cover.x - cover.width * 0.06 + drift,
+      cover.z - cover.height * 0.08,
+      cover.width * 1.12,
+      cover.height * 1.16,
+    );
+    context.restore();
+    return;
   }
 
+  context.save();
+  context.shadowColor = "rgba(73, 109, 121, 0.24)";
+  context.shadowBlur = 48;
+  context.shadowOffsetY = 22;
+  drawCloudPuffs(context, cover, drift, 1.07, 0.34, "#dcecea");
+  context.shadowBlur = 26;
+  context.shadowOffsetY = 12;
+  drawCloudPuffs(context, cover, drift, 0.9, cover.opacity, "#edf6f2");
   context.shadowColor = "transparent";
-  context.globalAlpha = 1;
-  context.textAlign = "center";
-  context.fillStyle = "#79695f";
-  context.font = "700 42px 'STKaiti', 'KaiTi', serif";
-  context.fillText(
-    island.kind === "future" ? "尚在云中" : "完成爬山后开启",
-    centerX,
-    centerZ + 8,
-  );
-  context.font = "600 24px 'STKaiti', 'KaiTi', serif";
-  context.fillStyle = "#99867a";
-  context.fillText(
-    island.kind === "future" ? "第 " + island.unlockOrder + " 站" : "工作岛",
-    centerX,
-    centerZ + 48,
-  );
+  drawCloudPuffs(context, cover, drift - 5, 0.58, 0.46, "#ffffff");
   context.restore();
 }
 
@@ -236,6 +229,7 @@ export function drawIslandLayers(
   imageStore,
   unlockedOrder,
   elapsedSeconds,
+  cloudImage = null,
 ) {
   const states = getIslandRenderState(islands, unlockedOrder);
   for (const island of states) {
@@ -244,7 +238,9 @@ export function drawIslandLayers(
     }
   }
   for (const island of states) {
-    if (island.showCloud) drawCloudCover(context, island, elapsedSeconds);
+    if (island.showCloud) {
+      drawCloudCover(context, island, elapsedSeconds, cloudImage);
+    }
   }
 }
 

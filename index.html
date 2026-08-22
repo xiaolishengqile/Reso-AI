@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#a9ddef" />
     <meta name="description" content="可行走的手绘浮岛世界地图原型" />
-    <title>云上原野 · 世界地图</title>
+    <title>人生群岛</title>
   </head>
   <body>
     <main class="app-shell">
@@ -13,10 +13,20 @@
       <div class="paper-texture" aria-hidden="true"></div>
 
       <header class="world-title" aria-label="地图名称">
-        <span class="world-title__eyebrow">人 生 群 岛 · WORLD MAP</span>
-        <h1>云上原野</h1>
+        <h1>人生群岛</h1>
         <span class="world-title__subtitle">从家出发，一座一座岛屿前行</span>
       </header>
+
+      <button
+        id="overview-button"
+        class="overview-button"
+        type="button"
+        aria-label="查看全岛"
+        aria-pressed="false"
+      >
+        <span aria-hidden="true">⛶</span>
+        <small>全岛</small>
+      </button>
 
       <aside class="map-legend" aria-label="地图地点">
         <span class="map-legend__title">旅行手记</span>
@@ -78,7 +88,7 @@
           <button type="button" class="character-option" data-character="girl">
             <canvas width="112" height="132" aria-hidden="true"></canvas>
             <strong>女生</strong>
-            <small>柔软长发 · 圆框眼镜</small>
+            <small>棕色长卷发 · 粉色短袖</small>
           </button>
         </div>
         <small class="character-dialog__hint">点击角色即可进入地图</small>

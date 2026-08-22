@@ -91,16 +91,17 @@ kbd {
 .map-legend,
 .location-card,
 .controls,
-.status {
+.status,
+.overview-button {
   position: absolute;
   z-index: 5;
 }
 
 .world-title {
-  top: clamp(18px, 3vh, 34px);
+  top: clamp(12px, 2vh, 20px);
   left: 50%;
-  width: min(360px, 34vw);
-  padding: 13px 40px 15px;
+  width: min(270px, 28vw);
+  padding: 10px 28px 11px;
   transform: translateX(-50%) rotate(-0.8deg);
   border: 2px solid rgba(91, 65, 51, 0.62);
   border-radius: 48% 52% 46% 54% / 16% 19% 14% 18%;
@@ -116,29 +117,29 @@ kbd {
 .world-title::after {
   position: absolute;
   z-index: -1;
-  top: 21px;
-  width: 72px;
-  height: 42px;
+  top: 15px;
+  width: 58px;
+  height: 34px;
   border: 2px solid rgba(91, 65, 51, 0.55);
   background: #e8d4a6;
   content: "";
 }
 
 .world-title::before {
-  left: -56px;
+  left: -45px;
   transform: skewY(10deg);
   border-radius: 58% 0 0 58%;
 }
 
 .world-title::after {
-  right: -56px;
+  right: -45px;
   transform: skewY(-10deg);
   border-radius: 0 58% 58% 0;
 }
 
 .world-title h1 {
-  margin: 1px 0 0;
-  font-size: clamp(31px, 3.3vw, 46px);
+  margin: 0;
+  font-size: clamp(26px, 2.5vw, 34px);
   font-weight: 700;
   letter-spacing: 0.13em;
   line-height: 1;
@@ -157,13 +158,48 @@ kbd {
 }
 
 .world-title__subtitle {
-  margin-top: 8px;
+  margin-top: 5px;
   color: #8b6e5b;
-  font-size: 12px;
+  font-size: 10px;
+}
+
+.overview-button {
+  top: 20px;
+  right: 26px;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  padding: 6px;
+  place-items: center;
+  border: 1.5px solid rgba(87, 63, 51, 0.55);
+  border-radius: 18px 14px 17px 13px;
+  color: #624b40;
+  background: rgba(255, 247, 222, 0.9);
+  box-shadow: 3px 5px 0 rgba(83, 65, 53, 0.14);
+  cursor: pointer;
+  backdrop-filter: blur(7px);
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.overview-button:hover,
+.overview-button:focus-visible,
+.overview-button.is-active {
+  transform: translateY(-2px);
+  outline: 3px solid rgba(99, 137, 124, 0.28);
+  background: #fff9e6;
+}
+
+.overview-button span {
+  font: 700 24px/1 system-ui, sans-serif;
+}
+
+.overview-button small {
+  margin-top: -5px;
+  font-size: 10px;
 }
 
 .map-legend {
-  top: 26px;
+  top: 94px;
   right: 28px;
   min-width: 154px;
   padding: 15px 18px;
@@ -509,14 +545,15 @@ kbd {
 
 @media (max-width: 1050px), (max-height: 690px) {
   .world-title {
-    top: 15px;
-    width: 300px;
-    padding-block: 10px 12px;
+    top: 12px;
+    width: 240px;
+    padding-block: 8px 9px;
   }
 
-  .world-title h1 { font-size: 34px; }
+  .world-title h1 { font-size: 28px; }
   .world-title__subtitle { display: none; }
-  .map-legend { top: 18px; right: 18px; }
+  .overview-button { top: 14px; right: 18px; }
+  .map-legend { top: 84px; right: 18px; }
   .location-card { right: 19px; }
   .controls { bottom: 17px; left: 18px; }
   .status { bottom: 17px; min-width: 360px; }

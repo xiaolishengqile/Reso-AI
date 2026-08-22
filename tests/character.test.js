@@ -34,3 +34,17 @@ test("角色会根据移动方向切换正面、侧面和背面", () => {
 test("未知角色会安全回退到男生造型", () => {
   assert.equal(character.getCharacterProfile("unknown").id, "boy");
 });
+
+test("男生和女生使用不同的轮廓特征而不是只替换颜色", () => {
+  const boy = character.getCharacterProfile("boy");
+  const girl = character.getCharacterProfile("girl");
+
+  assert.deepEqual(
+    { hairStyle: boy.hairStyle, glasses: boy.glasses, sleeves: boy.sleeves },
+    { hairStyle: "short-tousled", glasses: true, sleeves: "long" },
+  );
+  assert.deepEqual(
+    { hairStyle: girl.hairStyle, glasses: girl.glasses, sleeves: girl.sleeves },
+    { hairStyle: "long-wavy", glasses: false, sleeves: "short" },
+  );
+});

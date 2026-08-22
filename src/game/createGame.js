@@ -1,5 +1,6 @@
 import {
   BRIDGES,
+  CLOUD_COVER_ASSET_URL,
   ISLANDS,
   LOCATIONS,
   LOCKED_GATES,
@@ -23,6 +24,7 @@ import {
 import {
   createFollowTransform,
   createOverviewTransform,
+  resolveCameraMode,
   stepCamera,
 } from "../systems/camera.js";
 import { createInput } from "../systems/createInput.js";
@@ -159,8 +161,24 @@ export function createGame({
   let lastDirection = { x: 0, z: 1 };
   let statusLockedUntil = 0;
   let previousTime = 0;
+  let elapsedSinceStart = 0;
   let frameId = 0;
   let started = false;
+  let overviewRequested = false;
+
+  function setOverviewRequested(requested) {
+    overviewRequested = requested;
+    ui.overviewButton?.classList.toggle("is-active", requested);
+    ui.overviewButton?.setAttribute("aria-pressed", String(requested));
+    ui.overviewButton?.setAttribute(
+      "aria-label",
+      requested ? "返回人物近景" : "查看全岛",
+    );
+  }
+
+  function toggleOverview() {
+    setOverviewRequested(!overviewRequested);
+  }
 
   function canStandAt(point) {
     return isCircleInPolygons(point, PLAYER_RADIUS, WALKABLE_AREAS)
@@ -425,6 +443,7 @@ export function createGame({
       islandImages,
       unlockedOrder,
       elapsedSeconds,
+      effectImages.get("cloud-cover"),
     );
     for (const location of LOCATIONS) {
       if (isLocationUnlocked(location, unlockedOrder)) {
@@ -450,8 +469,15 @@ export function createGame({
   function tick(time) {
     const deltaSeconds = Math.min((time - previousTime) / 1000 || 0, 0.033);
     previousTime = time;
+    elapsedSinceStart += deltaSeconds;
     const moving = update(deltaSeconds);
-    const cameraTarget = moving
+    if (moving && overviewRequested) setOverviewRequested(false);
+    const cameraMode = resolveCameraMode({
+      elapsedSeconds: elapsedSinceStart,
+      overviewRequested,
+      moving,
+    });
+    const cameraTarget = cameraMode === "follow"
       ? createFollowTransform(
           width,
           height,
@@ -475,6 +501,7 @@ export function createGame({
   canvas.addEventListener("click", onCanvasClick);
   ui.closeButton?.addEventListener("click", closeDialog);
   ui.completeButton?.addEventListener("click", completeLocation);
+  ui.overviewButton?.addEventListener("click", toggleOverview);
   windowTarget.addEventListener("resize", resize);
   const islandImages = createIslandImageStore(windowTarget, ISLANDS, (island) => {
     backgroundFailed = true;
@@ -486,6 +513,9 @@ export function createGame({
       nearbyLocation,
     }));
   });
+  const effectImages = createIslandImageStore(windowTarget, [
+    { id: "cloud-cover", assetUrl: CLOUD_COVER_ASSET_URL },
+  ]);
 
   return Object.freeze({
     start() {
@@ -493,6 +523,7 @@ export function createGame({
       started = true;
       resize();
       updateLegend();
+      setOverviewRequested(false);
       previousTime = windowTarget.performance.now();
       frameId = windowTarget.requestAnimationFrame(tick);
     },
@@ -503,8 +534,10 @@ export function createGame({
       canvas.removeEventListener("click", onCanvasClick);
       ui.closeButton?.removeEventListener("click", closeDialog);
       ui.completeButton?.removeEventListener("click", completeLocation);
+      ui.overviewButton?.removeEventListener("click", toggleOverview);
       windowTarget.removeEventListener("resize", resize);
       islandImages.dispose();
+      effectImages.dispose();
       input.dispose();
     },
   });

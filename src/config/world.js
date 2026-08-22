@@ -13,6 +13,10 @@ function assetUrl(path) {
   return ASSET_BASE_URL + path;
 }
 
+export const CLOUD_COVER_ASSET_URL = assetUrl(
+  "assets/effects/cloud-cover.png",
+);
+
 function freezeArea(points) {
   return Object.freeze(points.map((point) => Object.freeze(point)));
 }

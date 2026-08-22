@@ -1,5 +1,6 @@
 const FOLLOW_ZOOM = 2;
 const CAMERA_RESPONSE = 8;
+const INTRO_OVERVIEW_SECONDS = 1.2;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -60,4 +61,14 @@ export function stepCamera(
     offsetX: current.offsetX + (target.offsetX - current.offsetX) * amount,
     offsetY: current.offsetY + (target.offsetY - current.offsetY) * amount,
   };
+}
+
+export function resolveCameraMode({
+  elapsedSeconds = 0,
+  overviewRequested = false,
+  moving = false,
+} = {}) {
+  if (moving) return "follow";
+  if (elapsedSeconds < INTRO_OVERVIEW_SECONDS) return "overview";
+  return overviewRequested ? "overview" : "follow";
 }
