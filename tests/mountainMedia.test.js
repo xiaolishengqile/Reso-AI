@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { stat } from "node:fs/promises";
 import {
   getMountainEntryMedia,
   getMountainStageMedia,
@@ -46,3 +47,15 @@ test("全部可见剧情阶段都有合法媒体映射", () => {
   assert.equal(getMountainStageMedia("missing-stage"), null);
 });
 
+test("媒体目录引用的图片和视频都已真实接入", async () => {
+  const media = [
+    getMountainEntryMedia(),
+    ...MOUNTAIN_STAGES.map(({ id }) => getMountainStageMedia(id)),
+  ];
+  const sources = new Set(media.flatMap(({ sources }) => sources));
+
+  for (const source of sources) {
+    const asset = await stat(new URL(`../public${source.slice(1)}`, import.meta.url));
+    assert.ok(asset.size > 1000, `素材文件为空：${source}`);
+  }
+});
