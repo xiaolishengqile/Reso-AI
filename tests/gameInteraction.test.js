@@ -24,6 +24,13 @@ test("重温已完成的爬山剧情仍会得到完成状态", () => {
   );
 });
 
+test("爬山场景同步打开失败会被安全捕获", () => {
+  assert.equal(
+    game.tryOpenMountainScene(() => { throw new Error("broken progress"); }, {}),
+    false,
+  );
+});
+
 test("只有点击地点与玩家附近地点相同时才允许进入", () => {
   const mountain = { id: "mountain", name: "爬山岛" };
   const office = { id: "office", name: "工作岛" };

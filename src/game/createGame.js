@@ -108,6 +108,15 @@ export function resolveLocationCompletion(unlockedOrder, location) {
   };
 }
 
+export function tryOpenMountainScene(onEnterMountain, callbacks) {
+  try {
+    onEnterMountain(callbacks);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function findLocationAtPoint(point, locations) {
   return locations
     .map((location) => ({
@@ -348,7 +357,14 @@ export function createGame({
         if (getLocationSceneType(location) === "mountain-story" && onEnterMountain) {
           activeLocation = location;
           mountainSceneActive = true;
-          onEnterMountain({ complete: completeMountainScene, close: closeMountainScene });
+          if (!tryOpenMountainScene(onEnterMountain, {
+            complete: completeMountainScene,
+            close: closeMountainScene,
+          })) {
+            mountainSceneActive = false;
+            activeLocation = null;
+            setStatus("爬山剧情暂时无法恢复，请稍后重试。", 2600);
+          }
         } else {
           openLocationDialog(location);
         }

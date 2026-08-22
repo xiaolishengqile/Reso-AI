@@ -9,6 +9,7 @@ import {
 import {
   advanceMountainProgress,
   createMountainProgress,
+  recordMountainSelection,
 } from "../src/scenes/mountain/progress.js";
 import { MOUNTAIN_PROGRESS_KEY } from "../src/scenes/mountain/progress.js";
 import { getMountainStage } from "../src/scenes/mountain/story.js";
@@ -94,6 +95,27 @@ test("打开剧情会恢复到保存的阶段并匹配异性同行者", () => {
 
   assert.equal(fixture.elements.title.textContent, "疲惫与抱怨");
   assert.match(fixture.elements.text.textContent, /她/);
+  fixture.scene.dispose();
+});
+
+test("未知剧情阶段的存档会回退到邀约并保留已有正式证据", () => {
+  const invitation = getMountainStage("invitation");
+  const selected = recordMountainSelection(
+    createMountainProgress("boy"),
+    invitation,
+    invitation.choices[0],
+    { answeredAt: 1000 },
+  );
+  const corrupted = advanceMountainProgress(selected, "missing-stage");
+  const fixture = createSceneFixture(createMemoryStorage({
+    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(corrupted),
+  }));
+
+  assert.doesNotThrow(() => fixture.scene.open({ complete() {}, close() {} }));
+  assert.equal(fixture.elements.title.textContent, "周末邀约");
+  const recovered = JSON.parse(fixture.storage.getItem(MOUNTAIN_PROGRESS_KEY));
+  assert.equal(recovered.currentStageId, "invitation");
+  assert.equal(recovered.officialEvidence.length, 1);
   fixture.scene.dispose();
 });
 

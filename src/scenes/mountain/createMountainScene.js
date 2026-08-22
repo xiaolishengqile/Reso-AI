@@ -271,12 +271,17 @@ export function createMountainScene({
       progress = createMountainProgress(characterId, progress);
       persist(progress);
     }
-    const stage = getMountainStage(progress.currentStageId);
-    if (!stage) throw new Error("爬山剧情进度指向了不存在的阶段");
+    let stage = getMountainStage(progress.currentStageId);
+    let savedRecovery = true;
+    if (!stage) {
+      progress = advanceMountainProgress(progress, "invitation");
+      savedRecovery = persist(progress);
+      stage = getMountainStage(progress.currentStageId);
+    }
     isOpen = true;
     setHidden(elements.root, false);
     resizeCanvas();
-    setHidden(elements.saveWarning, true);
+    setHidden(elements.saveWarning, savedRecovery);
     showStage(stage);
     stopAnimation();
     renderFrame(now());
