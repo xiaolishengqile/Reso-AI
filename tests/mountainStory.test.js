@@ -14,11 +14,17 @@ test("男女玩家会匹配异性同行者", () => {
   assert.equal(getCompanionCharacterId("unknown"), null);
 });
 
-test("爬山剧情包含七组画像选择和一组非画像行动", () => {
+test("最新版爬山剧情只包含七组正式画像选择", () => {
   const evidenceStages = MOUNTAIN_STAGES.filter(({ recordsEvidence }) => recordsEvidence);
   const actionStages = MOUNTAIN_STAGES.filter(({ kind }) => kind === "action");
   assert.equal(evidenceStages.length, 7);
-  assert.equal(actionStages.length, 1);
+  assert.equal(actionStages.length, 0);
+  assert.equal(getMountainStage("storm-action"), null);
+  assert.equal(getMountainStage("storm-thought").nextStageId, "cave-repair");
+  assert.deepEqual(
+    getMountainStage("storm-thought").choices.map(({ id }) => id),
+    ["finish", "extreme", "retreat", "protect"],
+  );
   assert.deepEqual(validateMountainStory(MOUNTAIN_STAGES), []);
 });
 
