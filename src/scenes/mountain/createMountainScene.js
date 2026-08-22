@@ -21,6 +21,46 @@ function getWeather(stage) {
     : "clear";
 }
 
+const CHOICE_ACTIONS = Object.freeze({
+  slip: Object.freeze({
+    command: Object.freeze({ playerAction: "commanding", companionAction: "slipping" }),
+    support: Object.freeze({ playerAction: "supporting", companionAction: "slipping" }),
+    freeze: Object.freeze({ playerAction: "distant", companionAction: "slipping" }),
+  }),
+  "cave-repair": Object.freeze({
+    lecture: Object.freeze({ playerAction: "lecturing", companionAction: "tired" }),
+    hug: Object.freeze({ playerAction: "hugging", companionAction: "comforting" }),
+    space: Object.freeze({ playerAction: "distant", companionAction: "distant" }),
+  }),
+});
+
+const ACTION_ROUTE_WAYPOINTS = Object.freeze({
+  summit: "summit",
+  retreat: "return",
+  shelter: "shelter",
+});
+
+export function resolveMountainFrameState(
+  stage,
+  progress = {},
+  { selectedOptionId = null, isFeedback = false } = {},
+) {
+  if (!stage) return null;
+  const choiceActions = selectedOptionId
+    ? CHOICE_ACTIONS[stage.id]?.[selectedOptionId]
+    : null;
+  const waypoint = isFeedback && stage.id === "cave-repair"
+    ? ACTION_ROUTE_WAYPOINTS[progress.actionId] ?? stage.waypoint
+    : stage.waypoint;
+  return {
+    scene: stage.scene,
+    weather: getWeather(stage),
+    waypoint,
+    showCompanion: stage.id !== "home-message",
+    ...choiceActions,
+  };
+}
+
 function getProgressLabel(stage, answeredCount) {
   if (stage.kind === "action") return "暴雨行动不会记录为画像证据";
   if (stage.kind === "complete") return "七组画像选择已完成";
@@ -56,6 +96,7 @@ export function createMountainScene({
   let frameId = null;
   let isOpen = false;
   let pendingStageId = null;
+  let frameState = null;
 
   function now() {
     return windowTarget?.performance?.now?.() ?? Date.now();
@@ -88,9 +129,7 @@ export function createMountainScene({
       drawMountainFrame(canvasContext, {
         width,
         height,
-        scene: currentStage.scene,
-        weather: getWeather(currentStage),
-        waypoint: currentStage.waypoint,
+        ...frameState,
         playerCharacterId: characterId,
         companionCharacterId,
         elapsedSeconds: timestamp / 1000,
@@ -106,6 +145,7 @@ export function createMountainScene({
 
   function showStage(stage) {
     currentStage = stage;
+    frameState = resolveMountainFrameState(stage, progress);
     submitting = false;
     stageStartedAt = now();
     elements.title.textContent = stage.title;
@@ -131,6 +171,10 @@ export function createMountainScene({
   }
 
   function showFeedback(option, nextStageId) {
+    frameState = resolveMountainFrameState(currentStage, progress, {
+      selectedOptionId: option.id,
+      isFeedback: true,
+    });
     elements.text.textContent = adaptMountainText(option.feedback, characterId);
     elements.progress.textContent = "剧情正在前往下一段旅程";
     elements.choices.replaceChildren?.();

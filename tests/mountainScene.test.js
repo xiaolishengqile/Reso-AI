@@ -1,11 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createMountainScene } from "../src/scenes/mountain/createMountainScene.js";
+import {
+  createMountainScene,
+  resolveMountainFrameState,
+} from "../src/scenes/mountain/createMountainScene.js";
 import {
   advanceMountainProgress,
   createMountainProgress,
 } from "../src/scenes/mountain/progress.js";
 import { MOUNTAIN_PROGRESS_KEY } from "../src/scenes/mountain/progress.js";
+import { getMountainStage } from "../src/scenes/mountain/story.js";
 
 class FakeElement {
   constructor() {
@@ -137,5 +141,85 @@ test("完成阶段只通知世界地图一次", () => {
   fixture.elements.continueButton.click();
 
   assert.equal(completed, 1);
+  fixture.scene.dispose();
+});
+
+test("剧情选择会映射滑倒与岩洞修复的人物动作", () => {
+  const slipping = resolveMountainFrameState(
+    getMountainStage("slip"),
+    {},
+    { selectedOptionId: "support", isFeedback: true },
+  );
+  const watching = resolveMountainFrameState(
+    getMountainStage("slip"),
+    {},
+    { selectedOptionId: "freeze", isFeedback: true },
+  );
+  const hugging = resolveMountainFrameState(
+    getMountainStage("cave-repair"),
+    { actionId: "shelter" },
+    { selectedOptionId: "hug", isFeedback: true },
+  );
+  const spacing = resolveMountainFrameState(
+    getMountainStage("cave-repair"),
+    { actionId: "shelter" },
+    { selectedOptionId: "space", isFeedback: true },
+  );
+  const lecturing = resolveMountainFrameState(
+    getMountainStage("cave-repair"),
+    { actionId: "shelter" },
+    { selectedOptionId: "lecture", isFeedback: true },
+  );
+
+  assert.deepEqual(
+    [slipping.playerAction, slipping.companionAction],
+    ["supporting", "slipping"],
+  );
+  assert.deepEqual(
+    [watching.playerAction, watching.companionAction],
+    ["distant", "slipping"],
+  );
+  assert.deepEqual(
+    [hugging.playerAction, hugging.companionAction],
+    ["hugging", "comforting"],
+  );
+  assert.deepEqual(
+    [spacing.playerAction, spacing.companionAction],
+    ["distant", "distant"],
+  );
+  assert.deepEqual(
+    [lecturing.playerAction, lecturing.companionAction],
+    ["lecturing", "tired"],
+  );
+});
+
+test("暴雨行动会决定岩洞修复反馈后的路线画面", () => {
+  const caveStage = getMountainStage("cave-repair");
+  const resolveRoute = (actionId) => resolveMountainFrameState(
+    caveStage,
+    { actionId },
+    { selectedOptionId: "hug", isFeedback: true },
+  ).waypoint;
+
+  assert.equal(resolveRoute("summit"), "summit");
+  assert.equal(resolveRoute("retreat"), "return");
+  assert.equal(resolveRoute("shelter"), "shelter");
+});
+
+test("公寓短信场景只渲染玩家角色", () => {
+  assert.equal(
+    resolveMountainFrameState(getMountainStage("home-message"), {}).showCompanion,
+    false,
+  );
+});
+
+test("关闭剧情不会触发世界地图完成回调", () => {
+  const fixture = createSceneFixture();
+  let completed = 0;
+  fixture.scene.open({ complete() { completed += 1; }, close() {} });
+
+  fixture.elements.closeButton.click();
+
+  assert.equal(completed, 0);
   fixture.scene.dispose();
 });
