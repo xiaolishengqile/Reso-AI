@@ -127,6 +127,38 @@ test("真实地图中原先可绕过门禁的桥边位置会被阻挡", async ()
   );
 });
 
+test("八座待解锁桥梁的中心线都会按角色半径阻挡", async () => {
+  const progression = await progressionPromise;
+  const lockedBridges = world.BRIDGES.filter(
+    ({ requiredOrder }) => requiredOrder >= 2,
+  );
+
+  for (const bridge of lockedBridges) {
+    const midpoint = {
+      x: (bridge.from.x + bridge.to.x) / 2,
+      z: (bridge.from.z + bridge.to.z) / 2,
+    };
+    assert.equal(
+      progression.canTraversePoint(
+        midpoint,
+        bridge.requiredOrder - 1,
+        world.LOCKED_GATES,
+        world.PLAYER_RADIUS,
+      ),
+      false,
+    );
+    assert.equal(
+      progression.canTraversePoint(
+        midpoint,
+        bridge.requiredOrder,
+        world.LOCKED_GATES,
+        world.PLAYER_RADIUS,
+      ),
+      true,
+    );
+  }
+});
+
 test("点击地点后两段自动路线都沿可行走区直达入口", async () => {
   const progression = await progressionPromise;
   const mountain = world.LOCATIONS.find(({ id }) => id === "mountain");

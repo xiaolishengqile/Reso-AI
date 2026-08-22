@@ -113,3 +113,22 @@ test("双转折链路使用不等间距和不同谷深避免机械对称", () =>
   assert.ok(Math.abs(firstDescent - secondDescent) >= 200);
   assert.ok(Math.abs(firstAscent - secondAscent) >= 200);
 });
+
+test("八座后续门禁与待解锁桥梁逐一对应", () => {
+  const lockedBridges = world.BRIDGES.filter(
+    ({ requiredOrder }) => requiredOrder >= 2,
+  );
+
+  assert.equal(lockedBridges.length, 8);
+  assert.equal(world.LOCKED_GATES.length, lockedBridges.length);
+  assert.deepEqual(
+    world.LOCKED_GATES.map(({ bridgeId, requiredOrder }) => ({
+      bridgeId,
+      requiredOrder,
+    })),
+    lockedBridges.map(({ id, requiredOrder }) => ({
+      bridgeId: id,
+      requiredOrder,
+    })),
+  );
+});

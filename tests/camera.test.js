@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { MAP_SIZE } from "../src/config/world.js";
 
 const cameraPromise = import("../src/systems/camera.js").catch(() => ({}));
 
@@ -7,9 +8,14 @@ test("静止概览会完整容纳整张地图", async () => {
   const camera = await cameraPromise;
   assert.equal(typeof camera.createOverviewTransform, "function");
 
-  const transform = camera.createOverviewTransform(1200, 800, 3400, 2200);
+  const transform = camera.createOverviewTransform(
+    1200,
+    800,
+    MAP_SIZE.width,
+    MAP_SIZE.height,
+  );
 
-  assert.ok(Math.abs(transform.scale - 1200 / 3400) < 0.000001);
+  assert.ok(Math.abs(transform.scale - 1200 / MAP_SIZE.width) < 0.000001);
   assert.equal(transform.offsetX, 0);
   assert.ok(transform.offsetY > 0);
 });
@@ -21,8 +27,8 @@ test("横向地图的近景保持人物可读尺度并置于视口中央", async
   const transform = camera.createFollowTransform(
     1200,
     800,
-    5300,
-    2200,
+    MAP_SIZE.width,
+    MAP_SIZE.height,
     { x: 2650, z: 1100 },
   );
 
@@ -39,8 +45,8 @@ test("近景跟随在地图边缘不会露出空白", async () => {
     camera.createFollowTransform(
       1200,
       800,
-      5300,
-      2200,
+      MAP_SIZE.width,
+      MAP_SIZE.height,
       { x: 0, z: 0 },
     ),
     {
