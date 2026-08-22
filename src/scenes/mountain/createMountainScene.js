@@ -181,7 +181,6 @@ export function createMountainScene({
     currentStage = stage;
     activeSourceIndex = 0;
     submitting = false;
-    clearWarning();
     const stageMedia = getMountainStageMedia(stage.id);
     if (!stageMedia) {
       showQuestion(stage);
@@ -256,6 +255,7 @@ export function createMountainScene({
   function open(nextCallbacks = {}) {
     callbacks = nextCallbacks;
     completed = false;
+    clearWarning();
     progress = loadMountainProgress(storage, characterId);
     journeyMode = Number.isFinite(progress.firstCompletedAt)
       ? "重温旅程"
@@ -277,7 +277,6 @@ export function createMountainScene({
 
     isOpen = true;
     setHidden(elements.root, false);
-    clearWarning();
     showEntry(stage);
   }
 

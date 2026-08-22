@@ -378,6 +378,21 @@ test("完成存档失败时留在当前页面，重试成功后才通知地图",
   fixture.scene.dispose();
 });
 
+test("重温旅程初始化保存失败时保留警告", () => {
+  const completed = completeMountainProgress(createMountainProgress("boy"), 2000);
+  const storage = {
+    getItem() { return JSON.stringify(completed); },
+    setItem() { throw new Error("quota"); },
+  };
+  const fixture = createSceneFixture({ storage });
+
+  openScene(fixture);
+
+  assert.equal(fixture.elements.saveWarning.hidden, false);
+  assert.match(fixture.elements.saveWarning.textContent, /无法保存/);
+  fixture.scene.dispose();
+});
+
 test("关闭剧情不会触发世界地图完成回调", () => {
   const fixture = createSceneFixture();
   let completed = 0;
