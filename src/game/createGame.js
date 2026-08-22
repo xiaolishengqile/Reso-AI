@@ -1,26 +1,23 @@
-import * as THREE from "three";
 import {
   LOCATIONS,
+  MAP_SIZE,
   OBSTACLES,
   PLAYER_START,
+  WALKABLE_POLYGON,
   WORLD_BOUNDS,
 } from "../config/world.js";
-import { createPlayer } from "../entities/createPlayer.js";
 import { createInput } from "../systems/createInput.js";
-import { findNearbyLocation, moveActor } from "../systems/movement.js";
-import { createWorld } from "../world/createWorld.js";
+import {
+  createCoverTransform,
+  directionToTarget,
+  findNearbyLocation,
+  isPointInPolygon,
+  moveActor,
+  screenToMap,
+} from "../systems/movement.js";
 
-const CAMERA_VIEW_HEIGHT = 28;
-const CAMERA_OFFSET = new THREE.Vector3(18, 24, 22);
-
-export function findLocationRoot(object) {
-  let current = object;
-  while (current) {
-    if (current.userData?.locationId) return current;
-    current = current.parent;
-  }
-  return null;
-}
+const PLAYER_RADIUS = 15;
+const PLAYER_SPEED = 230;
 
 export function getLocationInteraction(clickedLocation, nearbyLocation) {
   if (!clickedLocation) {
@@ -34,216 +31,309 @@ export function getLocationInteraction(clickedLocation, nearbyLocation) {
   }
   return Object.freeze({
     canEnter: false,
-    message: `再靠近「${clickedLocation.name}」一些，入口才会回应。`,
+    message: `正在前往「${clickedLocation.name}」`,
   });
 }
 
-function disposeScene(scene) {
-  scene.traverse((object) => {
-    object.geometry?.dispose?.();
-    const materials = Array.isArray(object.material)
-      ? object.material
-      : [object.material].filter(Boolean);
-    materials.forEach((material) => material.dispose?.());
-  });
+export function findLocationAtPoint(point, locations) {
+  return locations
+    .map((location) => ({
+      location,
+      distance: Math.hypot(point.x - location.x, point.z - location.z),
+    }))
+    .filter(({ location, distance }) => distance <= location.hitRadius)
+    .sort((left, right) => left.distance - right.distance)[0]?.location ?? null;
 }
 
-export function createGame({ canvas, ui, windowTarget = window }) {
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true,
-    alpha: true,
-    powerPreference: "high-performance",
-  });
-  renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(windowTarget.devicePixelRatio ?? 1, 1.5));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.04;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+function drawLocationGlow(context, location, active, elapsedSeconds) {
+  const pulse = 1 + Math.sin(elapsedSeconds * 2.2 + location.x) * 0.06;
+  const radius = location.hitRadius * 0.44 * pulse;
+  context.save();
+  context.globalAlpha = active ? 0.82 : 0.2;
+  context.strokeStyle = location.accent;
+  context.lineWidth = active ? 4 : 2;
+  context.setLineDash(active ? [10, 7] : [5, 12]);
+  context.beginPath();
+  context.ellipse(
+    location.x,
+    location.z + 18,
+    radius,
+    radius * 0.42,
+    0,
+    0,
+    Math.PI * 2,
+  );
+  context.stroke();
+  context.restore();
+}
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(-20, 20, 14, -14, 0.1, 120);
-  const cameraFocus = new THREE.Vector3(0, 0, 1.5);
-  camera.position.copy(cameraFocus).add(CAMERA_OFFSET);
-  camera.lookAt(cameraFocus);
+function drawTarget(context, target, elapsedSeconds) {
+  if (!target) return;
+  const radius = 10 + Math.sin(elapsedSeconds * 4) * 2;
+  context.save();
+  context.strokeStyle = "rgba(112, 76, 51, 0.72)";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.ellipse(target.x, target.z, radius, radius * 0.45, 0, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+}
 
-  const raycaster = new THREE.Raycaster();
-  const pointer = new THREE.Vector2(2, 2);
-  const clock = new THREE.Clock();
+function drawPlayer(context, player, direction, elapsedSeconds, moving) {
+  const sway = moving ? Math.sin(elapsedSeconds * 11) * 2 : 0;
+  const side = direction.x < -0.2 ? -1 : direction.x > 0.2 ? 1 : 0;
+
+  context.save();
+  context.translate(Math.round(player.x), Math.round(player.z));
+  context.fillStyle = "rgba(65, 54, 43, 0.22)";
+  context.beginPath();
+  context.ellipse(0, 4, 16, 6, 0, 0, Math.PI * 2);
+  context.fill();
+
+  context.strokeStyle = "#58463d";
+  context.lineWidth = 3;
+  context.lineCap = "round";
+  context.beginPath();
+  context.moveTo(-5, -3);
+  context.lineTo(-7 - sway, 8);
+  context.moveTo(5, -3);
+  context.lineTo(7 + sway, 8);
+  context.stroke();
+
+  context.fillStyle = "#426b78";
+  context.strokeStyle = "#4f413a";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(-12, -28);
+  context.quadraticCurveTo(0, -35, 12, -28);
+  context.lineTo(9, 0);
+  context.quadraticCurveTo(0, 7, -9, 0);
+  context.closePath();
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = "#edcfaa";
+  context.beginPath();
+  context.arc(side * 2, -36, 8, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = "#c49b59";
+  context.beginPath();
+  context.ellipse(0, -42, 17, 6, -0.08 * side, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.beginPath();
+  context.moveTo(-8, -44);
+  context.quadraticCurveTo(0, -61, 9, -44);
+  context.closePath();
+  context.fill();
+  context.stroke();
+  context.restore();
+}
+
+export function createGame({
+  canvas,
+  ui,
+  windowTarget = window,
+  imageUrl = "/assets/world-map-painted.jpg",
+}) {
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("当前浏览器无法创建二维画布");
+
   const input = createInput(windowTarget);
-  const world = createWorld(scene);
-  const player = createPlayer();
-  player.group.position.set(PLAYER_START.x, 0.08, PLAYER_START.z);
-  player.group.scale.setScalar(0.9);
-  scene.add(player.group);
-
-  let hoveredTarget = null;
-  let elapsedSeconds = 0;
+  const background = new windowTarget.Image();
+  const player = { x: PLAYER_START.x, z: PLAYER_START.z };
+  let transform = createCoverTransform(1, 1, MAP_SIZE.width, MAP_SIZE.height);
+  let width = 1;
+  let height = 1;
+  let pixelRatio = 1;
+  let pointerTarget = null;
+  let targetLocationId = null;
+  let hoveredLocation = null;
+  let nearbyLocation = null;
+  let lastDirection = { x: 0, z: 1 };
   let statusLockedUntil = 0;
+  let previousTime = 0;
+  let frameId = 0;
   let started = false;
 
   function setStatus(message, lockMilliseconds = 0) {
     if (ui.status) ui.status.textContent = message;
-    statusLockedUntil = performance.now() + lockMilliseconds;
+    statusLockedUntil = windowTarget.performance.now() + lockMilliseconds;
   }
 
   function showLocationCard(location) {
-    if (!ui.locationCard) return;
-    ui.locationCard.classList.toggle("is-visible", Boolean(location));
-    if (location) {
-      if (ui.locationName) ui.locationName.textContent = location.name;
-      if (ui.locationDescription) {
-        ui.locationDescription.textContent = location.description;
-      }
+    ui.locationCard?.classList.toggle("is-visible", Boolean(location));
+    if (!location) return;
+    if (ui.locationName) ui.locationName.textContent = location.name;
+    if (ui.locationDescription) {
+      ui.locationDescription.textContent = location.description;
     }
   }
 
-  function setHoveredTarget(target) {
-    if (hoveredTarget === target) return;
-    if (hoveredTarget?.userData.ring) {
-      hoveredTarget.userData.ring.userData.hovered = false;
-    }
-    hoveredTarget = target;
-    if (hoveredTarget?.userData.ring) {
-      hoveredTarget.userData.ring.userData.hovered = true;
-    }
-    canvas.classList.toggle("is-pointing", Boolean(hoveredTarget));
-    showLocationCard(hoveredTarget?.userData.location ?? null);
+  function setHoveredLocation(location) {
+    if (hoveredLocation === location) return;
+    hoveredLocation = location;
+    canvas.classList.toggle("is-pointing", Boolean(location));
+    showLocationCard(location);
   }
 
-  function updatePointer(event) {
+  function eventToMap(event) {
     const rect = canvas.getBoundingClientRect();
-    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-  }
-
-  function raycastLocation() {
-    raycaster.setFromCamera(pointer, camera);
-    const intersection = raycaster.intersectObjects(world.locationTargets, true)[0];
-    const target = intersection ? findLocationRoot(intersection.object) : null;
-    setHoveredTarget(target);
-    return target;
+    return screenToMap(
+      { x: event.clientX - rect.left, y: event.clientY - rect.top },
+      transform,
+    );
   }
 
   function onPointerMove(event) {
-    updatePointer(event);
-    raycastLocation();
+    setHoveredLocation(findLocationAtPoint(eventToMap(event), LOCATIONS));
   }
 
   function onPointerLeave() {
-    pointer.set(2, 2);
-    setHoveredTarget(null);
+    setHoveredLocation(null);
   }
 
   function openLocationDialog(location) {
     if (ui.dialogTitle) ui.dialogTitle.textContent = location.name;
     if (ui.dialogDescription) {
-      ui.dialogDescription.textContent = `${location.description} 独立场景将在下一阶段开放。`;
+      ui.dialogDescription.textContent = location.sceneDescription;
     }
-    if (!ui.dialog) return;
-    if (typeof ui.dialog.showModal === "function" && !ui.dialog.open) {
+    ui.dialog?.style.setProperty("--scene-accent", location.accent);
+    if (typeof ui.dialog?.showModal === "function" && !ui.dialog.open) {
       ui.dialog.showModal();
     } else {
-      ui.dialog.setAttribute("open", "");
+      ui.dialog?.setAttribute("open", "");
     }
   }
 
   function onCanvasClick(event) {
-    updatePointer(event);
-    const clickedTarget = raycastLocation();
-    if (!clickedTarget) return;
+    const point = eventToMap(event);
+    const location = findLocationAtPoint(point, LOCATIONS);
+    if (location) {
+      const interaction = getLocationInteraction(location, nearbyLocation);
+      setStatus(interaction.message, 1800);
+      if (interaction.canEnter) {
+        pointerTarget = null;
+        targetLocationId = null;
+        openLocationDialog(location);
+      } else {
+        pointerTarget = location.approach;
+        targetLocationId = location.id;
+      }
+      return;
+    }
 
-    const clickedLocation = clickedTarget.userData.location;
-    const nearbyLocation = findNearbyLocation(player.group.position, LOCATIONS);
-    const interaction = getLocationInteraction(clickedLocation, nearbyLocation);
-    setStatus(interaction.message, 2200);
-    if (interaction.canEnter) openLocationDialog(clickedLocation);
+    if (isPointInPolygon(point, WALKABLE_POLYGON)) {
+      pointerTarget = point;
+      targetLocationId = null;
+      setStatus("沿着地图前往标记位置", 900);
+    } else {
+      setStatus("那里是云海，旅人无法抵达。", 1300);
+    }
   }
 
   function closeDialog() {
-    if (!ui.dialog) return;
-    if (typeof ui.dialog.close === "function" && ui.dialog.open) {
+    if (typeof ui.dialog?.close === "function" && ui.dialog.open) {
       ui.dialog.close();
     } else {
-      ui.dialog.removeAttribute("open");
+      ui.dialog?.removeAttribute("open");
     }
   }
 
   function resize() {
-    const width = Math.max(1, windowTarget.innerWidth ?? canvas.clientWidth);
-    const height = Math.max(1, windowTarget.innerHeight ?? canvas.clientHeight);
-    const aspect = width / height;
-    camera.left = (-CAMERA_VIEW_HEIGHT * aspect) / 2;
-    camera.right = (CAMERA_VIEW_HEIGHT * aspect) / 2;
-    camera.top = CAMERA_VIEW_HEIGHT / 2;
-    camera.bottom = -CAMERA_VIEW_HEIGHT / 2;
-    camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(windowTarget.devicePixelRatio ?? 1, 1.5));
-    renderer.setSize(width, height, false);
+    width = Math.max(1, windowTarget.innerWidth ?? canvas.clientWidth);
+    height = Math.max(1, windowTarget.innerHeight ?? canvas.clientHeight);
+    pixelRatio = Math.min(windowTarget.devicePixelRatio ?? 1, 2);
+    canvas.width = Math.round(width * pixelRatio);
+    canvas.height = Math.round(height * pixelRatio);
+    transform = createCoverTransform(width, height, MAP_SIZE.width, MAP_SIZE.height);
   }
 
-  function animateWorld(deltaSeconds) {
-    elapsedSeconds += deltaSeconds;
-    for (const animated of world.animatedObjects) {
-      if (animated.type === "cloud") {
-        animated.object.userData.originY ??= animated.object.position.y;
-        animated.object.position.x = animated.originX
-          + Math.sin(elapsedSeconds * animated.speed + animated.phase) * 1.5;
-        animated.object.position.y = animated.object.userData.originY
-          + Math.sin(elapsedSeconds * 0.45 + animated.phase) * 0.18;
-      }
-      if (animated.type === "location") {
-        const baseScale = animated.object.userData.baseScale ?? 1;
-        const hoverScale = animated.object.userData.hovered ? 1.12 : 1;
-        const pulse = 1 + Math.sin(elapsedSeconds * 2.2 + animated.phase) * 0.045;
-        animated.object.scale.setScalar(baseScale * hoverScale * pulse);
-        animated.object.rotation.y += deltaSeconds * 0.18;
+  function update(deltaSeconds) {
+    let direction = input.getDirection();
+    if (direction.x !== 0 || direction.z !== 0) {
+      pointerTarget = null;
+      targetLocationId = null;
+    } else if (pointerTarget) {
+      const targetDirection = directionToTarget(player, pointerTarget, 8);
+      direction = targetDirection;
+      if (targetDirection.arrived) {
+        const arrivedLocation = LOCATIONS.find(
+          ({ id }) => id === targetLocationId,
+        );
+        pointerTarget = null;
+        targetLocationId = null;
+        if (arrivedLocation) setStatus(`已抵达「${arrivedLocation.name}」附近`, 1400);
       }
     }
+
+    const moving = direction.x !== 0 || direction.z !== 0;
+    if (moving) {
+      lastDirection = direction;
+      const next = moveActor({
+        position: player,
+        direction,
+        speed: PLAYER_SPEED,
+        deltaSeconds,
+        radius: PLAYER_RADIUS,
+        bounds: WORLD_BOUNDS,
+        obstacles: OBSTACLES,
+        isWalkable: (point) => isPointInPolygon(point, WALKABLE_POLYGON),
+      });
+      player.x = next.x;
+      player.z = next.z;
+    }
+
+    nearbyLocation = findNearbyLocation(player, LOCATIONS);
+    if (windowTarget.performance.now() >= statusLockedUntil) {
+      setStatus(
+        nearbyLocation
+          ? `已抵达「${nearbyLocation.name}」附近 · 点击地标进入`
+          : "沿着道路探索，寻找三个发光地点",
+      );
+    }
+    return moving;
   }
 
-  function updateCamera(deltaSeconds) {
-    const targetFocus = new THREE.Vector3(
-      THREE.MathUtils.clamp(player.group.position.x * 0.42, -5.5, 5.5),
-      0,
-      THREE.MathUtils.clamp(player.group.position.z * 0.36, -3.8, 3.8),
-    );
-    const follow = 1 - Math.exp(-deltaSeconds * 3.4);
-    cameraFocus.lerp(targetFocus, follow);
-    camera.position.copy(cameraFocus).add(CAMERA_OFFSET);
-    camera.lookAt(cameraFocus);
+  function render(elapsedSeconds, moving) {
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = "#b9def0";
+    context.fillRect(0, 0, width, height);
+    if (background.complete && background.naturalWidth > 0) {
+      context.drawImage(
+        background,
+        transform.offsetX,
+        transform.offsetY,
+        MAP_SIZE.width * transform.scale,
+        MAP_SIZE.height * transform.scale,
+      );
+    }
+
+    context.save();
+    context.translate(transform.offsetX, transform.offsetY);
+    context.scale(transform.scale, transform.scale);
+    for (const location of LOCATIONS) {
+      drawLocationGlow(
+        context,
+        location,
+        location === hoveredLocation || location === nearbyLocation,
+        elapsedSeconds,
+      );
+    }
+    drawTarget(context, pointerTarget, elapsedSeconds);
+    drawPlayer(context, player, lastDirection, elapsedSeconds, moving);
+    context.restore();
   }
 
-  function updateProximityStatus() {
-    if (performance.now() < statusLockedUntil) return;
-    const nearby = findNearbyLocation(player.group.position, LOCATIONS);
-    setStatus(
-      nearby
-        ? `已抵达「${nearby.name}」附近 · 点击发光地点`
-        : "沿着道路探索，寻找三个发光地点",
-    );
-  }
-
-  function tick() {
-    const deltaSeconds = Math.min(clock.getDelta(), 0.033);
-    const direction = input.getDirection();
-    const next = moveActor({
-      position: player.group.position,
-      direction,
-      speed: 5.4,
-      deltaSeconds,
-      radius: 0.45,
-      bounds: WORLD_BOUNDS,
-      obstacles: OBSTACLES,
-    });
-    player.group.position.set(next.x, 0.08, next.z);
-    player.update(deltaSeconds, direction);
-    animateWorld(deltaSeconds);
-    updateCamera(deltaSeconds);
-    updateProximityStatus();
-    renderer.render(scene, camera);
+  function tick(time) {
+    const deltaSeconds = Math.min((time - previousTime) / 1000 || 0, 0.033);
+    previousTime = time;
+    const moving = update(deltaSeconds);
+    render(time / 1000, moving);
+    frameId = windowTarget.requestAnimationFrame(tick);
   }
 
   canvas.addEventListener("pointermove", onPointerMove);
@@ -251,25 +341,25 @@ export function createGame({ canvas, ui, windowTarget = window }) {
   canvas.addEventListener("click", onCanvasClick);
   ui.closeButton?.addEventListener("click", closeDialog);
   windowTarget.addEventListener("resize", resize);
+  background.addEventListener("error", () => setStatus("手绘地图底图加载失败。"));
+  background.src = imageUrl;
 
   return Object.freeze({
     start() {
       if (started) return;
       started = true;
       resize();
-      clock.start();
-      renderer.setAnimationLoop(tick);
+      previousTime = windowTarget.performance.now();
+      frameId = windowTarget.requestAnimationFrame(tick);
     },
     dispose() {
-      renderer.setAnimationLoop(null);
+      windowTarget.cancelAnimationFrame(frameId);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("click", onCanvasClick);
       ui.closeButton?.removeEventListener("click", closeDialog);
       windowTarget.removeEventListener("resize", resize);
       input.dispose();
-      disposeScene(scene);
-      renderer.dispose();
     },
   });
 }

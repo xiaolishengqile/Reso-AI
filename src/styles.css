@@ -315,9 +315,11 @@ kbd {
 }
 
 .scene-dialog {
+  --scene-accent: #705346;
+
   width: min(430px, calc(100vw - 48px));
   padding: 35px 42px 31px;
-  border: 2px solid #705346;
+  border: 2px solid var(--scene-accent);
   border-radius: 48% 52% 10% 12% / 8% 8% 12% 12%;
   color: #543d34;
   background:
@@ -333,7 +335,7 @@ kbd {
 }
 
 .scene-dialog__ornament {
-  color: #c08167;
+  color: var(--scene-accent);
   font-size: 30px;
 }
 

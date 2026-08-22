@@ -9,9 +9,6 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test"
   },
-  "dependencies": {
-    "three": "^0.179.1"
-  },
   "devDependencies": {
     "vite": "^7.0.0"
   }

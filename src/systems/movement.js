@@ -4,6 +4,52 @@ export function normalizeDirection(direction) {
   return { x: direction.x / length, z: direction.z / length };
 }
 
+export function directionToTarget(position, target, arrivalRadius = 6) {
+  const x = target.x - position.x;
+  const z = target.z - position.z;
+  const distance = Math.hypot(x, z);
+  if (distance <= arrivalRadius) return { x: 0, z: 0, arrived: true };
+  return { x: x / distance, z: z / distance, arrived: false };
+}
+
+export function createCoverTransform(
+  viewWidth,
+  viewHeight,
+  mapWidth,
+  mapHeight,
+) {
+  const scale = Math.max(viewWidth / mapWidth, viewHeight / mapHeight);
+  return {
+    scale,
+    offsetX: (viewWidth - mapWidth * scale) / 2,
+    offsetY: (viewHeight - mapHeight * scale) / 2,
+  };
+}
+
+export function screenToMap(point, transform) {
+  return {
+    x: (point.x - transform.offsetX) / transform.scale,
+    z: (point.y - transform.offsetY) / transform.scale,
+  };
+}
+
+export function isPointInPolygon(point, polygon) {
+  let inside = false;
+  for (
+    let current = 0, previous = polygon.length - 1;
+    current < polygon.length;
+    previous = current++
+  ) {
+    const a = polygon[current];
+    const b = polygon[previous];
+    const crosses =
+      (a.z > point.z) !== (b.z > point.z) &&
+      point.x < ((b.x - a.x) * (point.z - a.z)) / (b.z - a.z) + a.x;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
 function collides(position, radius, obstacles) {
   return obstacles.some((obstacle) => (
     Math.hypot(position.x - obstacle.x, position.z - obstacle.z)
@@ -23,6 +69,7 @@ export function moveActor({
   radius,
   bounds,
   obstacles,
+  isWalkable,
 }) {
   const normalized = normalizeDirection(direction);
   const distance = speed * deltaSeconds;
@@ -39,7 +86,8 @@ export function moveActor({
     ),
   };
 
-  return collides(candidate, radius, obstacles)
+  return collides(candidate, radius, obstacles) ||
+    isWalkable?.(candidate) === false
     ? { x: position.x, z: position.z }
     : candidate;
 }

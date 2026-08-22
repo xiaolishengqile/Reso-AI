@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#a9ddef" />
-    <meta name="description" content="可探索的二维半浮岛世界地图原型" />
+    <meta name="description" content="可行走的手绘浮岛世界地图原型" />
     <title>云上原野 · 世界地图</title>
   </head>
   <body>
@@ -13,9 +13,9 @@
       <div class="paper-texture" aria-hidden="true"></div>
 
       <header class="world-title" aria-label="地图名称">
-        <span class="world-title__eyebrow">浮 岛 纪 行</span>
+        <span class="world-title__eyebrow">浮 岛 纪 行 · WORLD MAP</span>
         <h1>云上原野</h1>
-        <span class="world-title__subtitle">一张等待被走遍的地图</span>
+        <span class="world-title__subtitle">沿着路，去往故事发生的地方</span>
       </header>
 
       <aside class="map-legend" aria-label="地图地点">
@@ -41,7 +41,7 @@
         </span>
         <span class="controls__divider"></span>
         <span>方向键也可以</span>
-        <span class="controls__mouse">鼠标点击发光地点</span>
+        <span class="controls__mouse">点击道路移动 · 点击地标进入</span>
       </section>
 
       <section id="status" class="status" aria-live="polite">
@@ -50,7 +50,7 @@
 
       <dialog id="scene-dialog" class="scene-dialog">
         <div class="scene-dialog__ornament" aria-hidden="true">✦</div>
-        <span class="scene-dialog__label">新的旅程即将展开</span>
+        <span class="scene-dialog__label">独 立 场 景</span>
         <h2 id="dialog-title"></h2>
         <p id="dialog-description"></p>
         <button id="dialog-close" type="button" aria-label="返回世界地图">
@@ -60,7 +60,7 @@
 
       <section id="compatibility-error" class="compatibility-error" hidden>
         <h2>地图暂时无法展开</h2>
-        <p>当前浏览器无法创建三维地图，请尝试更新浏览器或开启硬件加速。</p>
+        <p>当前浏览器无法创建二维画布，请尝试更新浏览器。</p>
       </section>
     </main>
     <script type="module" src="/src/main.js"></script>
