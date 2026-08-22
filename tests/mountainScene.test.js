@@ -206,11 +206,13 @@ test("暴雨行动会决定岩洞修复反馈后的路线画面", () => {
   assert.equal(resolveRoute("shelter"), "shelter");
 });
 
-test("公寓短信场景只渲染玩家角色", () => {
-  assert.equal(
-    resolveMountainFrameState(getMountainStage("home-message"), {}).showCompanion,
-    false,
-  );
+test("公寓全部阶段只渲染玩家角色", () => {
+  for (const stageId of ["home-message", "city-realization", "complete"]) {
+    assert.equal(
+      resolveMountainFrameState(getMountainStage(stageId), {}).showCompanion,
+      false,
+    );
+  }
 });
 
 test("关闭剧情不会触发世界地图完成回调", () => {

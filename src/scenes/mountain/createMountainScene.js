@@ -56,7 +56,7 @@ export function resolveMountainFrameState(
     scene: stage.scene,
     weather: getWeather(stage),
     waypoint,
-    showCompanion: stage.id !== "home-message",
+    showCompanion: stage.scene !== "apartment",
     ...choiceActions,
   };
 }
