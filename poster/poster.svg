@@ -61,12 +61,12 @@
       letter-spacing="-6.49"
     >Fog Valley</text>
 
-    <circle cx="600" cy="148" r="7.1" fill="#a96d62" />
-    <circle cx="620" cy="136" r="5.2" fill="#c99a6d" />
+    <circle cx="681" cy="148" r="7.1" fill="#a96d62" />
+    <circle cx="702" cy="136" r="5.2" fill="#c99a6d" />
 
     <text
-      x="653"
-      y="168"
+      x="507"
+      y="225"
       fill="#b88a4b"
       font-family="'Songti SC', '宋体-简', Songti, serif"
       font-size="23"

@@ -93,10 +93,6 @@
         top: 7.2%;
         left: 6.6%;
         right: 6.6%;
-        display: flex;
-        flex-wrap: nowrap;
-        align-items: baseline;
-        gap: clamp(18px, 2.2vw, 36px);
         color: var(--ink);
         text-shadow: 0 2px 0 rgb(255 255 255 / 42%);
       }
@@ -124,6 +120,9 @@
       }
 
       .descriptor {
+        position: absolute;
+        top: calc(100% + clamp(12px, 1vw, 18px));
+        left: clamp(166px, 25.2vw, 408px);
         margin: 0;
         color: var(--gold);
         font-family: "STKaiti", "KaiTi", "Songti SC", serif;
