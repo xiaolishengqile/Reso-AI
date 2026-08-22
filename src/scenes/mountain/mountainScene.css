@@ -69,6 +69,16 @@
 
 .mountain-scene__warning { color: #ffd8a8; }
 
+@media (min-width: 901px) {
+  .mountain-scene__panel {
+    position: absolute;
+    inset: 1rem auto 1rem 1rem;
+    box-sizing: border-box;
+    width: 43vw;
+    margin: 0;
+  }
+}
+
 @media (max-width: 520px) {
   .mountain-scene__panel { width: calc(100% - 1rem); margin: 0.5rem auto; }
 }
