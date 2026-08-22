@@ -64,10 +64,10 @@ function createMemoryStorage(initial = {}) {
   };
 }
 
-function createSceneFixture(storage = createMemoryStorage()) {
+function createSceneFixture(storage = createMemoryStorage(), options = {}) {
   const elements = {
     root: new FakeElement(),
-    canvas: null,
+    canvas: options.canvas ?? null,
     title: new FakeElement(),
     text: new FakeElement(),
     choices: new FakeElement(),
@@ -81,8 +81,56 @@ function createSceneFixture(storage = createMemoryStorage()) {
     elements,
     storage,
     documentTarget: { createElement: () => new FakeElement() },
+    windowTarget: options.windowTarget,
+    drawFrame: options.drawFrame,
   });
   return { elements, scene, storage };
+}
+
+function createFakeAnimationWindow() {
+  let time = 0;
+  let nextFrameId = 1;
+  const callbacks = new Map();
+  return {
+    performance: { now: () => time },
+    requestAnimationFrame(callback) {
+      const frameId = nextFrameId;
+      nextFrameId += 1;
+      callbacks.set(frameId, callback);
+      return frameId;
+    },
+    cancelAnimationFrame(frameId) {
+      callbacks.delete(frameId);
+    },
+    runNextFrame(timestamp) {
+      time = timestamp;
+      const entry = callbacks.entries().next().value;
+      if (!entry) throw new Error("没有待执行的动画帧");
+      callbacks.delete(entry[0]);
+      entry[1](timestamp);
+    },
+    addEventListener() {},
+    removeEventListener() {},
+  };
+}
+
+function createFakeCanvas() {
+  const gradient = { addColorStop() {} };
+  const context = new Proxy({
+    createLinearGradient() { return gradient; },
+  }, {
+    get(target, key) {
+      return key in target ? target[key] : () => {};
+    },
+  });
+  return {
+    width: 600,
+    height: 400,
+    clientWidth: 600,
+    clientHeight: 400,
+    getContext() { return context; },
+    getBoundingClientRect() { return { width: 600, height: 400 }; },
+  };
 }
 
 test("打开剧情会恢复到保存的阶段并匹配异性同行者", () => {
@@ -130,6 +178,7 @@ test("画像选择只记录一次证据并进入下一阶段", () => {
 
   const progress = JSON.parse(fixture.storage.getItem(MOUNTAIN_PROGRESS_KEY));
   assert.equal(progress.officialEvidence.length, 1);
+  assert.equal(progress.officialEvidence[0].companionMood, "安心");
   assert.equal(progress.currentStageId, "fatigue");
   fixture.scene.dispose();
 });
@@ -301,5 +350,88 @@ test("岩洞修复先保留洞内动作，再展示雨后路线", () => {
 
   fixture.elements.continueButton.click();
   assert.equal(fixture.elements.title.textContent, "回家消息");
+  fixture.scene.dispose();
+});
+
+test("阶段入场动画完成后才展示下一阶段的选择", () => {
+  const animationWindow = createFakeAnimationWindow();
+  const frames = [];
+  const fixture = createSceneFixture(createMemoryStorage(), {
+    canvas: createFakeCanvas(),
+    windowTarget: animationWindow,
+    drawFrame(_context, frame) { frames.push({ ...frame }); },
+  });
+  fixture.scene.open({ complete() {}, close() {} });
+
+  fixture.elements.choices.children[0].click();
+  fixture.elements.continueButton.click();
+
+  assert.equal(fixture.elements.choices.children.length, 0);
+  assert.equal(fixture.elements.root.attributes.get("aria-busy"), "true");
+
+  animationWindow.runNextFrame(0);
+  assert.equal(frames.at(-1).fromWaypoint, "cafe-table");
+  assert.equal(frames.at(-1).waypoint, "lower-cliff");
+  assert.equal(frames.at(-1).transitionProgress, 0);
+
+  animationWindow.runNextFrame(400);
+  assert.equal(frames.at(-1).transitionProgress, 0.5);
+
+  animationWindow.runNextFrame(800);
+  assert.equal(fixture.elements.root.attributes.get("aria-busy"), "false");
+  assert.equal(fixture.elements.title.textContent, "疲惫与抱怨");
+  assert.equal(fixture.elements.choices.children.length, 3);
+  fixture.scene.dispose();
+});
+
+test("雨后路线先完成洞内到目标路标的动画，再显示路线文案", () => {
+  const animationWindow = createFakeAnimationWindow();
+  const frames = [];
+  const progress = {
+    ...advanceMountainProgress(createMountainProgress("boy"), "cave-repair"),
+    actionId: "retreat",
+  };
+  const fixture = createSceneFixture(createMemoryStorage({
+    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
+  }), {
+    canvas: createFakeCanvas(),
+    windowTarget: animationWindow,
+    drawFrame(_context, frame) { frames.push({ ...frame }); },
+  });
+  fixture.scene.open({ complete() {}, close() {} });
+
+  fixture.elements.choices.children[1].click();
+  fixture.elements.continueButton.click();
+  assert.equal(fixture.elements.title.textContent, "岩洞修复");
+  assert.equal(fixture.elements.continueButton.hidden, true);
+
+  animationWindow.runNextFrame(0);
+  assert.equal(frames.at(-1).fromWaypoint, "cave");
+  assert.equal(frames.at(-1).waypoint, "return");
+  assert.equal(frames.at(-1).transitionProgress, 0);
+
+  animationWindow.runNextFrame(800);
+  assert.equal(fixture.elements.title.textContent, "雨后的去向");
+  assert.equal(fixture.elements.text.textContent, "雨势稍缓后，你们选择沿来路安全下撤。");
+  assert.equal(fixture.elements.continueButton.hidden, false);
+  fixture.scene.dispose();
+});
+
+test("入场动画期间仍可关闭剧情", () => {
+  const animationWindow = createFakeAnimationWindow();
+  const fixture = createSceneFixture(createMemoryStorage(), {
+    canvas: createFakeCanvas(),
+    windowTarget: animationWindow,
+    drawFrame() {},
+  });
+  let closed = 0;
+  fixture.scene.open({ complete() {}, close() { closed += 1; } });
+
+  fixture.elements.choices.children[0].click();
+  fixture.elements.continueButton.click();
+  fixture.elements.closeButton.click();
+
+  assert.equal(fixture.elements.root.hidden, true);
+  assert.equal(closed, 1);
   fixture.scene.dispose();
 });

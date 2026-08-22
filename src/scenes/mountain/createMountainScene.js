@@ -91,6 +91,7 @@ export function createMountainScene({
   storage = globalThis.localStorage,
   documentTarget = globalThis.document,
   windowTarget = globalThis.window,
+  drawFrame = drawMountainFrame,
 } = {}) {
   if (!characterId || !getCompanionCharacterId(characterId)) {
     throw new Error("爬山剧情需要有效的玩家角色");
@@ -110,6 +111,8 @@ export function createMountainScene({
   let pendingStageId = null;
   let routeFeedbackPending = false;
   let frameState = null;
+  let activeWaypoint = null;
+  let transition = null;
 
   function now() {
     return windowTarget?.performance?.now?.() ?? Date.now();
@@ -120,6 +123,14 @@ export function createMountainScene({
     const saved = saveMountainProgress(storage, progress);
     setHidden(elements.saveWarning, saved);
     return saved;
+  }
+
+  function setStageBusy(isBusy) {
+    elements.root?.setAttribute?.("aria-busy", String(isBusy));
+  }
+
+  function canAnimateTransition() {
+    return Boolean(canvasContext && windowTarget?.requestAnimationFrame);
   }
 
   function resizeCanvas() {
@@ -134,12 +145,13 @@ export function createMountainScene({
 
   function renderFrame(timestamp = now()) {
     if (!isOpen || !currentStage) return;
+    const transitionCompleted = updateTransition(timestamp);
     if (canvasContext && elements.canvas) {
       const ratio = Math.min(windowTarget?.devicePixelRatio ?? 1, 2);
       const width = elements.canvas.width / ratio;
       const height = elements.canvas.height / ratio;
       canvasContext.setTransform?.(ratio, 0, 0, ratio, 0, 0);
-      drawMountainFrame(canvasContext, {
+      drawFrame(canvasContext, {
         width,
         height,
         ...frameState,
@@ -148,6 +160,7 @@ export function createMountainScene({
         elapsedSeconds: timestamp / 1000,
       });
     }
+    if (transitionCompleted) completeTransition();
     frameId = windowTarget?.requestAnimationFrame?.(renderFrame) ?? null;
   }
 
@@ -156,12 +169,60 @@ export function createMountainScene({
     frameId = null;
   }
 
+  function updateTransition(timestamp) {
+    if (!transition) return false;
+    if (transition.startedAt === null) transition.startedAt = timestamp;
+    const transitionProgress = Math.min(
+      1,
+      Math.max(0, (timestamp - transition.startedAt) / 800),
+    );
+    frameState = {
+      ...transition.targetFrameState,
+      fromWaypoint: transition.fromWaypoint,
+      transitionProgress,
+    };
+    return transitionProgress === 1;
+  }
+
+  function completeTransition() {
+    const completedTransition = transition;
+    if (!completedTransition) return;
+    transition = null;
+    frameState = completedTransition.targetFrameState;
+    activeWaypoint = completedTransition.targetFrameState.waypoint;
+    completedTransition.onComplete();
+  }
+
+  function beginTransition(targetFrameState, onComplete) {
+    const fromWaypoint = activeWaypoint ?? currentStage?.waypoint ?? targetFrameState.waypoint;
+    if (!canAnimateTransition()) {
+      frameState = targetFrameState;
+      activeWaypoint = targetFrameState.waypoint;
+      onComplete();
+      return;
+    }
+    transition = {
+      fromWaypoint,
+      targetFrameState,
+      startedAt: null,
+      onComplete,
+    };
+    frameState = { ...targetFrameState, fromWaypoint, transitionProgress: 0 };
+    elements.choices.replaceChildren?.();
+    setHidden(elements.continueButton, true);
+    elements.text.textContent = "";
+    elements.progress.textContent = "正在前往下一段旅程";
+    setStageBusy(true);
+  }
+
   function showStage(stage) {
     currentStage = stage;
     frameState = resolveMountainFrameState(stage, progress);
+    activeWaypoint = stage.waypoint;
     submitting = false;
     routeFeedbackPending = false;
     stageStartedAt = now();
+    setStageBusy(false);
     elements.title.textContent = stage.title;
     elements.text.textContent = adaptMountainText(
       [stage.narration, stage.prompt].filter(Boolean).join("\n"),
@@ -170,6 +231,7 @@ export function createMountainScene({
     elements.progress.textContent = getProgressLabel(stage, progress.answers.length);
     elements.choices.replaceChildren?.();
     setHidden(elements.continueButton, stage.kind !== "complete");
+    elements.continueButton.disabled = false;
     elements.continueButton.textContent = "完成这段旅程";
 
     if (stage.kind === "complete") return;
@@ -193,6 +255,7 @@ export function createMountainScene({
       characterId,
     );
     elements.progress.textContent = "剧情正在前往下一段旅程";
+    setStageBusy(false);
     elements.choices.replaceChildren?.();
     setHidden(elements.continueButton, false);
     elements.continueButton.textContent = "继续剧情";
@@ -207,6 +270,7 @@ export function createMountainScene({
     elements.title.textContent = "雨后的去向";
     elements.text.textContent = getMountainRouteFeedback(progress.actionId);
     elements.progress.textContent = "雨后的路线";
+    setStageBusy(false);
     elements.choices.replaceChildren?.();
     setHidden(elements.continueButton, false);
     elements.continueButton.textContent = "继续剧情";
@@ -218,7 +282,7 @@ export function createMountainScene({
     for (const button of elements.choices.children ?? []) button.disabled = true;
     const selected = recordMountainSelection(progress, stage, option, {
       elapsedMs: Math.max(0, Math.round(now() - stageStartedAt)),
-      companionMood: option.id,
+      companionMood: option.companionMood ?? null,
       answeredAt: Date.now(),
     });
     const nextProgress = advanceMountainProgress(selected, stage.nextStageId);
@@ -242,18 +306,28 @@ export function createMountainScene({
     }
     if (routeFeedbackPending) {
       routeFeedbackPending = false;
-      showRouteFeedback();
+      beginTransition(
+        resolveMountainFrameState(currentStage, progress, { isRouteFeedback: true }),
+        showRouteFeedback,
+      );
       return;
     }
     const nextStage = getMountainStage(pendingStageId);
     pendingStageId = null;
-    if (nextStage) showStage(nextStage);
+    if (nextStage) {
+      beginTransition(
+        resolveMountainFrameState(nextStage, progress),
+        () => showStage(nextStage),
+      );
+    }
   }
 
   function hide(notifyMap) {
     if (!isOpen) return;
     isOpen = false;
     stopAnimation();
+    transition = null;
+    setStageBusy(false);
     setHidden(elements.root, true);
     if (notifyMap) callbacks?.close?.();
   }
