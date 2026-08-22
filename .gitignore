@@ -19,3 +19,4 @@ credentials.json
 .idea/
 .vscode/
 *.swp
+.gstack/
