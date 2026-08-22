@@ -37,6 +37,22 @@ test("横向地图的近景保持人物可读尺度并置于视口中央", async
   assert.ok(Math.abs(1100 * transform.scale + transform.offsetY - 400) < 0.001);
 });
 
+test("地图内底部对话会把人物焦点抬到画面上半部", async () => {
+  const camera = await cameraPromise;
+  const transform = camera.createFollowTransform(
+    1200,
+    800,
+    MAP_SIZE.width,
+    MAP_SIZE.height,
+    { x: 2650, z: 1900 },
+    0.68,
+  );
+
+  assert.ok(Math.abs(transform.scale - 544 / 1100) < 0.001);
+  assert.ok(1900 * transform.scale + transform.offsetY < 544);
+  assert.ok(Math.abs(MAP_SIZE.height * transform.scale + transform.offsetY - 544) < 0.001);
+});
+
 test("近景跟随在地图边缘不会露出空白", async () => {
   const camera = await cameraPromise;
   assert.equal(typeof camera.createFollowTransform, "function");
@@ -90,6 +106,15 @@ test("开场短暂展示全景后即使静止也锁定人物近景", async () =>
 
   assert.equal(camera.resolveCameraMode({ elapsedSeconds: 0 }), "overview");
   assert.equal(camera.resolveCameraMode({ elapsedSeconds: 1.5 }), "follow");
+});
+
+test("雾谷地图内对话会立即锁定人物近景", async () => {
+  const camera = await cameraPromise;
+
+  assert.equal(camera.resolveCameraMode({
+    elapsedSeconds: 0,
+    dialogueActive: true,
+  }), "follow");
 });
 
 test("全景按钮保持全景，但人物移动会立即恢复近景", async () => {

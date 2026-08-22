@@ -550,6 +550,7 @@ export function createGame({
       elapsedSeconds: elapsedSinceStart,
       overviewRequested,
       moving,
+      dialogueActive: activeExternalScene?.id === "home",
     });
     const cameraTarget = cameraMode === "follow"
       ? createFollowTransform(
@@ -558,6 +559,7 @@ export function createGame({
           MAP_SIZE.width,
           MAP_SIZE.height,
           player,
+          activeExternalScene?.id === "home" ? 0.68 : 1,
         )
       : createOverviewTransform(
           width,

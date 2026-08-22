@@ -135,8 +135,14 @@
         </button>
       </dialog>
 
-      <section id="home-scene" class="home-scene" aria-label="雾谷序章" hidden>
-        <canvas id="home-scene-canvas" class="home-scene__canvas" aria-hidden="true"></canvas>
+      <section
+        id="home-scene"
+        class="home-scene"
+        role="dialog"
+        aria-modal="true"
+        aria-label="雾谷序章"
+        hidden
+      >
         <div class="home-scene__panel">
           <p id="home-progress" class="home-scene__progress"></p>
           <h2 id="home-stage-title"></h2>
@@ -168,7 +174,7 @@
           <p id="home-save-warning" class="home-scene__warning" role="alert" hidden>
             记录暂时无法保存，请重试。
           </p>
-          <button id="home-continue" class="home-scene__continue" type="button">继续</button>
+          <button id="home-continue" class="home-scene__continue" type="button">点击继续</button>
         </div>
       </section>
 

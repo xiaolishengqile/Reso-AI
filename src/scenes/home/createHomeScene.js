@@ -13,7 +13,8 @@ import {
   saveHomeProgress,
 } from "./progress.js";
 import { getElderChoice, getHomeStage } from "./story.js";
-import { drawHomeFrame, resolveHomeFrameState } from "./homeRenderer.js";
+
+const INTERACTIVE_CLICK_SELECTOR = "button, input, textarea, select, option, label, form";
 
 function setHidden(element, hidden) {
   if (!element) return;
@@ -38,18 +39,15 @@ export function createHomeScene({
   elements,
   storage = globalThis.localStorage,
   documentTarget = globalThis.document,
-  windowTarget = globalThis.window,
-  drawFrame = drawHomeFrame,
 } = {}) {
   if (!["boy", "girl"].includes(characterId)) throw new Error("雾谷剧情需要有效的玩家角色");
   if (!elements) throw new Error("雾谷剧情缺少页面节点");
 
-  const canvasContext = elements.canvas?.getContext?.("2d") ?? null;
   let progress = null;
   let currentStage = null;
+  let currentBeats = [];
+  let currentBeatIndex = 0;
   let callbacks = null;
-  let frameId = null;
-  let isOpen = false;
   let completedCallbackSent = false;
   let pendingProfile = null;
 
@@ -60,53 +58,43 @@ export function createHomeScene({
     return saved;
   }
 
-  function resizeCanvas() {
-    if (!elements.canvas) return;
-    const rect = elements.canvas.getBoundingClientRect?.();
-    const width = Math.max(1, rect?.width ?? elements.canvas.clientWidth ?? 1);
-    const height = Math.max(1, rect?.height ?? elements.canvas.clientHeight ?? 1);
-    const ratio = Math.min(windowTarget?.devicePixelRatio ?? 1, 2);
-    elements.canvas.width = Math.round(width * ratio);
-    elements.canvas.height = Math.round(height * ratio);
-  }
-
-  function renderFrame(timestamp = 0) {
-    if (!isOpen || !currentStage) return;
-    if (canvasContext && elements.canvas) {
-      const ratio = Math.min(windowTarget?.devicePixelRatio ?? 1, 2);
-      const width = elements.canvas.width / ratio;
-      const height = elements.canvas.height / ratio;
-      canvasContext.setTransform?.(ratio, 0, 0, ratio, 0, 0);
-      drawFrame(canvasContext, {
-        width,
-        height,
-        elapsedSeconds: timestamp / 1000,
-        characterId,
-        ...resolveHomeFrameState(currentStage.id, progress.choiceId),
-      });
-    }
-    frameId = windowTarget?.requestAnimationFrame?.(renderFrame) ?? null;
-  }
-
-  function stopAnimation() {
-    if (frameId !== null) windowTarget?.cancelAnimationFrame?.(frameId);
-    frameId = null;
-  }
-
   function showErrors(errors = {}) {
     elements.nicknameError.textContent = errors.nickname ?? "";
     elements.messageError.textContent = errors.message ?? "";
     elements.mbtiTypeError.textContent = errors.mbtiType ?? "";
   }
 
+  function getStageText(stage) {
+    if (stage.kind !== "response") return stage.text;
+    const choice = getElderChoice(progress.choiceId);
+    return choice ? `你：${choice.playerLines[0]}\n${choice.response}` : stage.text;
+  }
+
+  function createStageBeats(stage) {
+    const text = getStageText(stage);
+    if (stage.kind === "choice" || stage.kind === "record") return [text];
+    return text.split("\n").map((line) => line.trim()).filter(Boolean);
+  }
+
+  function renderCurrentBeat() {
+    elements.text.textContent = currentBeats[currentBeatIndex] ?? "";
+    elements.continueButton.textContent = currentStage?.kind === "complete"
+      && currentBeatIndex === currentBeats.length - 1
+      ? "进入雾谷"
+      : "点击继续";
+  }
+
   function showStage(stage) {
     currentStage = stage;
+    currentBeats = createStageBeats(stage);
+    currentBeatIndex = 0;
+    elements.root.dataset.stageKind = stage.kind;
+    elements.root.dataset.stageId = stage.id;
     elements.title.textContent = stage.title;
     elements.choices.replaceChildren?.();
     setHidden(elements.recordForm, stage.kind !== "record");
     setHidden(elements.continueButton, stage.kind === "choice" || stage.kind === "record");
     elements.continueButton.disabled = false;
-    elements.continueButton.textContent = stage.kind === "complete" ? "进入雾谷" : "继续";
     elements.progress.textContent = {
       arrival: "初到雾谷",
       "elder-intro": "路口相遇",
@@ -116,14 +104,7 @@ export function createHomeScene({
       complete: "雾谷序章完成",
     }[stage.id] ?? "雾谷序章";
 
-    if (stage.kind === "response") {
-      const choice = getElderChoice(progress.choiceId);
-      elements.text.textContent = choice
-        ? `你：${choice.playerLines[0]}\n\n${choice.response}`
-        : stage.text;
-    } else {
-      elements.text.textContent = stage.text;
-    }
+    renderCurrentBeat();
 
     if (stage.kind === "choice") {
       for (const choice of stage.choices) {
@@ -172,11 +153,22 @@ export function createHomeScene({
 
   function continueStory() {
     if (!currentStage) return;
+    if (currentStage.kind === "choice" || currentStage.kind === "record") return;
+    if (currentBeatIndex < currentBeats.length - 1) {
+      currentBeatIndex += 1;
+      renderCurrentBeat();
+      return;
+    }
     if (currentStage.kind === "complete") {
       finish();
       return;
     }
     if (currentStage.nextStageId) moveTo(currentStage.nextStageId);
+  }
+
+  function clickToContinue(event) {
+    if (event?.target?.closest?.(INTERACTIVE_CLICK_SELECTOR)) return;
+    continueStory();
   }
 
   function readDraft() {
@@ -251,29 +243,23 @@ export function createHomeScene({
       saveHomeProgress(storage, progress);
     }
     currentStage = getHomeStage(progress.currentStageId) ?? getHomeStage("arrival");
-    isOpen = true;
     elements.root.hidden = false;
     setHidden(elements.saveWarning, true);
     showStage(currentStage);
-    resizeCanvas();
-    stopAnimation();
-    frameId = windowTarget?.requestAnimationFrame?.(renderFrame) ?? null;
   }
 
   function close() {
-    isOpen = false;
-    stopAnimation();
     elements.root.hidden = true;
     callbacks = null;
   }
 
   elements.continueButton?.addEventListener("click", continueStory);
+  elements.root?.addEventListener("click", clickToContinue);
   elements.submitButton?.addEventListener("click", submitRecord);
   elements.recordForm?.addEventListener("submit", submitRecord);
   elements.nickname?.addEventListener("input", storeDraft);
   elements.message?.addEventListener("input", storeDraft);
   elements.mbtiType?.addEventListener("change", storeDraft);
-  windowTarget?.addEventListener?.("resize", resizeCanvas);
 
   return Object.freeze({
     open,
@@ -281,12 +267,12 @@ export function createHomeScene({
     dispose() {
       close();
       elements.continueButton?.removeEventListener("click", continueStory);
+      elements.root?.removeEventListener("click", clickToContinue);
       elements.submitButton?.removeEventListener("click", submitRecord);
       elements.recordForm?.removeEventListener("submit", submitRecord);
       elements.nickname?.removeEventListener("input", storeDraft);
       elements.message?.removeEventListener("input", storeDraft);
       elements.mbtiType?.removeEventListener("change", storeDraft);
-      windowTarget?.removeEventListener?.("resize", resizeCanvas);
     },
   });
 }

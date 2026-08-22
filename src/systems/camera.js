@@ -27,10 +27,12 @@ export function createFollowTransform(
   mapWidth,
   mapHeight,
   focus,
+  visibleHeightRatio = 1,
 ) {
+  const visibleHeight = viewHeight * clamp(visibleHeightRatio, 0.1, 1);
   const overview = createOverviewTransform(
     viewWidth,
-    viewHeight,
+    visibleHeight,
     mapWidth,
     mapHeight,
   );
@@ -40,7 +42,7 @@ export function createFollowTransform(
       MAX_FOLLOW_SCALE,
       Math.min(
         viewWidth / FOLLOW_WORLD_SIZE.width,
-        viewHeight / FOLLOW_WORLD_SIZE.height,
+        visibleHeight / FOLLOW_WORLD_SIZE.height,
       ),
     ),
   );
@@ -52,8 +54,8 @@ export function createFollowTransform(
       0,
     ),
     offsetY: clamp(
-      viewHeight / 2 - focus.z * scale,
-      viewHeight - mapHeight * scale,
+      visibleHeight / 2 - focus.z * scale,
+      visibleHeight - mapHeight * scale,
       0,
     ),
   };
@@ -77,7 +79,9 @@ export function resolveCameraMode({
   elapsedSeconds = 0,
   overviewRequested = false,
   moving = false,
+  dialogueActive = false,
 } = {}) {
+  if (dialogueActive) return "follow";
   if (moving) return "follow";
   if (elapsedSeconds < INTRO_OVERVIEW_SECONDS) return "overview";
   return overviewRequested ? "overview" : "follow";

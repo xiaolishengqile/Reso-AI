@@ -14,7 +14,8 @@ import {
 } from "../src/profile/travelerProfile.js";
 
 class FakeElement {
-  constructor() {
+  constructor(tagName = "div") {
+    this.tagName = tagName.toUpperCase();
     this.children = [];
     this.dataset = {};
     this.hidden = false;
@@ -30,7 +31,18 @@ class FakeElement {
   addEventListener(type, listener) { this.listeners.set(type, listener); }
   removeEventListener(type) { this.listeners.delete(type); }
   setAttribute(name, value) { this.attributes.set(name, value); }
-  click() { this.listeners.get("click")?.({ currentTarget: this, preventDefault() {} }); }
+  closest(selector) {
+    return selector.split(",").some((value) => value.trim() === this.tagName.toLowerCase())
+      ? this
+      : null;
+  }
+  click(target = this) {
+    this.listeners.get("click")?.({
+      currentTarget: this,
+      target,
+      preventDefault() {},
+    });
+  }
   input() { this.listeners.get("input")?.({ currentTarget: this }); }
   change() { this.listeners.get("change")?.({ currentTarget: this }); }
 }
@@ -48,20 +60,19 @@ function memoryStorage(initial = {}, failingKey = null) {
 
 function createFixture(storage = memoryStorage()) {
   const elements = {
-    root: new FakeElement(),
-    canvas: null,
-    title: new FakeElement(),
-    text: new FakeElement(),
-    choices: new FakeElement(),
-    continueButton: new FakeElement(),
-    recordForm: new FakeElement(),
-    nickname: new FakeElement(),
-    message: new FakeElement(),
-    mbtiType: new FakeElement(),
+    root: new FakeElement("section"),
+    title: new FakeElement("h2"),
+    text: new FakeElement("p"),
+    choices: new FakeElement("div"),
+    continueButton: new FakeElement("button"),
+    recordForm: new FakeElement("form"),
+    nickname: new FakeElement("input"),
+    message: new FakeElement("textarea"),
+    mbtiType: new FakeElement("select"),
     nicknameError: new FakeElement(),
     messageError: new FakeElement(),
     mbtiTypeError: new FakeElement(),
-    submitButton: new FakeElement(),
+    submitButton: new FakeElement("button"),
     saveWarning: new FakeElement(),
     progress: new FakeElement(),
   };
@@ -71,32 +82,69 @@ function createFixture(storage = memoryStorage()) {
     characterId: "girl",
     elements,
     storage,
-    documentTarget: { createElement: () => new FakeElement() },
+    documentTarget: { createElement: (tagName) => new FakeElement(tagName) },
   });
   return { scene, elements, storage };
 }
 
 function reachRecord(fixture, choiceIndex = 1) {
-  fixture.elements.continueButton.click();
-  fixture.elements.continueButton.click();
+  for (let count = 0; count < 12 && fixture.elements.choices.children.length === 0; count += 1) {
+    fixture.elements.root.click(fixture.elements.text);
+  }
   fixture.elements.choices.children[choiceIndex].click();
-  fixture.elements.continueButton.click();
+  advanceToRecord(fixture);
 }
 
-test("雾谷按开场、选择、完整回应和记录顺序推进", () => {
+function advanceToRecord(fixture) {
+  for (let count = 0; count < 24 && fixture.elements.recordForm.hidden; count += 1) {
+    fixture.elements.root.click(fixture.elements.text);
+  }
+}
+
+test("雾谷旁白在当前地图上逐段点击推进", () => {
   const fixture = createFixture();
   fixture.scene.open({ complete() {} });
 
   assert.match(fixture.elements.text.textContent, /薄雾笼罩/);
-  fixture.elements.continueButton.click();
+  fixture.elements.root.click(fixture.elements.text);
   assert.match(fixture.elements.text.textContent, /年轻人，等等/);
-  fixture.elements.continueButton.click();
+  fixture.elements.root.click(fixture.elements.text);
+  assert.match(fixture.elements.text.textContent, /一位老人正坐在路边/);
+  fixture.elements.root.click(fixture.elements.text);
+  assert.match(fixture.elements.text.textContent, /第一次来到雾谷吧/);
+  fixture.elements.root.click(fixture.elements.text);
   assert.equal(fixture.elements.choices.children.length, 4);
   fixture.elements.choices.children[1].click();
-  assert.match(fixture.elements.text.textContent, /按照自己的节奏前进/);
-  fixture.elements.continueButton.click();
+  assert.match(fixture.elements.text.textContent, /你：谢谢，我想先看看/);
+  fixture.elements.root.click(fixture.elements.text);
+  assert.match(fixture.elements.text.textContent, /老人温和地点点头/);
+  advanceToRecord(fixture);
   assert.equal(fixture.elements.recordForm.hidden, false);
   assert.match(fixture.elements.text.textContent, /旅人的记录/);
+  fixture.scene.dispose();
+});
+
+test("选项和表单点击不会误推进剧情", () => {
+  const fixture = createFixture();
+  fixture.scene.open({ complete() {} });
+
+  for (let count = 0; count < 8 && fixture.elements.choices.children.length === 0; count += 1) {
+    fixture.elements.root.click(fixture.elements.text);
+  }
+  const choice = fixture.elements.choices.children[0];
+  fixture.elements.root.click(choice);
+  assert.equal(fixture.elements.choices.children.length, 4);
+
+  choice.click();
+  const response = fixture.elements.text.textContent;
+  fixture.elements.root.click(choice);
+  assert.equal(fixture.elements.text.textContent, response);
+
+  advanceToRecord(fixture);
+  const recordText = fixture.elements.text.textContent;
+  fixture.elements.root.click(fixture.elements.nickname);
+  assert.equal(fixture.elements.text.textContent, recordText);
+  assert.equal(fixture.elements.recordForm.hidden, false);
   fixture.scene.dispose();
 });
 
@@ -132,10 +180,14 @@ test("保存三项记录后生成画像，结语结束才返回地图", () => {
   assert.equal(profile.officialEvidence[0].analysis, "愿意主动建立联系并快速交换信息");
   assert.deepEqual(profile.scores.energy, { E: 70, I: 30 });
   assert.equal(progress.completed, true);
+  assert.match(fixture.elements.text.textContent, /老人合上册子/);
+  fixture.elements.root.click(fixture.elements.text);
+  fixture.elements.root.click(fixture.elements.text);
+  fixture.elements.root.click(fixture.elements.text);
   assert.match(fixture.elements.text.textContent, /欢迎来到雾谷/);
   assert.equal(completed, 0);
 
-  fixture.elements.continueButton.click();
+  fixture.elements.root.click(fixture.elements.text);
   assert.equal(completed, 1);
   assert.equal(fixture.elements.root.hidden, true);
   fixture.scene.dispose();
@@ -216,6 +268,6 @@ test("画像已保存但进度缺失时自动补齐完成状态", () => {
   assert.equal(repaired.choiceId, "B");
   assert.equal(repaired.draft.nickname, "小雾");
   assert.equal(fixture.elements.recordForm.hidden, true);
-  assert.match(fixture.elements.text.textContent, /欢迎来到雾谷/);
+  assert.match(fixture.elements.text.textContent, /老人合上册子/);
   fixture.scene.dispose();
 });

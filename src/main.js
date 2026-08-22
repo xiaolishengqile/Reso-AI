@@ -47,7 +47,6 @@ function startGame(characterId) {
       characterId,
       elements: {
         root: document.querySelector("#home-scene"),
-        canvas: document.querySelector("#home-scene-canvas"),
         title: document.querySelector("#home-stage-title"),
         text: document.querySelector("#home-story-text"),
         choices: document.querySelector("#home-choices"),
