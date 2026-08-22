@@ -20,6 +20,7 @@ class FakeElement {
     this.src = "";
     this.alt = "";
     this.currentTime = 0;
+    this.playbackRate = 1;
     this.attributes = new Map();
     this.listeners = new Map();
     this.playResult = playResult;
@@ -92,6 +93,7 @@ function createSceneFixture({
     video,
     image: new FakeElement(),
     panel: new FakeElement(),
+    mediaControls: new FakeElement(),
     title: new FakeElement(),
     text: new FakeElement(),
     choices: new FakeElement(),
@@ -99,6 +101,8 @@ function createSceneFixture({
     closeButton: new FakeElement(),
     startButton: new FakeElement(),
     playButton: new FakeElement(),
+    speedButton: new FakeElement(),
+    skipButton: new FakeElement(),
     saveWarning: new FakeElement(),
     progress: new FakeElement(),
   };
@@ -160,6 +164,50 @@ test("三段邀约视频全部播放完才显示问题", () => {
   assert.equal(fixture.elements.panel.hidden, false);
   assert.equal(fixture.elements.title.textContent, "周末邀约");
   assert.equal(fixture.elements.text.textContent, "这个周末，要不要一起去爬山？");
+  assert.equal(fixture.elements.choices.children.length, 3);
+  fixture.scene.dispose();
+});
+
+test("视频播放速度按一倍、一点五倍和两倍循环", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+  fixture.elements.startButton.click();
+
+  assert.equal(fixture.elements.mediaControls.hidden, false);
+  assert.equal(fixture.elements.speedButton.textContent, "1 倍");
+  assert.equal(fixture.elements.video.playbackRate, 1);
+
+  fixture.elements.speedButton.click();
+  assert.equal(fixture.elements.speedButton.textContent, "1.5 倍");
+  assert.equal(fixture.elements.video.playbackRate, 1.5);
+
+  fixture.elements.speedButton.click();
+  assert.equal(fixture.elements.speedButton.textContent, "2 倍");
+  assert.equal(fixture.elements.video.playbackRate, 2);
+
+  fixture.elements.speedButton.click();
+  assert.equal(fixture.elements.speedButton.textContent, "1 倍");
+  assert.equal(fixture.elements.video.playbackRate, 1);
+  fixture.scene.dispose();
+});
+
+test("跳过连续视频时依次进入下一片段，最后才显示问题", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+  fixture.elements.startButton.click();
+
+  fixture.elements.skipButton.click();
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-3.mp4");
+  assert.equal(fixture.elements.panel.hidden, true);
+
+  fixture.elements.skipButton.click();
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-4.mp4");
+  assert.equal(fixture.elements.panel.hidden, true);
+
+  fixture.elements.skipButton.click();
+  assert.equal(fixture.elements.panel.hidden, false);
+  assert.equal(fixture.elements.mediaControls.hidden, true);
+  assert.equal(fixture.elements.title.textContent, "周末邀约");
   assert.equal(fixture.elements.choices.children.length, 3);
   fixture.scene.dispose();
 });
@@ -275,6 +323,7 @@ test("缺少视频的回家消息用图片并立即显示问题", () => {
   assert.equal(fixture.elements.image.src, "./assets/mountain/home-message.png");
   assert.equal(fixture.elements.image.hidden, false);
   assert.equal(fixture.elements.panel.hidden, false);
+  assert.equal(fixture.elements.mediaControls.hidden, true);
   assert.equal(fixture.elements.title.textContent, "回家消息");
   assert.equal(fixture.elements.choices.children.length, 3);
   fixture.scene.dispose();

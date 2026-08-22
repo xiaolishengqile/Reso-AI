@@ -13,6 +13,9 @@ test("爬山剧情页面提供全屏媒体与底部问答节点", async () => {
     "mountain-scene-video",
     "mountain-scene-image",
     "mountain-scene-panel",
+    "mountain-media-controls",
+    "mountain-speed",
+    "mountain-skip",
     "mountain-start",
     "mountain-play",
   ]) {
