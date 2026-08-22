@@ -73,10 +73,11 @@ export function getMountainFeedbackText(stage, option) {
   return stage && option ? option.feedback : "";
 }
 
-function getProgressLabel(stage, answeredCount) {
-  if (stage.kind === "action") return "暴雨行动不会记录为画像证据";
-  if (stage.kind === "complete") return "七组画像选择已完成";
-  return `第 ${answeredCount + 1} / ${EVIDENCE_STAGE_COUNT} 组选择`;
+function getProgressLabel(stage, answeredCount, journeyMode) {
+  let label = `第 ${answeredCount + 1} / ${EVIDENCE_STAGE_COUNT} 组选择`;
+  if (stage.kind === "action") label = "暴雨行动不会记录为画像证据";
+  if (stage.kind === "complete") label = "七组画像选择已完成";
+  return journeyMode ? `${journeyMode} · ${label}` : label;
 }
 
 function setHidden(element, hidden) {
@@ -113,6 +114,7 @@ export function createMountainScene({
   let frameState = null;
   let activeWaypoint = null;
   let transition = null;
+  let journeyMode = null;
 
   function now() {
     return windowTarget?.performance?.now?.() ?? Date.now();
@@ -228,7 +230,11 @@ export function createMountainScene({
       [stage.narration, stage.prompt].filter(Boolean).join("\n"),
       characterId,
     );
-    elements.progress.textContent = getProgressLabel(stage, progress.answers.length);
+    elements.progress.textContent = getProgressLabel(
+      stage,
+      progress.answers.length,
+      journeyMode,
+    );
     elements.choices.replaceChildren?.();
     setHidden(elements.continueButton, stage.kind !== "complete");
     elements.continueButton.disabled = false;
@@ -340,6 +346,11 @@ export function createMountainScene({
     callbacks = nextCallbacks;
     completed = false;
     progress = loadMountainProgress(storage, characterId);
+    journeyMode = progress.completed
+      ? "重温旅程"
+      : progress.currentStageId !== "invitation" || progress.answers.length > 0
+        ? "继续上次旅程"
+        : null;
     if (progress.completed) {
       // 重新进入已完成剧情时保留首次正式证据，并从序幕开始重玩。
       progress = createMountainProgress(characterId, progress);

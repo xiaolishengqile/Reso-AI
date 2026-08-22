@@ -21,7 +21,8 @@
 .mountain-scene__panel {
   position: relative;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: repeat(6, auto);
+  align-content: start;
   gap: 0.8rem;
   width: min(38rem, calc(100% - 2rem));
   max-height: calc(100% - 2rem);
@@ -74,7 +75,7 @@
     position: absolute;
     inset: 1rem auto 1rem 1rem;
     box-sizing: border-box;
-    width: 43vw;
+    width: min(43vw, 46rem);
     margin: 0;
   }
 }

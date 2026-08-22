@@ -57,6 +57,20 @@ test("近景跟随在地图边缘不会露出空白", async () => {
   );
 });
 
+test("超宽屏近景不会把岛屿继续放大到裁出页面", async () => {
+  const camera = await cameraPromise;
+
+  const transform = camera.createFollowTransform(
+    2884,
+    1494,
+    MAP_SIZE.width,
+    MAP_SIZE.height,
+    { x: 1510, z: 1290 },
+  );
+
+  assert.equal(transform.scale, 0.82);
+});
+
 test("镜头会平滑接近目标而不会瞬间跳变", async () => {
   const camera = await cameraPromise;
   assert.equal(typeof camera.stepCamera, "function");

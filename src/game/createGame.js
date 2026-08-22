@@ -332,6 +332,32 @@ export function createGame({
     completeScene(scene);
   }
 
+  function openLocation(location) {
+    pointerTarget = null;
+    targetLocationId = null;
+    stalledSeconds = 0;
+    if (getLocationSceneType(location) === "external" && onEnterScene) {
+      activeExternalScene = location;
+      if (!tryOpenExternalScene(onEnterScene, location, {
+        complete: completeExternalScene,
+        close: closeExternalScene,
+      })) {
+        activeExternalScene = null;
+        setStatus(
+          location.openFailureMessage ?? "场景暂时无法恢复，请稍后重试。",
+          2600,
+        );
+      }
+      return;
+    }
+    sceneManager.open(location, {
+      canComplete: Boolean(
+        location.completionLabel
+          && unlockedOrder < location.unlocksOrder,
+      ),
+    });
+  }
+
   function onCanvasClick(event) {
     if (activeExternalScene) return;
     const point = eventToMap(event);
@@ -344,29 +370,7 @@ export function createGame({
       );
       setStatus(interaction.message, 1800);
       if (interaction.canEnter) {
-        pointerTarget = null;
-        targetLocationId = null;
-        stalledSeconds = 0;
-        if (getLocationSceneType(location) === "external" && onEnterScene) {
-          activeExternalScene = location;
-          if (!tryOpenExternalScene(onEnterScene, location, {
-            complete: completeExternalScene,
-            close: closeExternalScene,
-          })) {
-            activeExternalScene = null;
-            setStatus(
-              location.openFailureMessage ?? "场景暂时无法恢复，请稍后重试。",
-              2600,
-            );
-          }
-        } else {
-          sceneManager.open(location, {
-            canComplete: Boolean(
-              location.completionLabel
-                && unlockedOrder < location.unlocksOrder,
-            ),
-          });
-        }
+        openLocation(location);
       } else if (interaction.canApproach) {
         pointerTarget = location.approach;
         targetLocationId = location.id;
@@ -417,7 +421,10 @@ export function createGame({
         pointerTarget = null;
         targetLocationId = null;
         stalledSeconds = 0;
-        if (arrivedLocation) setStatus(`已抵达「${arrivedLocation.name}」附近`, 1400);
+        if (arrivedLocation) {
+          setStatus(`已抵达「${arrivedLocation.name}」，正在进入`, 1400);
+          openLocation(arrivedLocation);
+        }
       }
     }
 

@@ -143,6 +143,23 @@ test("打开剧情会恢复到保存的阶段并匹配异性同行者", () => {
 
   assert.equal(fixture.elements.title.textContent, "疲惫与抱怨");
   assert.match(fixture.elements.text.textContent, /她/);
+  assert.match(fixture.elements.progress.textContent, /继续上次旅程/);
+  fixture.scene.dispose();
+});
+
+test("已完成剧情重玩时明确显示为重温旅程", () => {
+  const completed = {
+    ...createMountainProgress("boy"),
+    completed: true,
+  };
+  const fixture = createSceneFixture(createMemoryStorage({
+    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(completed),
+  }));
+
+  fixture.scene.open({ complete() {}, close() {} });
+
+  assert.equal(fixture.elements.title.textContent, "周末邀约");
+  assert.match(fixture.elements.progress.textContent, /重温旅程/);
   fixture.scene.dispose();
 });
 
