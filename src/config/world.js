@@ -65,9 +65,9 @@ function futureIsland(unlockOrder, sceneBounds) {
   });
 }
 
-const HOME_BOUNDS = bounds(80, 140, 740, 580);
-const MOUNTAIN_BOUNDS = bounds(600, 560, 760, 590);
-const OFFICE_BOUNDS = bounds(1120, 1300, 760, 600);
+const HOME_BOUNDS = bounds(1750, 1580, 740, 580);
+const MOUNTAIN_BOUNDS = bounds(1080, 1050, 760, 590);
+const OFFICE_BOUNDS = bounds(80, 100, 760, 600);
 
 export const ISLANDS = Object.freeze([
   sceneIsland("home", 0, assetUrl("assets/islands/home.png"), HOME_BOUNDS),
@@ -86,13 +86,13 @@ export const ISLANDS = Object.freeze([
     OFFICE_BOUNDS,
     cloudCover(OFFICE_BOUNDS, 0.94),
   ),
-  futureIsland(3, bounds(1790, 1020, 620, 480)),
-  futureIsland(4, bounds(2210, 1490, 620, 480)),
-  futureIsland(5, bounds(2760, 520, 620, 480)),
-  futureIsland(6, bounds(3270, 870, 620, 480)),
-  futureIsland(7, bounds(3710, 335, 620, 450)),
-  futureIsland(8, bounds(4260, 1010, 620, 460)),
-  futureIsland(9, bounds(4630, 1415, 600, 470)),
+  futureIsland(3, bounds(1500, 110, 620, 480)),
+  futureIsland(4, bounds(2160, 380, 620, 480)),
+  futureIsland(5, bounds(2670, 900, 620, 480)),
+  futureIsland(6, bounds(3300, 1320, 620, 480)),
+  futureIsland(7, bounds(3890, 940, 620, 450)),
+  futureIsland(8, bounds(4320, 260, 620, 460)),
+  futureIsland(9, bounds(4650, 1010, 600, 470)),
 ]);
 
 function islandWalkEllipse(island) {
@@ -242,7 +242,7 @@ export const WALKABLE_AREAS = Object.freeze([
   ...BRIDGES.map((bridge) => bridgeArea(bridge)),
 ]);
 
-export const PLAYER_START = Object.freeze({ x: 500, z: 500 });
+export const PLAYER_START = Object.freeze({ x: 2130, z: 1880 });
 export const PLAYER_RADIUS = 15;
 export const PLAYER_SPEED = 145;
 
@@ -251,11 +251,11 @@ export const LOCATIONS = Object.freeze([
     id: "home",
     name: "家庭小屋",
     unlockOrder: 0,
-    x: 450,
-    z: 330,
+    x: 2120,
+    z: 1770,
     hitRadius: 130,
     interactionRadius: 235,
-    approach: Object.freeze({ x: 500, z: 500 }),
+    approach: Object.freeze({ x: 2130, z: 1880 }),
     accent: "#b77b56",
     description: "旅程从熟悉的家和院子开始。",
     sceneDescription: "这里是玩家的出生地和家庭场景，不需要解锁。",
@@ -265,11 +265,11 @@ export const LOCATIONS = Object.freeze([
     name: "爬山岛",
     unlockOrder: 1,
     unlocksOrder: 2,
-    x: 1030,
-    z: 800,
+    x: 1510,
+    z: 1290,
     hitRadius: 145,
     interactionRadius: 285,
-    approach: Object.freeze({ x: 1049, z: 966 }),
+    approach: Object.freeze({ x: 1380, z: 1280 }),
     accent: "#9b745c",
     description: "第一站：沿着山路走向云端。",
     sceneDescription: "走过绳桥就能开始爬山。完成这段旅程后，工作岛将会解锁。",
@@ -279,11 +279,11 @@ export const LOCATIONS = Object.freeze([
     id: "office",
     name: "工作岛",
     unlockOrder: 2,
-    x: 1540,
-    z: 1500,
+    x: 500,
+    z: 300,
     hitRadius: 135,
     interactionRadius: 305,
-    approach: Object.freeze({ x: 1420, z: 1485 }),
+    approach: Object.freeze({ x: 640, z: 450 }),
     accent: "#647f8a",
     description: "第二站：进入办公室，开始新的故事。",
     lockedDescription: "工作岛尚未解锁，请先完成爬山。",
@@ -292,7 +292,7 @@ export const LOCATIONS = Object.freeze([
 ]);
 
 export const OBSTACLES = Object.freeze([
-  Object.freeze({ x: 450, z: 330, radius: 88 }),
-  Object.freeze({ x: 1030, z: 800, radius: 90 }),
-  Object.freeze({ x: 1540, z: 1500, radius: 92 }),
+  Object.freeze({ x: 2120, z: 1770, radius: 88 }),
+  Object.freeze({ x: 1510, z: 1290, radius: 90 }),
+  Object.freeze({ x: 500, z: 300, radius: 92 }),
 ]);

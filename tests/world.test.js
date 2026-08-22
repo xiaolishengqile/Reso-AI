@@ -73,7 +73,7 @@ test("玩家出生在家庭岛且移动速度固定为舒适值", () => {
   assert.equal(world.PLAYER_SPEED, 145);
 });
 
-test("十座岛屿以不规则自然路线用九座相邻桥串联", () => {
+test("十座岛屿沿自然曲线用九座相邻桥串联", () => {
   const centers = world.ISLANDS.map(({ bounds }) => ({
     x: bounds.x + bounds.width / 2,
     z: bounds.z + bounds.height / 2,
@@ -85,11 +85,14 @@ test("十座岛屿以不规则自然路线用九座相邻桥串联", () => {
     assert.equal(bridge.fromIslandId, world.ISLANDS[index].id);
     assert.equal(bridge.toIslandId, world.ISLANDS[index + 1].id);
     assert.equal(bridge.requiredOrder, world.ISLANDS[index + 1].unlockOrder);
-    assert.ok(centers[index].x < centers[index + 1].x);
+    assert.ok(Math.hypot(
+      centers[index + 1].x - centers[index].x,
+      centers[index + 1].z - centers[index].z,
+    ) > 500);
   }
 });
 
-test("散点链路使用多次转向和不等步长避免形成固定字母", () => {
+test("岛链使用不等步长缓慢转向而不是规律折返", () => {
   const centers = world.ISLANDS.map(({ bounds }) => ({
     x: bounds.x + bounds.width / 2,
     z: bounds.z + bounds.height / 2,
@@ -100,15 +103,43 @@ test("散点链路使用多次转向和不等步长避免形成固定字母", ()
   const verticalSteps = centers.slice(1).map((center, index) => (
     center.z - centers[index].z
   ));
-  const verticalDirections = verticalSteps.map((step) => Math.sign(step));
+  const horizontalDirections = horizontalGaps.map((step) => Math.sign(step));
+  const verticalDirections = verticalSteps
+    .filter((step) => Math.abs(step) >= 150)
+    .map((step) => Math.sign(step));
   const directionChanges = verticalDirections.slice(1).filter(
     (direction, index) => direction !== verticalDirections[index],
   ).length;
 
+  assert.ok(horizontalDirections.includes(-1));
+  assert.ok(horizontalDirections.includes(1));
   assert.ok(Math.max(...horizontalGaps) - Math.min(...horizontalGaps) >= 150);
   assert.ok(Math.max(...verticalSteps.map(Math.abs))
     - Math.min(...verticalSteps.map(Math.abs)) >= 250);
-  assert.ok(directionChanges >= 5);
+  assert.ok(directionChanges >= 2);
+  assert.ok(directionChanges <= 4);
+});
+
+test("家庭岛从右下连接爬山岛入口并由左上通往工作岛", () => {
+  const [home, mountain, office] = world.ISLANDS;
+  const centerOf = ({ bounds }) => ({
+    x: bounds.x + bounds.width / 2,
+    z: bounds.z + bounds.height * 0.52,
+  });
+  const homeCenter = centerOf(home);
+  const mountainCenter = centerOf(mountain);
+  const officeCenter = centerOf(office);
+  const homeBridgeEntrance = world.BRIDGES[0].to;
+  const officeBridgeEntrance = world.BRIDGES[1].from;
+
+  assert.ok(homeCenter.x > mountainCenter.x);
+  assert.ok(homeCenter.z > mountainCenter.z);
+  assert.ok(officeCenter.x < mountainCenter.x);
+  assert.ok(officeCenter.z < mountainCenter.z);
+  assert.ok(homeBridgeEntrance.x > mountainCenter.x);
+  assert.ok(homeBridgeEntrance.z > mountainCenter.z);
+  assert.ok(officeBridgeEntrance.x < mountainCenter.x);
+  assert.ok(officeBridgeEntrance.z < mountainCenter.z);
 });
 
 test("爬山岛道路轴线与家庭到工作的桥梁方向一致", () => {
@@ -131,10 +162,14 @@ test("爬山岛道路轴线与家庭到工作的桥梁方向一致", () => {
       bridge.to.z - bridge.from.z,
       bridge.to.x - bridge.from.x,
     );
-    const angleDifference = Math.abs(Math.atan2(
+    const directedDifference = Math.abs(Math.atan2(
       Math.sin(pathAngle - bridgeAngle),
       Math.cos(pathAngle - bridgeAngle),
     ));
+    const angleDifference = Math.min(
+      directedDifference,
+      Math.PI - directedDifference,
+    );
     assert.ok(angleDifference < 0.2);
   }
 

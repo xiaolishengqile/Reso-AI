@@ -108,6 +108,54 @@ test("透明手绘云素材加载完成后会替代程序圆形云层", () => {
   assert.equal(ellipseCount, 0);
 });
 
+test("锁定岛屿云层不会遮挡已开放的家庭岛和爬山岛", () => {
+  const cloudImage = { complete: true, naturalWidth: 1664 };
+  const visibleIslands = ISLANDS.slice(0, 2);
+  const lockedIslands = ISLANDS.slice(2);
+  const assetBounds = visibleIslands.map((island) => {
+    const halfWidth = island.bounds.width / 2;
+    const halfHeight = island.bounds.height / 2;
+    const cosine = Math.cos(island.rotation ?? 0);
+    const sine = Math.sin(island.rotation ?? 0);
+    const radiusX = Math.abs(cosine) * halfWidth + Math.abs(sine) * halfHeight;
+    const radiusZ = Math.abs(sine) * halfWidth + Math.abs(cosine) * halfHeight;
+    const centerX = island.bounds.x + halfWidth;
+    const centerZ = island.bounds.z + halfHeight;
+    return {
+      id: island.id,
+      x: centerX - radiusX,
+      z: centerZ - radiusZ,
+      width: radiusX * 2,
+      height: radiusZ * 2,
+    };
+  });
+
+  for (const island of lockedIslands) {
+    let cloudBounds = null;
+    const context = {
+      globalAlpha: 1,
+      save() {},
+      restore() {},
+      drawImage(_image, x, z, width, height) {
+        cloudBounds = { x, z, width, height };
+      },
+    };
+    renderer.drawCloudCover(context, island, 0, cloudImage);
+
+    for (const visible of assetBounds) {
+      const overlaps = cloudBounds.x < visible.x + visible.width
+        && cloudBounds.x + cloudBounds.width > visible.x
+        && cloudBounds.z < visible.z + visible.height
+        && cloudBounds.z + cloudBounds.height > visible.z;
+      assert.equal(
+        overlaps,
+        false,
+        island.id + " 云层不应遮挡 " + visible.id,
+      );
+    }
+  }
+});
+
 test("爬山岛会围绕自身中心旋转使道路朝向前后桥梁", () => {
   const transforms = [];
   const draws = [];
