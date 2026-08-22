@@ -73,6 +73,15 @@ test("玩家出生在家庭岛且移动速度固定为舒适值", () => {
   assert.equal(world.PLAYER_SPEED, 145);
 });
 
+test("雾谷老人木椅位于主岛内且不与玩家出生点重叠", () => {
+  const elder = world.WORLD_DECORATIONS.find(({ id }) => id === "fog-valley-elder");
+  const home = world.ISLANDS.find(({ id }) => id === "home");
+
+  assert.ok(elder.x >= home.bounds.x && elder.x <= home.bounds.x + home.bounds.width);
+  assert.ok(elder.z >= home.bounds.z && elder.z <= home.bounds.z + home.bounds.height);
+  assert.ok(Math.hypot(elder.x - world.PLAYER_START.x, elder.z - world.PLAYER_START.z) > 100);
+});
+
 test("十座岛屿沿自然曲线用九座相邻桥串联", () => {
   const centers = world.ISLANDS.map(({ bounds }) => ({
     x: bounds.x + bounds.width / 2,

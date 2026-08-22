@@ -10,6 +10,7 @@ import {
   PLAYER_SPEED,
   PLAYER_START,
   WALKABLE_AREAS,
+  WORLD_DECORATIONS,
   WORLD_BOUNDS,
 } from "../config/world.js";
 import { drawCharacter } from "../entities/character.js";
@@ -19,6 +20,7 @@ import {
   drawIslandLayers,
   drawLocationGlow,
   drawTarget,
+  drawWorldDecorations,
   drawWorldBackdrop,
 } from "./mapRenderer.js";
 import {
@@ -88,7 +90,9 @@ export function getLocationInteraction(
 }
 
 export function getLocationSceneType(location) {
-  return location?.entryMode === "external" ? "external" : "dialog";
+  if (location?.entryMode === "external") return "external";
+  if (location?.entryMode === "confirmed-external") return "confirmed-external";
+  return "dialog";
 }
 
 export function resolveInitialUnlockedOrder(initialUnlockedOrder) {
@@ -332,22 +336,36 @@ export function createGame({
     completeScene(scene);
   }
 
+  function openExternalScene(location) {
+    if (!onEnterScene) return false;
+    activeExternalScene = location;
+    if (tryOpenExternalScene(onEnterScene, location, {
+      complete: completeExternalScene,
+      close: closeExternalScene,
+    })) return true;
+
+    activeExternalScene = null;
+    setStatus(
+      location.openFailureMessage ?? "场景暂时无法恢复，请稍后重试。",
+      2600,
+    );
+    return false;
+  }
+
   function openLocation(location) {
     pointerTarget = null;
     targetLocationId = null;
     stalledSeconds = 0;
-    if (getLocationSceneType(location) === "external" && onEnterScene) {
-      activeExternalScene = location;
-      if (!tryOpenExternalScene(onEnterScene, location, {
-        complete: completeExternalScene,
-        close: closeExternalScene,
-      })) {
-        activeExternalScene = null;
-        setStatus(
-          location.openFailureMessage ?? "场景暂时无法恢复，请稍后重试。",
-          2600,
-        );
-      }
+    const sceneType = getLocationSceneType(location);
+    if (sceneType === "external") {
+      openExternalScene(location);
+      return;
+    }
+    if (sceneType === "confirmed-external") {
+      sceneManager.open(location, {
+        primaryLabel: location.entryLabel,
+        onPrimary: () => openExternalScene(location),
+      });
       return;
     }
     sceneManager.open(location, {
@@ -500,6 +518,7 @@ export function createGame({
       elapsedSeconds,
       effectImages.get("cloud-cover"),
     );
+    drawWorldDecorations(context, WORLD_DECORATIONS, decorationImages);
     for (const location of locations) {
       if (isLocationUnlocked(location, unlockedOrder)) {
         drawLocationGlow(
@@ -569,6 +588,10 @@ export function createGame({
   const effectImages = createIslandImageStore(windowTarget, [
     { id: "cloud-cover", assetUrl: CLOUD_COVER_ASSET_URL },
   ]);
+  const decorationImages = createIslandImageStore(
+    windowTarget,
+    WORLD_DECORATIONS,
+  );
 
   return Object.freeze({
     start() {
@@ -580,6 +603,15 @@ export function createGame({
       previousTime = windowTarget.performance.now();
       frameId = windowTarget.requestAnimationFrame(tick);
     },
+    enterScene(scene) {
+      const registered = locations.find(({ id }) => id === scene?.id);
+      if (
+        !registered
+        || getLocationSceneType(registered) === "dialog"
+        || !isLocationUnlocked(registered, unlockedOrder)
+      ) return false;
+      return openExternalScene(registered);
+    },
     dispose() {
       windowTarget.cancelAnimationFrame(frameId);
       canvas.removeEventListener("pointermove", onPointerMove);
@@ -589,6 +621,7 @@ export function createGame({
       windowTarget.removeEventListener("resize", resize);
       islandImages.dispose();
       effectImages.dispose();
+      decorationImages.dispose();
       sceneManager.dispose();
       input.dispose();
     },

@@ -33,29 +33,32 @@ function createUi() {
     dialogTitle: element({ textContent: "" }),
     dialogLabel: element({ textContent: "" }),
     dialogDescription: element({ textContent: "" }),
-    completeButton: element({ textContent: "", hidden: true }),
+    primaryButton: element({ textContent: "", hidden: true }),
     closeButton: element(),
     accent,
   };
 }
 
-test("打开爬山场景时只由场景定义填充弹窗", async () => {
+test("打开爬山入口时显示明确的进入剧情按钮", async () => {
   const { managerModule, registry } = await loadSceneModules();
   const ui = createUi();
   const manager = managerModule.createSceneManager({ ui });
 
-  manager.open(registry.getScene("mountain"), { canComplete: true });
+  manager.open(registry.getScene("mountain"), {
+    primaryLabel: "进入爬山剧情",
+    onPrimary() {},
+  });
 
   assert.equal(ui.dialog.open, true);
   assert.equal(ui.dialogTitle.textContent, "爬山岛");
   assert.equal(ui.dialogLabel.textContent, "第 一 站 · 爬 山 场 景");
-  assert.match(ui.dialogDescription.textContent, /完成这段旅程后/);
-  assert.equal(ui.completeButton.hidden, false);
-  assert.equal(ui.completeButton.textContent, "完成爬山，解锁工作岛");
+  assert.match(ui.dialogDescription.textContent, /完整结束后/);
+  assert.equal(ui.primaryButton.hidden, false);
+  assert.equal(ui.primaryButton.textContent, "进入爬山剧情");
   assert.equal(ui.accent.get("--scene-accent"), "#9b745c");
 });
 
-test("场景管理器统一处理完成、关闭和事件清理", async () => {
+test("场景主按钮可以进入剧情而不会被误判为完成", async () => {
   const { managerModule, registry } = await loadSceneModules();
   const ui = createUi();
   const completed = [];
@@ -64,17 +67,28 @@ test("场景管理器统一处理完成、关闭和事件清理", async () => {
     onComplete: (scene) => completed.push(scene.id),
   });
 
-  manager.open(registry.getScene("mountain"), { canComplete: true });
-  ui.completeButton.dispatchEvent(new Event("click"));
-  assert.deepEqual(completed, ["mountain"]);
+  const entered = [];
+  manager.open(registry.getScene("mountain"), {
+    primaryLabel: "进入爬山剧情",
+    onPrimary: (scene) => entered.push(scene.id),
+  });
+  ui.primaryButton.dispatchEvent(new Event("click"));
+  assert.deepEqual(entered, ["mountain"]);
+  assert.deepEqual(completed, []);
   assert.equal(ui.dialog.open, false);
 
+  manager.open({ ...registry.getScene("office"), completionLabel: "完成工作" }, {
+    canComplete: true,
+  });
+  ui.primaryButton.dispatchEvent(new Event("click"));
+  assert.deepEqual(completed, ["office"]);
+
   manager.open(registry.getScene("home"));
-  assert.equal(ui.completeButton.hidden, true);
+  assert.equal(ui.primaryButton.hidden, true);
   ui.closeButton.dispatchEvent(new Event("click"));
   assert.equal(ui.dialog.open, false);
 
   manager.dispose();
-  ui.completeButton.dispatchEvent(new Event("click"));
-  assert.deepEqual(completed, ["mountain"]);
+  ui.primaryButton.dispatchEvent(new Event("click"));
+  assert.deepEqual(completed, ["office"]);
 });

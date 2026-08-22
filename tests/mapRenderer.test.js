@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ISLANDS } from "../src/config/world.js";
+import { ISLANDS, WORLD_DECORATIONS } from "../src/config/world.js";
 import * as renderer from "../src/game/mapRenderer.js";
 
 test("初始渲染会显示三张独立素材并用云层覆盖工作岛和未来岛", () => {
@@ -188,4 +188,47 @@ test("爬山岛会围绕自身中心旋转使道路朝向前后桥梁", () => {
     ["rotate", -0.72],
   ]);
   assert.deepEqual(draws, [[image, -380, -295, 760, 590]]);
+});
+
+test("雾谷入口声明老人木椅装饰", () => {
+  const elder = WORLD_DECORATIONS.find(({ id }) => id === "fog-valley-elder");
+  assert.equal(elder.sceneId, "home");
+  assert.match(elder.assetUrl, /elder-bench\.png$/);
+  assert.ok(elder.width > 0 && elder.height > 0);
+});
+
+test("老人素材未加载时仍绘制程序轮廓", () => {
+  const operations = [];
+  const context = new Proxy({}, {
+    get(_target, key) {
+      return (...args) => operations.push([key, ...args]);
+    },
+    set() { return true; },
+  });
+  const elder = WORLD_DECORATIONS.find(({ id }) => id === "fog-valley-elder");
+
+  renderer.drawWorldDecorations(context, [elder], { get() { return null; } });
+
+  assert.ok(operations.some(([name]) => name === "fillRect"));
+  assert.ok(operations.some(([name]) => name === "arc"));
+});
+
+test("老人素材加载完成后按地图锚点绘制透明图片", () => {
+  const draws = [];
+  const context = {
+    save() {}, restore() {},
+    drawImage(...args) { draws.push(args); },
+  };
+  const elder = WORLD_DECORATIONS.find(({ id }) => id === "fog-valley-elder");
+  const image = { complete: true, naturalWidth: 450 };
+
+  renderer.drawWorldDecorations(context, [elder], { get() { return image; } });
+
+  assert.deepEqual(draws, [[
+    image,
+    elder.x - elder.width / 2,
+    elder.z - elder.height,
+    elder.width,
+    elder.height,
+  ]]);
 });

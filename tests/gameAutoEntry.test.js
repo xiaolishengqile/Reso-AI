@@ -66,18 +66,31 @@ function createWindow() {
 }
 
 function createButton() {
-  return {
+  return Object.assign(new EventTarget(), {
     classList: { toggle() {} },
-    addEventListener() {},
-    removeEventListener() {},
     setAttribute() {},
+    hidden: true,
+    textContent: "",
+  });
+}
+
+function createDialog() {
+  return {
+    open: false,
+    style: { setProperty() {} },
+    showModal() { this.open = true; },
+    close() { this.open = false; },
+    setAttribute(name) { if (name === "open") this.open = true; },
+    removeAttribute(name) { if (name === "open") this.open = false; },
   };
 }
 
-test("点击远处爬山岛后会在抵达时自动进入剧情", () => {
+test("抵达爬山岛后先显示入口，确认后才进入剧情", () => {
   const canvas = createCanvas();
   const windowTarget = createWindow();
   const status = { textContent: "" };
+  const dialog = createDialog();
+  const primaryButton = createButton();
   let openedScene = null;
   const game = createGame({
     canvas,
@@ -87,6 +100,12 @@ test("点击远处爬山岛后会在抵达时自动进入剧情", () => {
       legendItems: [],
       status,
       overviewButton: createButton(),
+      dialog,
+      dialogTitle: { textContent: "" },
+      dialogLabel: { textContent: "" },
+      dialogDescription: { textContent: "" },
+      primaryButton,
+      closeButton: createButton(),
     },
     onEnterScene(scene) { openedScene = scene; },
   });
@@ -95,10 +114,15 @@ test("点击远处爬山岛后会在抵达时自动进入剧情", () => {
   // 初始全景中爬山岛地标的手工换算屏幕坐标。
   canvas.click(342, 443);
   assert.match(status.textContent, /正在前往「爬山岛」/);
-  for (let frame = 0; frame < 600 && !openedScene; frame += 1) {
+  for (let frame = 0; frame < 600 && !dialog.open; frame += 1) {
     windowTarget.step();
   }
 
+  assert.equal(openedScene, null);
+  assert.equal(dialog.open, true, status.textContent);
+  assert.equal(primaryButton.textContent, "进入爬山剧情");
+  primaryButton.dispatchEvent(new Event("click"));
   assert.equal(openedScene?.id, "mountain", status.textContent);
+  assert.equal(dialog.open, false);
   game.dispose();
 });

@@ -246,6 +246,50 @@ export function drawIslandLayers(
   }
 }
 
+function drawDecorationFallback(context, decoration) {
+  const { x, z, width, height } = decoration;
+  context.save();
+  context.translate(x, z);
+  context.fillStyle = "#6b4d38";
+  context.fillRect(-width * 0.42, -height * 0.48, width * 0.84, height * 0.12);
+  context.fillRect(-width * 0.35, -height * 0.42, width * 0.08, height * 0.4);
+  context.fillRect(width * 0.27, -height * 0.42, width * 0.08, height * 0.4);
+  context.fillStyle = "#514942";
+  context.beginPath();
+  context.ellipse(0, -height * 0.42, width * 0.25, height * 0.26, 0, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = "#dec3a6";
+  context.beginPath();
+  context.arc(0, -height * 0.73, width * 0.17, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = "#f0eadc";
+  context.beginPath();
+  context.arc(0, -height * 0.8, width * 0.17, Math.PI, Math.PI * 2);
+  context.fill();
+  context.fillStyle = "#b17b4e";
+  context.fillRect(width * 0.12, -height * 0.48, width * 0.16, height * 0.12);
+  context.restore();
+}
+
+export function drawWorldDecorations(context, decorations, imageStore) {
+  for (const decoration of decorations) {
+    const image = imageStore?.get?.(decoration.id);
+    if (image?.complete && image.naturalWidth > 0) {
+      context.save();
+      context.drawImage(
+        image,
+        decoration.x - decoration.width / 2,
+        decoration.z - decoration.height,
+        decoration.width,
+        decoration.height,
+      );
+      context.restore();
+    } else {
+      drawDecorationFallback(context, decoration);
+    }
+  }
+}
+
 export function drawLocationGlow(context, location, active, elapsedSeconds) {
   const pulse = 1 + Math.sin(elapsedSeconds * 2.2 + location.x) * 0.06;
   const radius = location.hitRadius * 0.44 * pulse;
