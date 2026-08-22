@@ -19,6 +19,18 @@ const WAYPOINTS = Object.freeze({
   apartment: { player: [0.41, 0.72], companion: [0.65, 0.72], action: "standing", scale: 1.15 },
 });
 
+const WAYPOINT_ALIASES = Object.freeze({
+  "cafe-table": "cafe",
+  "lower-cliff": "lower",
+  "mid-cliff": "middle",
+  "storm-cliff": "cliff",
+  "cave-entrance": "cliff",
+  cave: "shelter",
+  "apartment-window": "apartment",
+  "apartment-mirror": "apartment",
+  "apartment-door": "apartment",
+});
+
 function clampSize(value) {
   return Number.isFinite(value) && value > 0 ? value : 1;
 }
@@ -29,7 +41,7 @@ export function getMountainScenePalette(scene, weather = "clear") {
 }
 
 export function getMountainActorLayout(waypoint, width, height) {
-  const point = WAYPOINTS[waypoint] ?? WAYPOINTS.foot;
+  const point = WAYPOINTS[WAYPOINT_ALIASES[waypoint] ?? waypoint] ?? WAYPOINTS.foot;
   const canvasWidth = clampSize(width);
   const canvasHeight = clampSize(height);
   const player = {
@@ -212,7 +224,12 @@ export function drawMountainFrame(context, frame = {}) {
   const scene = frame.scene ?? "mountain";
   const weather = frame.weather ?? "clear";
   const palette = getMountainScenePalette(scene, weather);
-  const layout = getMountainActorLayout(frame.waypoint ?? scene, width, height);
+  const defaultLayout = getMountainActorLayout(frame.waypoint ?? scene, width, height);
+  const layout = {
+    ...defaultLayout,
+    player: { ...defaultLayout.player, action: frame.playerAction ?? defaultLayout.player.action },
+    companion: { ...defaultLayout.companion, action: frame.companionAction ?? defaultLayout.companion.action },
+  };
   const elapsedSeconds = frame.elapsedSeconds ?? 0;
 
   if (scene === "cafe") drawCafe(context, width, height, palette);
@@ -221,5 +238,7 @@ export function drawMountainFrame(context, frame = {}) {
   if (scene === "mountain" && weather === "storm") drawStorm(context, width, height, elapsedSeconds);
 
   drawActor(context, frame.playerCharacterId ?? "boy", layout.player, layout.camera.scale, elapsedSeconds);
-  drawActor(context, frame.companionCharacterId ?? "girl", layout.companion, layout.camera.scale, elapsedSeconds + 0.3);
+  if (frame.showCompanion !== false) {
+    drawActor(context, frame.companionCharacterId ?? "girl", layout.companion, layout.camera.scale, elapsedSeconds + 0.3);
+  }
 }

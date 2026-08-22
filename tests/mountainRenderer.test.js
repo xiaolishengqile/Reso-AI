@@ -28,6 +28,28 @@ test("角色按画布比例从山脚移动到山腰和山顶", () => {
   assert.equal(summit.camera.scale, 0.82);
 });
 
+test("剧情路标会映射到对应场景位置而非回退山脚", () => {
+  const aliases = [
+    ["cafe-table", "cafe"],
+    ["lower-cliff", "lower"],
+    ["mid-cliff", "middle"],
+    ["storm-cliff", "cliff"],
+    ["cave-entrance", "cliff"],
+    ["cave", "shelter"],
+    ["apartment-window", "apartment"],
+    ["apartment-mirror", "apartment"],
+    ["apartment-door", "apartment"],
+  ];
+
+  for (const [alias, waypoint] of aliases) {
+    assert.deepEqual(
+      getMountainActorLayout(alias, 1200, 800),
+      getMountainActorLayout(waypoint, 1200, 800),
+      alias + " 应使用 " + waypoint + " 的角色位置",
+    );
+  }
+});
+
 test("路线覆盖剧情所需的角色动作", () => {
   assert.equal(getMountainActorLayout("lower", 900, 600).player.action, "walking");
   assert.equal(getMountainActorLayout("middle", 900, 600).player.action, "tired");
@@ -40,13 +62,15 @@ test("路线覆盖剧情所需的角色动作", () => {
 
 function createFakeContext() {
   const operations = [];
+  const transforms = [];
   const context = {
     operations,
+    transforms,
     save() { operations.push("save"); },
     restore() { operations.push("restore"); },
-    translate() { operations.push("translate"); },
+    translate(x, y) { operations.push("translate"); transforms.push(["translate", x, y]); },
     scale() { operations.push("scale"); },
-    rotate() { operations.push("rotate"); },
+    rotate(angle) { operations.push("rotate"); transforms.push(["rotate", angle]); },
     beginPath() { operations.push("beginPath"); },
     closePath() { operations.push("closePath"); },
     moveTo() { operations.push("moveTo"); },
@@ -91,4 +115,26 @@ test("三种空间都会产生完整帧绘制操作", () => {
     assert.ok(context.operations.includes("ellipse"), scene + " 应绘制场景或角色");
     assert.ok(context.operations.length > 30, scene + " 应绘制完整场景");
   }
+});
+
+test("帧数据可覆盖动作并隐藏公寓同行者", () => {
+  const context = createFakeContext();
+  drawMountainFrame(context, {
+    scene: "apartment",
+    waypoint: "apartment-door",
+    width: 1200,
+    height: 800,
+    playerCharacterId: "boy",
+    companionCharacterId: "girl",
+    playerAction: "tired",
+    companionAction: "hugging",
+    showCompanion: false,
+  });
+
+  assert.ok(context.transforms.some(([kind, angle]) => kind === "rotate" && angle === 0.15));
+  assert.ok(context.transforms.some(([kind, x, y]) => kind === "translate" && x === 492 && y === 576));
+  assert.equal(
+    context.transforms.some(([kind, x, y]) => kind === "translate" && x === 780 && y === 576),
+    false,
+  );
 });
