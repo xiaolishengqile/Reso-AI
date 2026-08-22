@@ -3,16 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#071721" />
+    <meta name="theme-color" content="#dcebf0" />
     <meta
       name="description"
-      content="九十厘米乘六十厘米的横版项目海报预览"
+      content="Reso 九十厘米乘六十厘米横版海报构图预览"
     />
-    <title>项目海报预览</title>
+    <title>Reso 海报预览</title>
     <style>
       :root {
-        color-scheme: dark;
-        background: #02080d;
+        color-scheme: light;
+        --ink: #584137;
+        --ink-soft: #735f53;
+        --rose: #a96d62;
+        --gold: #b88a4b;
       }
 
       * {
@@ -33,34 +36,171 @@
         padding: clamp(10px, 2vw, 28px);
         overflow-x: hidden;
         background:
-          radial-gradient(circle at 50% 18%, #17394a 0, transparent 42%),
-          #02080d;
+          radial-gradient(circle at 50% 20%, #edf5f6 0, transparent 48%),
+          #b9d4dc;
       }
 
       .poster-shell {
+        position: relative;
         width: min(calc(100vw - 20px), calc((100svh - 20px) * 1.5));
         aspect-ratio: 3 / 2;
         overflow: hidden;
-        background: #071721;
-        border-radius: 6px;
-        box-shadow: 0 24px 80px rgb(0 0 0 / 55%);
+        isolation: isolate;
+        background: linear-gradient(#dcebf0, #f5e5c8 76%, #d1bd94);
+        border-radius: 7px;
+        box-shadow: 0 24px 80px rgb(68 74 71 / 35%);
       }
 
-      object {
+      .world-art {
+        position: absolute;
+        inset: 0;
+        z-index: -3;
         display: block;
         width: 100%;
         height: 100%;
-        border: 0;
+        object-fit: cover;
+      }
+
+      .poster-shell::before {
+        position: absolute;
+        inset: 0;
+        z-index: -2;
+        background:
+          radial-gradient(
+            ellipse at 23% 15%,
+            rgb(249 245 229 / 84%) 0,
+            rgb(245 241 225 / 48%) 24%,
+            transparent 52%
+          ),
+          linear-gradient(180deg, rgb(255 255 255 / 8%), transparent 44%);
+        content: "";
+        pointer-events: none;
+      }
+
+      .poster-shell::after {
+        position: absolute;
+        inset: 2.1%;
+        z-index: 2;
+        border: 1px solid rgb(116 86 59 / 24%);
+        border-radius: 22px;
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 28%);
+        content: "";
+        pointer-events: none;
+      }
+
+      .copy {
+        position: absolute;
+        top: 6.8%;
+        left: 6.6%;
+        width: 48%;
+        color: var(--ink);
+        text-shadow: 0 2px 0 rgb(255 255 255 / 42%);
+      }
+
+      .brand {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", "Songti SC", serif;
+        font-size: clamp(58px, 8.4vw, 136px);
+        font-weight: 600;
+        line-height: 0.88;
+        letter-spacing: -0.055em;
+      }
+
+      .brand::after {
+        display: inline-block;
+        width: 0.12em;
+        height: 0.12em;
+        margin-left: 0.07em;
+        background: var(--rose);
+        border-radius: 50%;
+        box-shadow: 0.17em -0.1em 0 -0.025em #c99a6d;
+        content: "";
+        vertical-align: 0.12em;
+      }
+
+      .descriptor {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin: clamp(13px, 1.4vw, 24px) 0 0;
+        color: var(--gold);
+        font-family: "STKaiti", "KaiTi", "Songti SC", serif;
+        font-size: clamp(13px, 1.25vw, 20px);
+        font-weight: 700;
+        letter-spacing: 0.32em;
+      }
+
+      .descriptor::before {
+        width: clamp(32px, 4.2vw, 66px);
+        height: 1px;
+        background: currentColor;
+        content: "";
+      }
+
+      .headline {
+        margin: clamp(18px, 2.1vw, 34px) 0 0;
+        font-family: "STKaiti", "KaiTi", "Songti SC", serif;
+        font-size: clamp(24px, 3.15vw, 50px);
+        font-weight: 700;
+        line-height: 1.24;
+        letter-spacing: 0.08em;
+      }
+
+      .headline strong {
+        color: var(--rose);
+        font-weight: inherit;
+      }
+
+      .promise {
+        max-width: 31em;
+        margin: clamp(12px, 1.4vw, 23px) 0 0;
+        color: var(--ink-soft);
+        font-family: "STKaiti", "KaiTi", "Songti SC", serif;
+        font-size: clamp(12px, 1.32vw, 21px);
+        font-weight: 600;
+        line-height: 1.7;
+        letter-spacing: 0.06em;
+      }
+
+      .journey-line {
+        position: absolute;
+        right: 5.8%;
+        bottom: 5.6%;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+        color: rgb(84 62 50 / 78%);
+        font-family: "STKaiti", "KaiTi", "Songti SC", serif;
+        font-size: clamp(11px, 1.06vw, 17px);
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-shadow: 0 1px 0 rgb(255 255 255 / 46%);
+      }
+
+      .journey-line::before {
+        width: 26px;
+        height: 1px;
+        background: currentColor;
+        content: "";
       }
 
       .fallback {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
         display: grid;
         place-items: center;
-        height: 100%;
-        padding: 32px;
-        color: #f4e9d0;
-        font: 600 18px/1.6 system-ui, sans-serif;
+        margin: 0;
+        padding: 8%;
+        color: var(--ink);
+        background: linear-gradient(#dcebf0, #f5e5c8);
+        font: 700 clamp(16px, 2vw, 30px) / 1.6 "STKaiti", "KaiTi", serif;
         text-align: center;
+      }
+
+      .fallback[hidden] {
+        display: none;
       }
 
       @page {
@@ -87,10 +227,46 @@
     </style>
   </head>
   <body>
-    <main class="poster-shell" aria-label="项目海报">
-      <object data="poster.svg" type="image/svg+xml">
-        <p class="fallback">海报暂时无法显示，请确认矢量文件与预览页位于同一目录。</p>
-      </object>
+    <main id="poster" class="poster-shell" aria-label="Reso 项目海报">
+      <img
+        id="world-art"
+        class="world-art"
+        src="assets/reso-world.png"
+        alt="两条人生道路穿过浮岛云海，最终汇聚成一座桥，一对情侣牵手走向远方"
+      />
+
+      <section class="copy" aria-label="项目亮点">
+        <h1 class="brand">Reso</h1>
+        <p class="descriptor">人生底色 · 关系匹配</p>
+        <p class="headline">
+          不问你想成为谁<br />
+          只看你<strong>自然怎么选</strong>
+        </p>
+        <p class="promise">
+          在沉浸式人生情境中，理解真实底色，<br />
+          让真实的选择遇见真正合适的人。
+        </p>
+      </section>
+
+      <p class="journey-line">从不同人生出发，走向真正契合的相遇</p>
+      <p id="fallback" class="fallback" hidden>
+        海报插画暂时无法显示，请确认图片资源与预览页位于同一目录。
+      </p>
     </main>
+
+    <script>
+      (function () {
+        var image = document.getElementById("world-art");
+        var fallback = document.getElementById("fallback");
+
+        function showFallback() {
+          image.hidden = true;
+          fallback.hidden = false;
+        }
+
+        image.addEventListener("error", showFallback);
+        if (image.complete && image.naturalWidth === 0) showFallback();
+      })();
+    </script>
   </body>
 </html>
