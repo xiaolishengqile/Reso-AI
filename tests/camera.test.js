@@ -14,20 +14,20 @@ test("静止概览会完整容纳整张地图", async () => {
   assert.ok(transform.offsetY > 0);
 });
 
-test("移动近景会放大两倍并把角色置于视口中央", async () => {
+test("横向地图的近景保持人物可读尺度并置于视口中央", async () => {
   const camera = await cameraPromise;
   assert.equal(typeof camera.createFollowTransform, "function");
 
   const transform = camera.createFollowTransform(
     1200,
     800,
-    3400,
+    5300,
     2200,
-    { x: 1700, z: 1100 },
+    { x: 2650, z: 1100 },
   );
 
-  assert.ok(Math.abs(transform.scale - (1200 / 3400) * 2) < 0.000001);
-  assert.ok(Math.abs(1700 * transform.scale + transform.offsetX - 600) < 0.001);
+  assert.ok(Math.abs(transform.scale - Math.min(1200 / 1700, 800 / 1100)) < 0.000001);
+  assert.ok(Math.abs(2650 * transform.scale + transform.offsetX - 600) < 0.001);
   assert.ok(Math.abs(1100 * transform.scale + transform.offsetY - 400) < 0.001);
 });
 
@@ -39,12 +39,12 @@ test("近景跟随在地图边缘不会露出空白", async () => {
     camera.createFollowTransform(
       1200,
       800,
-      3400,
+      5300,
       2200,
       { x: 0, z: 0 },
     ),
     {
-      scale: (1200 / 3400) * 2,
+      scale: Math.min(1200 / 1700, 800 / 1100),
       offsetX: 0,
       offsetY: 0,
     },

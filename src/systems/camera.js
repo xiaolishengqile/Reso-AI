@@ -1,4 +1,4 @@
-const FOLLOW_ZOOM = 2;
+const FOLLOW_WORLD_SIZE = Object.freeze({ width: 1700, height: 1100 });
 const CAMERA_RESPONSE = 8;
 const INTRO_OVERVIEW_SECONDS = 1.2;
 
@@ -33,7 +33,13 @@ export function createFollowTransform(
     mapWidth,
     mapHeight,
   );
-  const scale = overview.scale * FOLLOW_ZOOM;
+  const scale = Math.max(
+    overview.scale,
+    Math.min(
+      viewWidth / FOLLOW_WORLD_SIZE.width,
+      viewHeight / FOLLOW_WORLD_SIZE.height,
+    ),
+  );
   return {
     scale,
     offsetX: clamp(

@@ -72,3 +72,44 @@ test("玩家出生在家庭岛且移动速度固定为舒适值", () => {
   );
   assert.equal(world.PLAYER_SPEED, 145);
 });
+
+test("十座岛屿按双谷折线排列并用九座相邻桥串联", () => {
+  const centers = world.ISLANDS.map(({ bounds }) => ({
+    x: bounds.x + bounds.width / 2,
+    z: bounds.z + bounds.height / 2,
+  }));
+
+  assert.equal(world.BRIDGES.length, world.ISLANDS.length - 1);
+  for (let index = 0; index < world.BRIDGES.length; index += 1) {
+    const bridge = world.BRIDGES[index];
+    assert.equal(bridge.fromIslandId, world.ISLANDS[index].id);
+    assert.equal(bridge.toIslandId, world.ISLANDS[index + 1].id);
+    assert.equal(bridge.requiredOrder, world.ISLANDS[index + 1].unlockOrder);
+    assert.ok(centers[index].x < centers[index + 1].x);
+  }
+
+  const heights = centers.map(({ z }) => z);
+  assert.ok(heights[0] < heights[1] && heights[1] < heights[2]);
+  assert.ok(heights[2] > heights[3] && heights[3] > heights[4]);
+  assert.ok(heights[4] > heights[5]);
+  assert.ok(heights[5] < heights[6] && heights[6] < heights[7]);
+  assert.ok(heights[7] > heights[8] && heights[8] > heights[9]);
+});
+
+test("双转折链路使用不等间距和不同谷深避免机械对称", () => {
+  const centers = world.ISLANDS.map(({ bounds }) => ({
+    x: bounds.x + bounds.width / 2,
+    z: bounds.z + bounds.height / 2,
+  }));
+  const horizontalGaps = centers.slice(1).map((center, index) => (
+    center.x - centers[index].x
+  ));
+  const firstDescent = centers[2].z - centers[0].z;
+  const secondDescent = centers[7].z - centers[5].z;
+  const firstAscent = centers[2].z - centers[5].z;
+  const secondAscent = centers[7].z - centers[9].z;
+
+  assert.ok(Math.max(...horizontalGaps) - Math.min(...horizontalGaps) >= 80);
+  assert.ok(Math.abs(firstDescent - secondDescent) >= 200);
+  assert.ok(Math.abs(firstAscent - secondAscent) >= 200);
+});

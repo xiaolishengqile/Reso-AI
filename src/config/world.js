@@ -1,4 +1,4 @@
-export const MAP_SIZE = Object.freeze({ width: 3400, height: 2200 });
+export const MAP_SIZE = Object.freeze({ width: 5300, height: 2200 });
 
 export const WORLD_BOUNDS = Object.freeze({
   minX: 0,
@@ -57,9 +57,9 @@ function futureIsland(unlockOrder, sceneBounds) {
   });
 }
 
-const HOME_BOUNDS = bounds(1080, 900, 740, 580);
-const MOUNTAIN_BOUNDS = bounds(390, 390, 760, 590);
-const OFFICE_BOUNDS = bounds(1270, 190, 760, 600);
+const HOME_BOUNDS = bounds(80, 140, 740, 580);
+const MOUNTAIN_BOUNDS = bounds(600, 560, 760, 590);
+const OFFICE_BOUNDS = bounds(1120, 1300, 760, 600);
 
 export const ISLANDS = Object.freeze([
   sceneIsland("home", 0, assetUrl("assets/islands/home.png"), HOME_BOUNDS),
@@ -76,31 +76,58 @@ export const ISLANDS = Object.freeze([
     OFFICE_BOUNDS,
     cloudCover(OFFICE_BOUNDS, 0.94),
   ),
-  futureIsland(3, bounds(2070, 130, 620, 480)),
-  futureIsland(4, bounds(2730, 560, 620, 480)),
-  futureIsland(5, bounds(2500, 1240, 620, 480)),
-  futureIsland(6, bounds(1970, 1650, 620, 450)),
-  futureIsland(7, bounds(1240, 1700, 620, 440)),
-  futureIsland(8, bounds(430, 1530, 620, 460)),
-  futureIsland(9, bounds(0, 940, 600, 470)),
+  futureIsland(3, bounds(1690, 1060, 620, 480)),
+  futureIsland(4, bounds(2200, 690, 620, 480)),
+  futureIsland(5, bounds(2760, 340, 620, 480)),
+  futureIsland(6, bounds(3260, 520, 620, 480)),
+  futureIsland(7, bounds(3710, 1145, 620, 450)),
+  futureIsland(8, bounds(4190, 940, 620, 460)),
+  futureIsland(9, bounds(4630, 415, 600, 470)),
 ]);
 
-export const BRIDGES = Object.freeze([
-  Object.freeze({
-    id: "home-mountain",
-    from: Object.freeze({ x: 1240, z: 1060 }),
-    to: Object.freeze({ x: 1030, z: 820 }),
+function islandWalkEllipse(island) {
+  return Object.freeze({
+    x: island.bounds.x + island.bounds.width / 2,
+    z: island.bounds.z + island.bounds.height * 0.52,
+    radiusX: island.bounds.width * 0.43,
+    radiusZ: island.bounds.height * 0.37,
+  });
+}
+
+function ellipseEdgePoint(ellipse, toward) {
+  const dx = toward.x - ellipse.x;
+  const dz = toward.z - ellipse.z;
+  const length = Math.hypot(dx, dz);
+  const direction = { x: dx / length, z: dz / length };
+  const distance = 1 / Math.sqrt(
+    direction.x ** 2 / ellipse.radiusX ** 2
+      + direction.z ** 2 / ellipse.radiusZ ** 2,
+  );
+  return Object.freeze({
+    x: ellipse.x + direction.x * distance,
+    z: ellipse.z + direction.z * distance,
+  });
+}
+
+function bridgeBetween(fromIsland, toIsland) {
+  const fromEllipse = islandWalkEllipse(fromIsland);
+  const toEllipse = islandWalkEllipse(toIsland);
+  return Object.freeze({
+    id: fromIsland.id + "-" + toIsland.id,
+    fromIslandId: fromIsland.id,
+    toIslandId: toIsland.id,
+    from: ellipseEdgePoint(fromEllipse, toEllipse),
+    to: ellipseEdgePoint(toEllipse, fromEllipse),
     width: 110,
-    requiredOrder: 1,
-  }),
-  Object.freeze({
-    id: "mountain-office",
-    from: Object.freeze({ x: 1080, z: 725 }),
-    to: Object.freeze({ x: 1380, z: 620 }),
-    width: 110,
-    requiredOrder: 2,
-  }),
-]);
+    requiredOrder: toIsland.unlockOrder,
+  });
+}
+
+export const BRIDGES = Object.freeze(
+  ISLANDS.slice(0, -1).map((island, index) => (
+    bridgeBetween(island, ISLANDS[index + 1])
+  )),
+);
 
 function gateAcrossBridge(bridge, depth = 70) {
   const dx = bridge.to.x - bridge.from.x;
@@ -135,9 +162,11 @@ function gateAcrossBridge(bridge, depth = 70) {
   });
 }
 
-export const LOCKED_GATES = Object.freeze([
-  gateAcrossBridge(BRIDGES.find(({ id }) => id === "mountain-office")),
-]);
+export const LOCKED_GATES = Object.freeze(
+  BRIDGES
+    .filter(({ requiredOrder }) => requiredOrder >= 2)
+    .map((bridge) => gateAcrossBridge(bridge)),
+);
 
 function ellipseArea(centerX, centerZ, radiusX, radiusZ, segments = 16) {
   return freezeArea(Array.from({ length: segments }, (_, index) => {
@@ -174,13 +203,19 @@ function bridgeArea(bridge, overlap = 24) {
 }
 
 export const WALKABLE_AREAS = Object.freeze([
-  ellipseArea(1450, 1180, 330, 230),
-  ellipseArea(780, 700, 310, 225),
-  ellipseArea(1650, 520, 310, 210),
+  ...ISLANDS.map((island) => {
+    const ellipse = islandWalkEllipse(island);
+    return ellipseArea(
+      ellipse.x,
+      ellipse.z,
+      ellipse.radiusX,
+      ellipse.radiusZ,
+    );
+  }),
   ...BRIDGES.map((bridge) => bridgeArea(bridge)),
 ]);
 
-export const PLAYER_START = Object.freeze({ x: 1450, z: 1300 });
+export const PLAYER_START = Object.freeze({ x: 500, z: 500 });
 export const PLAYER_RADIUS = 15;
 export const PLAYER_SPEED = 145;
 
@@ -189,11 +224,11 @@ export const LOCATIONS = Object.freeze([
     id: "home",
     name: "家庭小屋",
     unlockOrder: 0,
-    x: 1450,
-    z: 1115,
+    x: 450,
+    z: 330,
     hitRadius: 130,
     interactionRadius: 235,
-    approach: Object.freeze({ x: 1450, z: 1300 }),
+    approach: Object.freeze({ x: 500, z: 500 }),
     accent: "#b77b56",
     description: "旅程从熟悉的家和院子开始。",
     sceneDescription: "这里是玩家的出生地和家庭场景，不需要解锁。",
@@ -203,11 +238,11 @@ export const LOCATIONS = Object.freeze([
     name: "爬山岛",
     unlockOrder: 1,
     unlocksOrder: 2,
-    x: 760,
-    z: 650,
+    x: 1030,
+    z: 800,
     hitRadius: 145,
     interactionRadius: 285,
-    approach: Object.freeze({ x: 980, z: 760 }),
+    approach: Object.freeze({ x: 1049, z: 966 }),
     accent: "#9b745c",
     description: "第一站：沿着山路走向云端。",
     sceneDescription: "走过绳桥就能开始爬山。完成这段旅程后，工作岛将会解锁。",
@@ -217,11 +252,11 @@ export const LOCATIONS = Object.freeze([
     id: "office",
     name: "工作岛",
     unlockOrder: 2,
-    x: 1690,
-    z: 475,
+    x: 1540,
+    z: 1500,
     hitRadius: 135,
     interactionRadius: 305,
-    approach: Object.freeze({ x: 1435, z: 600 }),
+    approach: Object.freeze({ x: 1420, z: 1485 }),
     accent: "#647f8a",
     description: "第二站：进入办公室，开始新的故事。",
     lockedDescription: "工作岛尚未解锁，请先完成爬山。",
@@ -230,7 +265,7 @@ export const LOCATIONS = Object.freeze([
 ]);
 
 export const OBSTACLES = Object.freeze([
-  Object.freeze({ x: 1450, z: 1115, radius: 88 }),
-  Object.freeze({ x: 760, z: 650, radius: 110 }),
-  Object.freeze({ x: 1690, z: 475, radius: 92 }),
+  Object.freeze({ x: 450, z: 330, radius: 88 }),
+  Object.freeze({ x: 1030, z: 800, radius: 90 }),
+  Object.freeze({ x: 1540, z: 1500, radius: 92 }),
 ]);
