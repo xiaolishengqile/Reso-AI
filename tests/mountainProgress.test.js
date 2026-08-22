@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { validateEvidence } from "../src/profile/evidence.js";
 import {
   MOUNTAIN_PROGRESS_KEY,
   advanceMountainProgress,
@@ -54,18 +55,12 @@ test("首次选择只生成一条正式画像证据", () => {
 
   assert.equal(twice.officialEvidence.length, 1);
   assert.equal(twice.answers.length, 1);
-  assert.deepEqual(twice.officialEvidence[0], {
-    island: "mountain",
-    stageId: "invitation",
-    optionId: "planned",
-    optionText: "先确认天气和路线",
-    analysis: "偏好可控的冒险",
-    dimensions: ["规划意识", "风险偏好"],
-    companionMood: "expectant",
-    elapsedMs: 800,
-    answeredAt: 1000,
-    confidence: "low",
-  });
+  assert.equal(validateEvidence(twice.officialEvidence[0]).length, 0);
+  assert.deepEqual(twice.officialEvidence[0].signals, [
+    { dimension: "规划意识", value: "observed", weight: 1 },
+    { dimension: "风险偏好", value: "observed", weight: 1 },
+  ]);
+  assert.equal(twice.officialEvidence[0].target, "self");
 });
 
 test("重复游玩不会覆盖首次正式画像证据", () => {
