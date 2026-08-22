@@ -112,23 +112,41 @@ test("散点链路使用多次转向和不等步长避免形成固定字母", ()
 });
 
 test("爬山岛道路轴线与家庭到工作的桥梁方向一致", () => {
-  const [home, mountain, office] = world.ISLANDS;
-  const center = ({ bounds }) => ({
-    x: bounds.x + bounds.width / 2,
-    z: bounds.z + bounds.height / 2,
-  });
-  const homeCenter = center(home);
-  const officeCenter = center(office);
-  const routeAngle = Math.atan2(
-    officeCenter.z - homeCenter.z,
-    officeCenter.x - homeCenter.x,
-  );
+  const mountain = world.ISLANDS[1];
+  const adjacentBridges = world.BRIDGES.slice(0, 2);
   const pathAngle = Math.atan2(
     mountain.bounds.height * 0.57,
     mountain.bounds.width * 0.21,
   ) + mountain.rotation;
+  const center = {
+    x: mountain.bounds.x + mountain.bounds.width / 2,
+    z: mountain.bounds.z + mountain.bounds.height * 0.52,
+  };
+  const cosine = Math.cos(mountain.rotation);
+  const sine = Math.sin(mountain.rotation);
+  const mountainEndpoints = [adjacentBridges[0].to, adjacentBridges[1].from];
 
-  assert.ok(Math.abs(pathAngle - routeAngle) < 0.12);
+  for (const bridge of adjacentBridges) {
+    const bridgeAngle = Math.atan2(
+      bridge.to.z - bridge.from.z,
+      bridge.to.x - bridge.from.x,
+    );
+    const angleDifference = Math.abs(Math.atan2(
+      Math.sin(pathAngle - bridgeAngle),
+      Math.cos(pathAngle - bridgeAngle),
+    ));
+    assert.ok(angleDifference < 0.2);
+  }
+
+  for (const endpoint of mountainEndpoints) {
+    const dx = endpoint.x - center.x;
+    const dz = endpoint.z - center.z;
+    const localX = dx * cosine + dz * sine;
+    const localZ = -dx * sine + dz * cosine;
+    const ellipseDistance = localX ** 2 / (mountain.bounds.width * 0.43) ** 2
+      + localZ ** 2 / (mountain.bounds.height * 0.37) ** 2;
+    assert.ok(Math.abs(ellipseDistance - 1) < 0.000001);
+  }
 });
 
 test("八座后续门禁与待解锁桥梁逐一对应", () => {
