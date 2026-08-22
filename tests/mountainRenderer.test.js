@@ -4,6 +4,7 @@ import {
   drawMountainFrame,
   getMountainActorLayout,
   getMountainScenePalette,
+  getMountainTransitionLayout,
 } from "../src/scenes/mountain/mountainRenderer.js";
 
 test("咖啡馆、大山和公寓使用不同场景色板", () => {
@@ -45,6 +46,34 @@ test("宽屏全部剧情路标的可见角色都位于左侧面板右边", () =>
       assert.ok(layout.companion.x > 540, waypoint + " 的同行者不应被左侧面板遮挡");
     }
   }
+});
+
+test("山脚到山腰的过渡会线性移动角色与镜头", () => {
+  const halfway = getMountainTransitionLayout("foot", "middle", 0.5, 1200, 800);
+
+  assert.deepEqual(halfway.player, {
+    x: 714,
+    y: 528,
+    direction: { x: 1, z: 0 },
+    action: "walking",
+  });
+  assert.deepEqual(halfway.companion, {
+    x: 786,
+    y: 496,
+    direction: { x: -1, z: 0 },
+    action: "walking",
+  });
+  assert.equal(halfway.camera.scale, 1.05);
+});
+
+test("过渡进度会夹紧并在结束时恢复目标动作", () => {
+  const start = getMountainTransitionLayout("foot", "middle", -1, 1200, 800);
+  const complete = getMountainTransitionLayout("foot", "middle", 2, 1200, 800);
+  const target = getMountainActorLayout("middle", 1200, 800);
+
+  assert.equal(start.player.x, 660);
+  assert.equal(start.player.action, "walking");
+  assert.deepEqual(complete, target);
 });
 
 test("剧情路标会映射到对应场景位置而非回退山脚", () => {
@@ -156,6 +185,21 @@ test("帧数据可覆盖动作并隐藏公寓同行者", () => {
     context.transforms.some(([kind, x, y]) => kind === "translate" && Math.round(x) === 780 && y === 576),
     false,
   );
+});
+
+test("绘制帧会使用阶段间的过渡位置", () => {
+  const context = createFakeContext();
+  drawMountainFrame(context, {
+    scene: "mountain",
+    fromWaypoint: "foot",
+    waypoint: "middle",
+    transitionProgress: 0.5,
+    width: 1200,
+    height: 800,
+    showCompanion: false,
+  });
+
+  assert.deepEqual(context.transforms[0], ["translate", 714, 528]);
 });
 
 test("动作先固定在路标，再在局部坐标执行姿态变换", () => {

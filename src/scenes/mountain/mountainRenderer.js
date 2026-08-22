@@ -63,6 +63,36 @@ export function getMountainActorLayout(waypoint, width, height) {
   };
 }
 
+function clampProgress(progress) {
+  if (!Number.isFinite(progress)) return 0;
+  return Math.min(1, Math.max(0, progress));
+}
+
+function interpolateActor(fromActor, toActor, progress) {
+  const action = toActor.action === "climbing" ? "climbing" : "walking";
+  return {
+    x: fromActor.x + (toActor.x - fromActor.x) * progress,
+    y: fromActor.y + (toActor.y - fromActor.y) * progress,
+    direction: toActor.direction,
+    action,
+  };
+}
+
+export function getMountainTransitionLayout(fromWaypoint, toWaypoint, progress, width, height) {
+  const from = getMountainActorLayout(fromWaypoint, width, height);
+  const target = getMountainActorLayout(toWaypoint, width, height);
+  const ratio = clampProgress(progress);
+  if (ratio === 1) return target;
+
+  return {
+    player: interpolateActor(from.player, target.player, ratio),
+    companion: interpolateActor(from.companion, target.companion, ratio),
+    camera: {
+      scale: from.camera.scale + (target.camera.scale - from.camera.scale) * ratio,
+    },
+  };
+}
+
 function fillBackdrop(context, width, height, palette) {
   const gradient = context.createLinearGradient(0, 0, 0, height);
   gradient.addColorStop(0, palette.sky);
@@ -226,7 +256,10 @@ export function drawMountainFrame(context, frame = {}) {
   const scene = frame.scene ?? "mountain";
   const weather = frame.weather ?? "clear";
   const palette = getMountainScenePalette(scene, weather);
-  const defaultLayout = getMountainActorLayout(frame.waypoint ?? scene, width, height);
+  const waypoint = frame.waypoint ?? scene;
+  const defaultLayout = frame.fromWaypoint
+    ? getMountainTransitionLayout(frame.fromWaypoint, waypoint, frame.transitionProgress ?? 0, width, height)
+    : getMountainActorLayout(waypoint, width, height);
   const layout = {
     ...defaultLayout,
     player: { ...defaultLayout.player, action: frame.playerAction ?? defaultLayout.player.action },
