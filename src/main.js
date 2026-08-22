@@ -53,7 +53,7 @@ function startGame(characterId) {
         dialogLabel: document.querySelector("#dialog-label"),
         dialogTitle: document.querySelector("#dialog-title"),
         dialogDescription: document.querySelector("#dialog-description"),
-        completeButton: document.querySelector("#dialog-complete"),
+        primaryButton: document.querySelector("#dialog-primary"),
         closeButton: document.querySelector("#dialog-close"),
         overviewButton: document.querySelector("#overview-button"),
       },

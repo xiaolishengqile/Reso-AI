@@ -28,7 +28,7 @@ test("地图地点会由各自场景模块补充业务信息", async () => {
       { id: "office", name: "工作岛", x: 50, z: 60 },
     ],
   );
-  assert.equal(locations[1].completionLabel, "完成爬山，解锁工作岛");
+  assert.equal(locations[1].entryLabel, "进入爬山剧情");
   assert.equal(mapLocations[0].name, undefined);
   assert.equal(Object.isFrozen(locations), true);
   assert.equal(Object.isFrozen(locations[0]), true);
@@ -80,7 +80,8 @@ test("地图配置只保存空间与解锁顺序而不承载场景业务", async
   assert.equal(mountainLocation.completionLabel, undefined);
   assert.equal(mountainLocation.unlocksOrder, undefined);
   assert.equal(mountainScene.name, "爬山岛");
-  assert.equal(mountainScene.entryMode, "external");
+  assert.equal(mountainScene.entryMode, "confirmed-external");
+  assert.equal(mountainScene.entryLabel, "进入爬山剧情");
   assert.equal(mountainScene.unlocksOrder, 2);
   assert.equal(mountainScene.replayCompletionMessage, "爬山剧情已重温完成。");
 });

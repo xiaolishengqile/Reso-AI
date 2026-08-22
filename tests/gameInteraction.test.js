@@ -2,8 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as game from "../src/game/createGame.js";
 
-test("爬山地点交给独立剧情，家庭和工作地点保留入口面板", () => {
+test("场景类型区分直接剧情、确认后剧情和普通入口面板", () => {
   assert.equal(game.getLocationSceneType({ entryMode: "external" }), "external");
+  assert.equal(
+    game.getLocationSceneType({ entryMode: "confirmed-external" }),
+    "confirmed-external",
+  );
   assert.equal(game.getLocationSceneType({ id: "home" }), "dialog");
   assert.equal(game.getLocationSceneType({ id: "office" }), "dialog");
 });
