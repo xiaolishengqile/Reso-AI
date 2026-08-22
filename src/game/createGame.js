@@ -84,6 +84,30 @@ export function getLocationSceneType(location) {
   return location?.id === "mountain" ? "mountain-story" : "dialog";
 }
 
+export function resolveInitialUnlockedOrder(initialUnlockedOrder) {
+  const maximumOrder = Math.max(
+    INITIAL_UNLOCK_ORDER,
+    ...LOCATIONS.map(({ unlocksOrder }) => unlocksOrder ?? INITIAL_UNLOCK_ORDER),
+  );
+  const requestedOrder = Number.isInteger(initialUnlockedOrder)
+    ? initialUnlockedOrder
+    : INITIAL_UNLOCK_ORDER;
+  return Math.min(maximumOrder, Math.max(INITIAL_UNLOCK_ORDER, requestedOrder));
+}
+
+export function resolveLocationCompletion(unlockedOrder, location) {
+  const nextOrder = advanceUnlockOrder(unlockedOrder, location);
+  const isMountainReplay = location?.id === "mountain"
+    && nextOrder === unlockedOrder
+    && unlockedOrder >= location.unlocksOrder;
+  return {
+    unlockedOrder: nextOrder,
+    message: isMountainReplay
+      ? "爬山剧情已重温完成。"
+      : "爬山已完成，通往工作岛的桥已解锁。",
+  };
+}
+
 export function findLocationAtPoint(point, locations) {
   return locations
     .map((location) => ({
@@ -138,6 +162,7 @@ export function createGame({
   ui,
   characterId,
   onEnterMountain = null,
+  initialUnlockedOrder = INITIAL_UNLOCK_ORDER,
   windowTarget = window,
 }) {
   const context = canvas.getContext("2d");
@@ -159,7 +184,7 @@ export function createGame({
   let hoveredLocation = null;
   let nearbyLocation = null;
   let activeLocation = null;
-  let unlockedOrder = INITIAL_UNLOCK_ORDER;
+  let unlockedOrder = resolveInitialUnlockedOrder(initialUnlockedOrder);
   let backgroundFailed = false;
   let failedAssetName = null;
   let stalledSeconds = 0;
@@ -356,13 +381,15 @@ export function createGame({
 
   function completeLocation() {
     if (!activeLocation) return;
-    const nextOrder = advanceUnlockOrder(unlockedOrder, activeLocation);
-    if (nextOrder === unlockedOrder) return;
-    unlockedOrder = nextOrder;
-    updateLegend();
-    showLocationCard(hoveredLocation);
+    const completion = resolveLocationCompletion(unlockedOrder, activeLocation);
+    const changed = completion.unlockedOrder !== unlockedOrder;
+    unlockedOrder = completion.unlockedOrder;
+    if (changed) {
+      updateLegend();
+      showLocationCard(hoveredLocation);
+    }
     closeDialog();
-    setStatus("爬山已完成，通往工作岛的桥已解锁。", 2600);
+    setStatus(completion.message, 2600);
   }
 
   function resize() {

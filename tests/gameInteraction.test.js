@@ -8,6 +8,22 @@ test("爬山地点交给独立剧情，家庭和工作地点保留入口面板",
   assert.equal(game.getLocationSceneType({ id: "office" }), "dialog");
 });
 
+test("地图初始解锁顺序默认安全回退，并接受已完成爬山的恢复值", () => {
+  assert.equal(game.resolveInitialUnlockedOrder(), 1);
+  assert.equal(game.resolveInitialUnlockedOrder(2), 2);
+  assert.equal(game.resolveInitialUnlockedOrder(0), 1);
+});
+
+test("重温已完成的爬山剧情仍会得到完成状态", () => {
+  assert.deepEqual(
+    game.resolveLocationCompletion(2, { id: "mountain", unlocksOrder: 2 }),
+    {
+      unlockedOrder: 2,
+      message: "爬山剧情已重温完成。",
+    },
+  );
+});
+
 test("只有点击地点与玩家附近地点相同时才允许进入", () => {
   const mountain = { id: "mountain", name: "爬山岛" };
   const office = { id: "office", name: "工作岛" };
