@@ -6,11 +6,14 @@ import {
   WALKABLE_POLYGON,
   WORLD_BOUNDS,
 } from "../config/world.js";
+import { drawCharacter } from "../entities/character.js";
 import { createInput } from "../systems/createInput.js";
 import {
   createCoverTransform,
   directionToTarget,
   findNearbyLocation,
+  getStallDuration,
+  isCircleInPolygon,
   isPointInPolygon,
   moveActor,
   screenToMap,
@@ -43,6 +46,15 @@ export function findLocationAtPoint(point, locations) {
     }))
     .filter(({ location, distance }) => distance <= location.hitRadius)
     .sort((left, right) => left.distance - right.distance)[0]?.location ?? null;
+}
+
+export function getExplorationStatus({ backgroundFailed, nearbyLocation }) {
+  if (backgroundFailed) {
+    return "手绘地图底图加载失败，请刷新页面重试。";
+  }
+  return nearbyLocation
+    ? `已抵达「${nearbyLocation.name}」附近 · 点击地标进入`
+    : "沿着道路探索，寻找三个发光地点";
 }
 
 function drawLocationGlow(context, location, active, elapsedSeconds) {
@@ -79,62 +91,10 @@ function drawTarget(context, target, elapsedSeconds) {
   context.restore();
 }
 
-function drawPlayer(context, player, direction, elapsedSeconds, moving) {
-  const sway = moving ? Math.sin(elapsedSeconds * 11) * 2 : 0;
-  const side = direction.x < -0.2 ? -1 : direction.x > 0.2 ? 1 : 0;
-
-  context.save();
-  context.translate(Math.round(player.x), Math.round(player.z));
-  context.fillStyle = "rgba(65, 54, 43, 0.22)";
-  context.beginPath();
-  context.ellipse(0, 4, 16, 6, 0, 0, Math.PI * 2);
-  context.fill();
-
-  context.strokeStyle = "#58463d";
-  context.lineWidth = 3;
-  context.lineCap = "round";
-  context.beginPath();
-  context.moveTo(-5, -3);
-  context.lineTo(-7 - sway, 8);
-  context.moveTo(5, -3);
-  context.lineTo(7 + sway, 8);
-  context.stroke();
-
-  context.fillStyle = "#426b78";
-  context.strokeStyle = "#4f413a";
-  context.lineWidth = 2;
-  context.beginPath();
-  context.moveTo(-12, -28);
-  context.quadraticCurveTo(0, -35, 12, -28);
-  context.lineTo(9, 0);
-  context.quadraticCurveTo(0, 7, -9, 0);
-  context.closePath();
-  context.fill();
-  context.stroke();
-
-  context.fillStyle = "#edcfaa";
-  context.beginPath();
-  context.arc(side * 2, -36, 8, 0, Math.PI * 2);
-  context.fill();
-  context.stroke();
-
-  context.fillStyle = "#c49b59";
-  context.beginPath();
-  context.ellipse(0, -42, 17, 6, -0.08 * side, 0, Math.PI * 2);
-  context.fill();
-  context.stroke();
-  context.beginPath();
-  context.moveTo(-8, -44);
-  context.quadraticCurveTo(0, -61, 9, -44);
-  context.closePath();
-  context.fill();
-  context.stroke();
-  context.restore();
-}
-
 export function createGame({
   canvas,
   ui,
+  characterId,
   windowTarget = window,
   imageUrl = "/assets/world-map-painted.jpg",
 }) {
@@ -152,6 +112,8 @@ export function createGame({
   let targetLocationId = null;
   let hoveredLocation = null;
   let nearbyLocation = null;
+  let backgroundFailed = false;
+  let stalledSeconds = 0;
   let lastDirection = { x: 0, z: 1 };
   let statusLockedUntil = 0;
   let previousTime = 0;
@@ -217,10 +179,12 @@ export function createGame({
       if (interaction.canEnter) {
         pointerTarget = null;
         targetLocationId = null;
+        stalledSeconds = 0;
         openLocationDialog(location);
       } else {
         pointerTarget = location.approach;
         targetLocationId = location.id;
+        stalledSeconds = 0;
       }
       return;
     }
@@ -228,6 +192,7 @@ export function createGame({
     if (isPointInPolygon(point, WALKABLE_POLYGON)) {
       pointerTarget = point;
       targetLocationId = null;
+      stalledSeconds = 0;
       setStatus("沿着地图前往标记位置", 900);
     } else {
       setStatus("那里是云海，旅人无法抵达。", 1300);
@@ -243,8 +208,9 @@ export function createGame({
   }
 
   function resize() {
-    width = Math.max(1, windowTarget.innerWidth ?? canvas.clientWidth);
-    height = Math.max(1, windowTarget.innerHeight ?? canvas.clientHeight);
+    const rect = canvas.getBoundingClientRect();
+    width = Math.max(1, rect.width || canvas.clientWidth || windowTarget.innerWidth);
+    height = Math.max(1, rect.height || canvas.clientHeight || windowTarget.innerHeight);
     pixelRatio = Math.min(windowTarget.devicePixelRatio ?? 1, 2);
     canvas.width = Math.round(width * pixelRatio);
     canvas.height = Math.round(height * pixelRatio);
@@ -256,6 +222,7 @@ export function createGame({
     if (direction.x !== 0 || direction.z !== 0) {
       pointerTarget = null;
       targetLocationId = null;
+      stalledSeconds = 0;
     } else if (pointerTarget) {
       const targetDirection = directionToTarget(player, pointerTarget, 8);
       direction = targetDirection;
@@ -265,6 +232,7 @@ export function createGame({
         );
         pointerTarget = null;
         targetLocationId = null;
+        stalledSeconds = 0;
         if (arrivedLocation) setStatus(`已抵达「${arrivedLocation.name}」附近`, 1400);
       }
     }
@@ -272,6 +240,7 @@ export function createGame({
     const moving = direction.x !== 0 || direction.z !== 0;
     if (moving) {
       lastDirection = direction;
+      const previousPosition = { x: player.x, z: player.z };
       const next = moveActor({
         position: player,
         direction,
@@ -280,19 +249,32 @@ export function createGame({
         radius: PLAYER_RADIUS,
         bounds: WORLD_BOUNDS,
         obstacles: OBSTACLES,
-        isWalkable: (point) => isPointInPolygon(point, WALKABLE_POLYGON),
+        isWalkable: (point) => (
+          isCircleInPolygon(point, PLAYER_RADIUS, WALKABLE_POLYGON)
+        ),
       });
       player.x = next.x;
       player.z = next.z;
+
+      if (pointerTarget) {
+        stalledSeconds = getStallDuration(
+          previousPosition,
+          next,
+          stalledSeconds,
+          deltaSeconds,
+        );
+        if (stalledSeconds >= 0.35) {
+          pointerTarget = null;
+          targetLocationId = null;
+          stalledSeconds = 0;
+          setStatus("前方道路不通，请换个位置。", 1600);
+        }
+      }
     }
 
     nearbyLocation = findNearbyLocation(player, LOCATIONS);
     if (windowTarget.performance.now() >= statusLockedUntil) {
-      setStatus(
-        nearbyLocation
-          ? `已抵达「${nearbyLocation.name}」附近 · 点击地标进入`
-          : "沿着道路探索，寻找三个发光地点",
-      );
+      setStatus(getExplorationStatus({ backgroundFailed, nearbyLocation }));
     }
     return moving;
   }
@@ -324,7 +306,13 @@ export function createGame({
       );
     }
     drawTarget(context, pointerTarget, elapsedSeconds);
-    drawPlayer(context, player, lastDirection, elapsedSeconds, moving);
+    drawCharacter(context, {
+      characterId,
+      position: player,
+      direction: lastDirection,
+      elapsedSeconds,
+      moving,
+    });
     context.restore();
   }
 
@@ -341,7 +329,11 @@ export function createGame({
   canvas.addEventListener("click", onCanvasClick);
   ui.closeButton?.addEventListener("click", closeDialog);
   windowTarget.addEventListener("resize", resize);
-  background.addEventListener("error", () => setStatus("手绘地图底图加载失败。"));
+  const onBackgroundError = () => {
+    backgroundFailed = true;
+    setStatus(getExplorationStatus({ backgroundFailed, nearbyLocation }));
+  };
+  background.addEventListener("error", onBackgroundError);
   background.src = imageUrl;
 
   return Object.freeze({
@@ -359,6 +351,7 @@ export function createGame({
       canvas.removeEventListener("click", onCanvasClick);
       ui.closeButton?.removeEventListener("click", closeDialog);
       windowTarget.removeEventListener("resize", resize);
+      background.removeEventListener("error", onBackgroundError);
       input.dispose();
     },
   });

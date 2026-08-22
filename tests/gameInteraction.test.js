@@ -23,3 +23,13 @@ test("只命中鼠标范围内最近的地标", () => {
   );
   assert.equal(game.findLocationAtPoint({ x: 180, z: 100 }, locations), null);
 });
+
+test("底图加载失败时错误提示优先且持久显示", () => {
+  assert.equal(
+    game.getExplorationStatus({
+      backgroundFailed: true,
+      nearbyLocation: { name: "云脊山" },
+    }),
+    "手绘地图底图加载失败，请刷新页面重试。",
+  );
+});

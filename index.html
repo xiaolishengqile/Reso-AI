@@ -48,6 +48,25 @@
         沿着道路探索，寻找三个发光地点
       </section>
 
+      <dialog id="character-dialog" class="character-dialog" aria-labelledby="character-title">
+        <span class="character-dialog__eyebrow">旅程开始之前</span>
+        <h2 id="character-title">选择你的旅人</h2>
+        <p>角色会根据行走方向显示正面、侧面和背面。</p>
+        <div class="character-options">
+          <button type="button" class="character-option" data-character="boy">
+            <canvas width="112" height="132" aria-hidden="true"></canvas>
+            <strong>男生</strong>
+            <small>蓬松短发 · 圆框眼镜</small>
+          </button>
+          <button type="button" class="character-option" data-character="girl">
+            <canvas width="112" height="132" aria-hidden="true"></canvas>
+            <strong>女生</strong>
+            <small>柔软长发 · 圆框眼镜</small>
+          </button>
+        </div>
+        <small class="character-dialog__hint">点击角色即可进入地图</small>
+      </dialog>
+
       <dialog id="scene-dialog" class="scene-dialog">
         <div class="scene-dialog__ornament" aria-hidden="true">✦</div>
         <span class="scene-dialog__label">独 立 场 景</span>

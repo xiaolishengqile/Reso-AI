@@ -50,6 +50,32 @@ export function isPointInPolygon(point, polygon) {
   return inside;
 }
 
+export function isCircleInPolygon(point, radius, polygon) {
+  if (!isPointInPolygon(point, polygon)) return false;
+  for (let index = 0; index < 8; index += 1) {
+    const angle = (index * Math.PI) / 4;
+    const edge = {
+      x: point.x + Math.cos(angle) * radius,
+      z: point.z + Math.sin(angle) * radius,
+    };
+    if (!isPointInPolygon(edge, polygon)) return false;
+  }
+  return true;
+}
+
+export function getStallDuration(
+  previousPosition,
+  nextPosition,
+  currentDuration,
+  deltaSeconds,
+) {
+  const displacement = Math.hypot(
+    nextPosition.x - previousPosition.x,
+    nextPosition.z - previousPosition.z,
+  );
+  return displacement < 0.01 ? currentDuration + deltaSeconds : 0;
+}
+
 function collides(position, radius, obstacles) {
   return obstacles.some((obstacle) => (
     Math.hypot(position.x - obstacle.x, position.z - obstacle.z)
@@ -59,6 +85,10 @@ function collides(position, radius, obstacles) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function canOccupy(position, radius, obstacles, isWalkable) {
+  return !collides(position, radius, obstacles) && isWalkable?.(position) !== false;
 }
 
 export function moveActor({
@@ -86,10 +116,15 @@ export function moveActor({
     ),
   };
 
-  return collides(candidate, radius, obstacles) ||
-    isWalkable?.(candidate) === false
-    ? { x: position.x, z: position.z }
-    : candidate;
+  if (canOccupy(candidate, radius, obstacles, isWalkable)) return candidate;
+
+  const slideX = { x: candidate.x, z: position.z };
+  if (canOccupy(slideX, radius, obstacles, isWalkable)) return slideX;
+
+  const slideZ = { x: position.x, z: candidate.z };
+  return canOccupy(slideZ, radius, obstacles, isWalkable)
+    ? slideZ
+    : { x: position.x, z: position.z };
 }
 
 export function distanceToLocation(position, location) {

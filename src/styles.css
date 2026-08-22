@@ -34,7 +34,8 @@ kbd {
   isolation: isolate;
   background:
     radial-gradient(circle at 48% 38%, rgba(237, 251, 247, 0.95) 0 12%, transparent 48%),
-    linear-gradient(160deg, #c4e8ef 0%, #a7d9e8 48%, #86c4da 100%);
+    linear-gradient(160deg, rgba(196, 232, 239, 0.2), rgba(134, 196, 218, 0.2)),
+    url("/assets/world-map-painted.jpg") center / cover no-repeat;
 }
 
 .app-shell::before,
@@ -312,6 +313,97 @@ kbd {
   font-size: 14px;
   letter-spacing: 0.05em;
   backdrop-filter: blur(8px);
+}
+
+.character-dialog {
+  width: min(590px, calc(100vw - 48px));
+  padding: 28px 34px 25px;
+  border: 2px solid #79594a;
+  border-radius: 30px 34px 24px 27px;
+  color: #543d34;
+  background:
+    repeating-linear-gradient(3deg, transparent 0 8px, rgba(104, 75, 56, 0.045) 9px),
+    #fff6dc;
+  box-shadow: 9px 12px 0 rgba(80, 59, 48, 0.17), 0 30px 80px rgba(34, 50, 50, 0.38);
+  text-align: center;
+}
+
+.character-dialog::backdrop {
+  background: rgba(79, 105, 105, 0.58);
+  backdrop-filter: blur(7px);
+}
+
+.character-dialog__eyebrow {
+  color: #92705e;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+}
+
+.character-dialog h2 {
+  margin: 5px 0 4px;
+  font-size: 31px;
+  letter-spacing: 0.09em;
+}
+
+.character-dialog > p {
+  margin: 0 0 17px;
+  color: #806657;
+  font-size: 14px;
+}
+
+.character-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.character-option {
+  display: grid;
+  min-width: 0;
+  padding: 8px 12px 13px;
+  place-items: center;
+  border: 1.5px solid rgba(104, 75, 60, 0.52);
+  border-radius: 20px 24px 18px 22px;
+  color: #594239;
+  background: rgba(255, 252, 239, 0.74);
+  box-shadow: 0 4px 0 rgba(99, 72, 58, 0.14);
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.character-option:hover,
+.character-option:focus-visible {
+  transform: translateY(-3px) rotate(-0.4deg);
+  outline: 3px solid rgba(111, 142, 117, 0.35);
+  background: #fffdf4;
+  box-shadow: 0 7px 0 rgba(99, 72, 58, 0.14);
+}
+
+.character-option:nth-child(2):hover,
+.character-option:nth-child(2):focus-visible {
+  transform: translateY(-3px) rotate(0.4deg);
+}
+
+.character-option canvas {
+  width: 112px;
+  height: 132px;
+}
+
+.character-option strong {
+  font-size: 21px;
+  letter-spacing: 0.08em;
+}
+
+.character-option small {
+  margin-top: 3px;
+  color: #8b6d5e;
+  font-size: 12px;
+}
+
+.character-dialog__hint {
+  display: block;
+  margin-top: 15px;
+  color: #947869;
 }
 
 .scene-dialog {
