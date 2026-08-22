@@ -230,9 +230,10 @@ export function createMountainScene({
   }
 
   function skipVideo() {
-    if (!isOpen || elements.mediaControls?.hidden) return;
+    if (!isOpen || elements.mediaControls?.hidden) return false;
     elements.video?.pause?.();
     onVideoEnded();
+    return true;
   }
 
   function selectOption(stage, option) {
@@ -331,5 +332,5 @@ export function createMountainScene({
   elements.video?.addEventListener?.("ended", onVideoEnded);
   elements.video?.addEventListener?.("error", onVideoError);
 
-  return Object.freeze({ open, close, dispose });
+  return Object.freeze({ open, close, skipCurrentSegment: skipVideo, dispose });
 }

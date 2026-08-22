@@ -212,6 +212,23 @@ test("跳过连续视频时依次进入下一片段，最后才显示问题", ()
   fixture.scene.dispose();
 });
 
+test("全局剧情跳过复用视频片段跳过且不会越过问题", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+  fixture.elements.startButton.click();
+
+  assert.equal(typeof fixture.scene.skipCurrentSegment, "function");
+  assert.equal(fixture.scene.skipCurrentSegment(), true);
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-3.mp4");
+  assert.equal(fixture.scene.skipCurrentSegment(), true);
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-4.mp4");
+  assert.equal(fixture.scene.skipCurrentSegment(), true);
+  assert.equal(fixture.elements.choices.children.length, 3);
+  assert.equal(fixture.scene.skipCurrentSegment(), false);
+  assert.equal(fixture.elements.choices.children.length, 3);
+  fixture.scene.dispose();
+});
+
 test("男女玩家共用同一套视频", () => {
   for (const characterId of ["boy", "girl"]) {
     const fixture = createSceneFixture({ characterId });

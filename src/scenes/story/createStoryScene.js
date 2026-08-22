@@ -191,6 +191,12 @@ export function createStoryScene({
     if (nextStage) showStage(nextStage);
   }
 
+  function skipCurrentSegment() {
+    if (!isOpen || currentStage?.kind === "complete" || !pendingStageId) return false;
+    continueStory();
+    return true;
+  }
+
   function open(nextStory, nextCallbacks = {}) {
     if (!nextStory) throw new Error("缺少要打开的剧情");
     story = nextStory;
@@ -233,6 +239,7 @@ export function createStoryScene({
   return Object.freeze({
     open,
     close,
+    skipCurrentSegment,
     dispose() {
       hide(false);
       elements.continueButton?.removeEventListener?.("click", continueStory);

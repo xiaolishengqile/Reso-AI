@@ -137,6 +137,24 @@ test("老人发出引路邀请时四个回应立即紧跟出现", () => {
   fixture.scene.dispose();
 });
 
+test("全局剧情跳过逐段推进旁白但不会越过选择题", () => {
+  const fixture = createFixture();
+  fixture.scene.open({ complete() {} });
+
+  assert.equal(typeof fixture.scene.skipCurrentSegment, "function");
+  assert.equal(fixture.scene.skipCurrentSegment(), true);
+  assert.match(fixture.elements.text.textContent, /年轻人，等等/);
+
+  for (let count = 0; count < 8 && fixture.elements.choices.children.length === 0; count += 1) {
+    fixture.scene.skipCurrentSegment();
+  }
+  const question = fixture.elements.text.textContent;
+  assert.equal(fixture.elements.choices.children.length, 4);
+  assert.equal(fixture.scene.skipCurrentSegment(), false);
+  assert.equal(fixture.elements.text.textContent, question);
+  fixture.scene.dispose();
+});
+
 test("选项和表单点击不会误推进剧情", () => {
   const fixture = createFixture();
   fixture.scene.open({ complete() {} });

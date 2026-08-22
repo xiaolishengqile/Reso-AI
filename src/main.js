@@ -6,6 +6,7 @@ import "./scenes/wish/wishScene.css";
 import { renderCharacterPreview } from "./entities/character.js";
 import { createGame } from "./game/createGame.js";
 import { requestGameReset } from "./app/progressReset.js";
+import { createSceneSkip } from "./app/sceneSkip.js";
 import { getSceneController, resolveSavedUnlockOrder } from "./app/sceneRouting.js";
 import { loadTravelerProfile } from "./profile/travelerProfile.js";
 import { createHomeScene } from "./scenes/home/createHomeScene.js";
@@ -23,11 +24,13 @@ const compatibilityError = document.querySelector("#compatibility-error");
 const characterDialog = document.querySelector("#character-dialog");
 const characterButtons = [...document.querySelectorAll("[data-character]")];
 const resetProgressButton = document.querySelector("#reset-progress-button");
+const storySkipButton = document.querySelector("#story-skip-button");
 let game = null;
 let homeScene = null;
 let mountainScene = null;
 let storyScene = null;
 let wishScene = null;
+let sceneSkip = null;
 
 function getInitialUnlockedOrder(characterId) {
   const stories = getAllStories();
@@ -45,6 +48,7 @@ function getInitialUnlockedOrder(characterId) {
 function startGame(characterId) {
   if (game) return;
   try {
+    sceneSkip = createSceneSkip({ button: storySkipButton });
     homeScene = createHomeScene({
       characterId,
       elements: {
@@ -147,13 +151,15 @@ function startGame(characterId) {
         const controller = getSceneController(scene.id, sceneControllers);
         if (!controller) throw new Error(`场景未实现：${scene.id}`);
         const story = getStory(scene.id);
-        if (story) controller.open(story, callbacks);
-        else controller.open(callbacks);
+        const sceneCallbacks = sceneSkip.activate(controller, callbacks);
+        if (story) controller.open(story, sceneCallbacks);
+        else controller.open(sceneCallbacks);
       },
     });
     characterDialog.close?.();
     characterDialog.removeAttribute("open");
     game.start();
+    sceneSkip.show();
   } catch (error) {
     console.error("创建世界地图失败", error);
     homeScene?.dispose();
@@ -166,6 +172,9 @@ function startGame(characterId) {
     wishScene = null;
     game?.dispose();
     game = null;
+    sceneSkip?.dispose();
+    sceneSkip = null;
+    if (storySkipButton) storySkipButton.hidden = true;
     characterDialog.close?.();
     characterDialog.removeAttribute("open");
     canvas.hidden = true;
@@ -197,5 +206,6 @@ window.addEventListener("beforeunload", () => {
   mountainScene?.dispose();
   storyScene?.dispose();
   wishScene?.dispose();
+  sceneSkip?.dispose();
   game?.dispose();
 }, { once: true });

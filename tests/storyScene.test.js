@@ -141,6 +141,23 @@ test("选择后先展示局部反馈，再进入下一阶段", () => {
   scene.dispose();
 });
 
+test("全局剧情跳过只越过作答后的反馈，不会替玩家选择", () => {
+  const currentStory = story();
+  const { elements, scene } = fixture();
+  scene.open(currentStory, { complete() {}, close() {} });
+
+  assert.equal(typeof scene.skipCurrentSegment, "function");
+  assert.equal(scene.skipCurrentSegment(), false);
+  assert.equal(elements.title.textContent, "阶段1");
+  assert.equal(elements.choices.children.length, 3);
+
+  elements.choices.children[0].click();
+  assert.equal(scene.skipCurrentSegment(), true);
+  assert.equal(elements.title.textContent, "阶段2");
+  assert.equal(elements.choices.children.length, 3);
+  scene.dispose();
+});
+
 test("刷新后恢复已保存阶段", () => {
   const currentStory = story();
   const storage = memoryStorage();
