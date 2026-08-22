@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#a9ddef" />
+    <meta name="description" content="可行走的手绘浮岛世界地图原型" />
+    <title>人生群岛</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <canvas id="world-canvas" aria-label="可探索世界地图"></canvas>
+      <div class="paper-texture" aria-hidden="true"></div>
+
+      <header class="world-title" aria-label="地图名称">
+        <h1>人生群岛</h1>
+        <span class="world-title__subtitle">从家出发，一座一座岛屿前行</span>
+      </header>
+
+      <button
+        id="overview-button"
+        class="overview-button"
+        type="button"
+        aria-label="查看全岛"
+        aria-pressed="false"
+      >
+        <span aria-hidden="true">⛶</span>
+        <small>全岛</small>
+      </button>
+
+      <aside class="map-legend" aria-label="地图地点">
+        <span class="map-legend__title">旅行手记</span>
+        <ul>
+          <li data-location-id="home">
+            <i class="marker marker--home"></i>
+            <span>家庭小屋</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="mountain">
+            <i class="marker marker--mountain"></i>
+            <span>爬山岛</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="office">
+            <i class="marker marker--office"></i>
+            <span>工作岛</span>
+            <small data-location-state></small>
+          </li>
+          <li class="map-legend__future">
+            <i class="marker"></i>
+            <span>后续旅程</span>
+            <small>7 座岛在云中</small>
+          </li>
+        </ul>
+      </aside>
+
+      <aside id="location-card" class="location-card" aria-live="polite">
+        <span class="location-card__label">发现地点</span>
+        <h2 id="location-name"></h2>
+        <p id="location-description"></p>
+        <small id="location-hint">靠近后点击进入</small>
+      </aside>
+
+      <section class="controls" aria-label="操作说明">
+        <span class="controls__label">移动</span>
+        <span class="key-cluster" aria-hidden="true">
+          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+        </span>
+        <span class="controls__divider"></span>
+        <span>方向键也可以</span>
+        <span class="controls__mouse">点击道路移动 · 点击地标进入</span>
+      </section>
+
+      <section id="status" class="status" aria-live="polite">
+        从家庭小屋出发，先前往爬山岛
+      </section>
+
+      <dialog id="character-dialog" class="character-dialog" aria-labelledby="character-title">
+        <span class="character-dialog__eyebrow">旅程开始之前</span>
+        <h2 id="character-title">选择你的旅人</h2>
+        <p>角色会根据行走方向显示正面、侧面和背面。</p>
+        <div class="character-options">
+          <button type="button" class="character-option" data-character="boy">
+            <canvas width="112" height="132" aria-hidden="true"></canvas>
+            <strong>男生</strong>
+            <small>蓬松短发 · 圆框眼镜</small>
+          </button>
+          <button type="button" class="character-option" data-character="girl">
+            <canvas width="112" height="132" aria-hidden="true"></canvas>
+            <strong>女生</strong>
+            <small>棕色长卷发 · 粉色短袖</small>
+          </button>
+        </div>
+        <small class="character-dialog__hint">点击角色即可进入地图</small>
+      </dialog>
+
+      <dialog id="scene-dialog" class="scene-dialog">
+        <div class="scene-dialog__ornament" aria-hidden="true">✦</div>
+        <span id="dialog-label" class="scene-dialog__label">独 立 场 景</span>
+        <h2 id="dialog-title"></h2>
+        <p id="dialog-description"></p>
+        <button id="dialog-complete" class="scene-dialog__complete" type="button" hidden></button>
+        <button id="dialog-close" type="button" aria-label="返回世界地图">
+          返回世界地图
+        </button>
+      </dialog>
+
+      <section id="compatibility-error" class="compatibility-error" hidden>
+        <h2>地图暂时无法展开</h2>
+        <p>当前浏览器无法创建二维画布，请尝试更新浏览器。</p>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
