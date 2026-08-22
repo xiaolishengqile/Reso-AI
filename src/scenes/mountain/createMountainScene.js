@@ -1,8 +1,5 @@
-import {
-  adaptMountainText,
-  getCompanionCharacterId,
-  getMountainStage,
-} from "./story.js";
+import { getMountainEntryMedia, getMountainStageMedia } from "./media.js";
+import { getCompanionCharacterId, getMountainStage, MOUNTAIN_STAGES } from "./story.js";
 import {
   advanceMountainProgress,
   completeMountainProgress,
@@ -11,79 +8,23 @@ import {
   recordMountainSelection,
   saveMountainProgress,
 } from "./progress.js";
-import { drawMountainFrame } from "./mountainRenderer.js";
 
-const EVIDENCE_STAGE_COUNT = 7;
-
-function getWeather(stage) {
-  return stage.id === "storm-thought" || stage.id === "storm-action"
-    ? "storm"
-    : "clear";
-}
-
-const CHOICE_ACTIONS = Object.freeze({
-  slip: Object.freeze({
-    command: Object.freeze({ playerAction: "commanding", companionAction: "slipping" }),
-    support: Object.freeze({ playerAction: "supporting", companionAction: "slipping" }),
-    freeze: Object.freeze({ playerAction: "distant", companionAction: "slipping" }),
-  }),
-  "cave-repair": Object.freeze({
-    lecture: Object.freeze({ playerAction: "lecturing", companionAction: "tired" }),
-    hug: Object.freeze({ playerAction: "hugging", companionAction: "comforting" }),
-    space: Object.freeze({ playerAction: "distant", companionAction: "distant" }),
-  }),
-});
-
-const ACTION_ROUTE_WAYPOINTS = Object.freeze({
-  summit: "summit",
-  retreat: "return",
-  shelter: "shelter",
-});
-
-export function resolveMountainFrameState(
-  stage,
-  progress = {},
-  { selectedOptionId = null, isRouteFeedback = false } = {},
-) {
-  if (!stage) return null;
-  const choiceActions = selectedOptionId
-    ? CHOICE_ACTIONS[stage.id]?.[selectedOptionId]
-    : null;
-  const waypoint = isRouteFeedback && stage.id === "cave-repair"
-    ? ACTION_ROUTE_WAYPOINTS[progress.actionId] ?? stage.waypoint
-    : stage.waypoint;
-  return {
-    scene: stage.scene,
-    weather: getWeather(stage),
-    waypoint,
-    showCompanion: stage.scene !== "apartment",
-    ...choiceActions,
-  };
-}
-
-export function getMountainRouteFeedback(actionId) {
-  return {
-    summit: "雨势稍缓后，你们继续向山顶前行。",
-    retreat: "雨势稍缓后，你们选择沿来路安全下撤。",
-    shelter: "你们继续在岩洞避雨，天气缓和后再结伴返程。",
-  }[actionId] ?? "";
-}
-
-export function getMountainFeedbackText(stage, option) {
-  return stage && option ? option.feedback : "";
-}
-
-function getProgressLabel(stage, answeredCount, journeyMode) {
-  let label = `第 ${answeredCount + 1} / ${EVIDENCE_STAGE_COUNT} 组选择`;
-  if (stage.kind === "action") label = "暴雨行动不会记录为画像证据";
-  if (stage.kind === "complete") label = "七组画像选择已完成";
-  return journeyMode ? `${journeyMode} · ${label}` : label;
-}
+const EVIDENCE_STAGES = MOUNTAIN_STAGES.filter(({ recordsEvidence }) => recordsEvidence);
+const EVIDENCE_STAGE_COUNT = EVIDENCE_STAGES.length;
 
 function setHidden(element, hidden) {
   if (!element) return;
   element.hidden = hidden;
   element.setAttribute?.("aria-hidden", String(hidden));
+}
+
+function adaptVideoStoryText(text) {
+  return typeof text === "string" ? text.replaceAll("{companion}", "她") : "";
+}
+
+function getQuestionNumber(stage) {
+  const index = EVIDENCE_STAGES.findIndex(({ id }) => id === stage.id);
+  return index < 0 ? EVIDENCE_STAGE_COUNT : index + 1;
 }
 
 export function createMountainScene({
@@ -92,200 +33,190 @@ export function createMountainScene({
   storage = globalThis.localStorage,
   documentTarget = globalThis.document,
   windowTarget = globalThis.window,
-  drawFrame = drawMountainFrame,
 } = {}) {
   if (!characterId || !getCompanionCharacterId(characterId)) {
     throw new Error("爬山剧情需要有效的玩家角色");
   }
   if (!elements) throw new Error("爬山剧情缺少页面节点");
 
-  const companionCharacterId = getCompanionCharacterId(characterId);
-  const canvasContext = elements.canvas?.getContext?.("2d") ?? null;
   let progress = null;
   let callbacks = null;
   let currentStage = null;
+  let activeSources = [];
+  let activeSourceIndex = 0;
+  let stageStartedAt = 0;
+  let journeyMode = null;
   let submitting = false;
   let completed = false;
-  let stageStartedAt = 0;
-  let frameId = null;
   let isOpen = false;
-  let pendingStageId = null;
-  let routeFeedbackPending = false;
-  let frameState = null;
-  let activeWaypoint = null;
-  let transition = null;
-  let journeyMode = null;
+  let playbackToken = 0;
 
   function now() {
     return windowTarget?.performance?.now?.() ?? Date.now();
   }
 
+  function showWarning(message) {
+    if (!elements.saveWarning) return;
+    elements.saveWarning.textContent = message;
+    setHidden(elements.saveWarning, false);
+  }
+
+  function clearWarning() {
+    setHidden(elements.saveWarning, true);
+  }
+
   function persist(nextProgress) {
     progress = nextProgress;
     const saved = saveMountainProgress(storage, progress);
-    setHidden(elements.saveWarning, saved);
+    if (saved) clearWarning();
+    else showWarning("进度暂时无法保存，请稍后重试。");
     return saved;
   }
 
-  function setStageBusy(isBusy) {
-    elements.root?.setAttribute?.("aria-busy", String(isBusy));
+  function setImage(source, alt) {
+    elements.image.src = source;
+    elements.image.alt = alt;
+    elements.image.setAttribute?.("aria-label", alt);
+    setHidden(elements.image, false);
+    elements.video?.pause?.();
+    setHidden(elements.video, true);
   }
 
-  function canAnimateTransition() {
-    return Boolean(canvasContext && windowTarget?.requestAnimationFrame);
-  }
-
-  function resizeCanvas() {
-    if (!elements.canvas) return;
-    const rect = elements.canvas.getBoundingClientRect?.();
-    const width = Math.max(1, rect?.width ?? elements.canvas.clientWidth ?? 1);
-    const height = Math.max(1, rect?.height ?? elements.canvas.clientHeight ?? 1);
-    const ratio = Math.min(windowTarget?.devicePixelRatio ?? 1, 2);
-    elements.canvas.width = Math.round(width * ratio);
-    elements.canvas.height = Math.round(height * ratio);
-  }
-
-  function renderFrame(timestamp = now()) {
-    if (!isOpen || !currentStage) return;
-    const transitionCompleted = updateTransition(timestamp);
-    if (canvasContext && elements.canvas) {
-      const ratio = Math.min(windowTarget?.devicePixelRatio ?? 1, 2);
-      const width = elements.canvas.width / ratio;
-      const height = elements.canvas.height / ratio;
-      canvasContext.setTransform?.(ratio, 0, 0, ratio, 0, 0);
-      drawFrame(canvasContext, {
-        width,
-        height,
-        ...frameState,
-        playerCharacterId: characterId,
-        companionCharacterId,
-        elapsedSeconds: timestamp / 1000,
-      });
-    }
-    if (transitionCompleted) completeTransition();
-    frameId = windowTarget?.requestAnimationFrame?.(renderFrame) ?? null;
-  }
-
-  function stopAnimation() {
-    if (frameId !== null) windowTarget?.cancelAnimationFrame?.(frameId);
-    frameId = null;
-  }
-
-  function updateTransition(timestamp) {
-    if (!transition) return false;
-    if (transition.startedAt === null) transition.startedAt = timestamp;
-    const transitionProgress = Math.min(
-      1,
-      Math.max(0, (timestamp - transition.startedAt) / 800),
-    );
-    frameState = {
-      ...transition.targetFrameState,
-      fromWaypoint: transition.fromWaypoint,
-      transitionProgress,
-    };
-    return transitionProgress === 1;
-  }
-
-  function completeTransition() {
-    const completedTransition = transition;
-    if (!completedTransition) return;
-    transition = null;
-    frameState = completedTransition.targetFrameState;
-    activeWaypoint = completedTransition.targetFrameState.waypoint;
-    completedTransition.onComplete();
-  }
-
-  function beginTransition(targetFrameState, onComplete) {
-    const fromWaypoint = activeWaypoint ?? currentStage?.waypoint ?? targetFrameState.waypoint;
-    if (!canAnimateTransition()) {
-      frameState = targetFrameState;
-      activeWaypoint = targetFrameState.waypoint;
-      onComplete();
-      return;
-    }
-    transition = {
-      fromWaypoint,
-      targetFrameState,
-      startedAt: null,
-      onComplete,
-    };
-    frameState = { ...targetFrameState, fromWaypoint, transitionProgress: 0 };
-    elements.choices.replaceChildren?.();
+  function setPanelBase() {
+    setHidden(elements.panel, false);
+    setHidden(elements.startButton, true);
+    setHidden(elements.playButton, true);
     setHidden(elements.continueButton, true);
-    elements.text.textContent = "";
-    elements.progress.textContent = "正在前往下一段旅程";
-    setStageBusy(true);
+    elements.continueButton.disabled = false;
+    elements.choices.replaceChildren?.();
   }
 
-  function showStage(stage) {
+  function showEntry(stage) {
     currentStage = stage;
-    frameState = resolveMountainFrameState(stage, progress);
-    activeWaypoint = stage.waypoint;
+    activeSources = [];
+    activeSourceIndex = 0;
     submitting = false;
-    routeFeedbackPending = false;
-    stageStartedAt = now();
-    setStageBusy(false);
-    elements.title.textContent = stage.title;
-    elements.text.textContent = adaptMountainText(
-      [stage.narration, stage.prompt].filter(Boolean).join("\n"),
-      characterId,
-    );
-    elements.progress.textContent = getProgressLabel(
-      stage,
-      progress.answers.length,
-      journeyMode,
-    );
-    elements.choices.replaceChildren?.();
-    setHidden(elements.continueButton, stage.kind !== "complete");
-    elements.continueButton.disabled = false;
-    elements.continueButton.textContent = "完成这段旅程";
+    playbackToken += 1;
+    const entryMedia = getMountainEntryMedia();
+    setImage(entryMedia.sources[0], entryMedia.alt);
+    setPanelBase();
+    elements.progress.textContent = journeyMode
+      ? `${journeyMode} · 星空谷`
+      : "第一站 · 星空谷";
+    elements.title.textContent = "星空谷";
+    elements.text.textContent = "";
+    elements.startButton.textContent = journeyMode === "重温旅程"
+      ? "重温旅程"
+      : journeyMode
+        ? "继续旅程"
+        : "开始旅程";
+    setHidden(elements.startButton, false);
+  }
 
-    if (stage.kind === "complete") return;
+  function showQuestion(stage) {
+    setPanelBase();
+    stageStartedAt = now();
+    submitting = false;
+    elements.progress.textContent = `第 ${getQuestionNumber(stage)} / ${EVIDENCE_STAGE_COUNT} 组选择`;
+    elements.title.textContent = stage.title;
+    elements.text.textContent = adaptVideoStoryText(stage.prompt);
+
     for (const option of stage.choices) {
       const button = documentTarget?.createElement?.("button");
       if (!button) continue;
       button.type = "button";
-      button.textContent = adaptMountainText(option.text, characterId);
+      button.textContent = adaptVideoStoryText(option.text);
       button.dataset.optionId = option.id;
       button.addEventListener("click", () => selectOption(stage, option));
       elements.choices.append?.(button);
     }
   }
 
-  function showFeedback(option, nextStageId) {
-    frameState = resolveMountainFrameState(currentStage, progress, {
-      selectedOptionId: option.id,
-    });
-    elements.text.textContent = adaptMountainText(
-      getMountainFeedbackText(currentStage, option, progress),
-      characterId,
-    );
-    elements.progress.textContent = "剧情正在前往下一段旅程";
-    setStageBusy(false);
-    elements.choices.replaceChildren?.();
+  function showComplete() {
+    setPanelBase();
+    elements.progress.textContent = "七组画像选择已完成";
+    elements.title.textContent = "旅程余韵";
+    elements.text.textContent = "";
+    elements.continueButton.textContent = "完成这段旅程";
     setHidden(elements.continueButton, false);
-    elements.continueButton.textContent = "继续剧情";
-    pendingStageId = nextStageId;
-    routeFeedbackPending = currentStage.id === "cave-repair";
   }
 
-  function showRouteFeedback() {
-    frameState = resolveMountainFrameState(currentStage, progress, {
-      isRouteFeedback: true,
-    });
-    elements.title.textContent = "雨后的去向";
-    elements.text.textContent = getMountainRouteFeedback(progress.actionId);
-    elements.progress.textContent = "雨后的路线";
-    setStageBusy(false);
-    elements.choices.replaceChildren?.();
-    setHidden(elements.continueButton, false);
-    elements.continueButton.textContent = "继续剧情";
+  function showPlayPrompt() {
+    setPanelBase();
+    elements.progress.textContent = "视频等待播放";
+    elements.title.textContent = "继续播放剧情";
+    elements.text.textContent = "浏览器暂停了自动播放，请点击继续播放。";
+    elements.playButton.textContent = "继续播放";
+    setHidden(elements.playButton, false);
+  }
+
+  function playActiveVideo() {
+    if (!isOpen || !currentStage || !activeSources.length) return;
+    const source = activeSources[activeSourceIndex];
+    const token = ++playbackToken;
+    elements.video.src = source;
+    elements.video.currentTime = 0;
+    elements.video.setAttribute?.("aria-label", getMountainStageMedia(currentStage.id)?.alt ?? "爬山剧情视频");
+    setHidden(elements.image, true);
+    setHidden(elements.video, false);
+    setHidden(elements.panel, true);
+    elements.video.load?.();
+    const playResult = elements.video.play?.();
+    if (playResult?.catch) {
+      playResult.catch(() => {
+        if (isOpen && token === playbackToken) showPlayPrompt();
+      });
+    }
+  }
+
+  function showImageStage(stage, stageMedia) {
+    playbackToken += 1;
+    setImage(stageMedia.sources[0], stageMedia.alt);
+    if (stage.kind === "complete") showComplete();
+    else showQuestion(stage);
+  }
+
+  function startStageMedia(stage) {
+    if (!isOpen || !stage) return;
+    currentStage = stage;
+    activeSourceIndex = 0;
+    submitting = false;
+    clearWarning();
+    const stageMedia = getMountainStageMedia(stage.id);
+    if (!stageMedia) {
+      showQuestion(stage);
+      return;
+    }
+    activeSources = [...stageMedia.sources];
+    if (stageMedia.type === "image") {
+      showImageStage(stage, stageMedia);
+      return;
+    }
+    playActiveVideo();
+  }
+
+  function onVideoEnded() {
+    if (!isOpen || !currentStage) return;
+    if (activeSourceIndex + 1 < activeSources.length) {
+      activeSourceIndex += 1;
+      playActiveVideo();
+      return;
+    }
+    showQuestion(currentStage);
+  }
+
+  function onVideoError() {
+    if (!isOpen || !currentStage) return;
+    playbackToken += 1;
+    showQuestion(currentStage);
+    showWarning("视频暂时无法播放，已跳过本段并进入问题。");
   }
 
   function selectOption(stage, option) {
     if (!isOpen || submitting || stage.id !== currentStage?.id) return;
     submitting = true;
     for (const button of elements.choices.children ?? []) button.disabled = true;
+
     const selected = recordMountainSelection(progress, stage, option, {
       elapsedMs: Math.max(0, Math.round(now() - stageStartedAt)),
       companionMood: option.companionMood ?? null,
@@ -293,7 +224,8 @@ export function createMountainScene({
     });
     const nextProgress = advanceMountainProgress(selected, stage.nextStageId);
     persist(nextProgress);
-    showFeedback(option, stage.nextStageId);
+    const nextStage = getMountainStage(stage.nextStageId);
+    if (nextStage) startStageMedia(nextStage);
   }
 
   function finish() {
@@ -308,35 +240,11 @@ export function createMountainScene({
     hide(false);
   }
 
-  function onContinue() {
-    if (currentStage?.kind === "complete") {
-      finish();
-      return;
-    }
-    if (routeFeedbackPending) {
-      routeFeedbackPending = false;
-      beginTransition(
-        resolveMountainFrameState(currentStage, progress, { isRouteFeedback: true }),
-        showRouteFeedback,
-      );
-      return;
-    }
-    const nextStage = getMountainStage(pendingStageId);
-    pendingStageId = null;
-    if (nextStage) {
-      beginTransition(
-        resolveMountainFrameState(nextStage, progress),
-        () => showStage(nextStage),
-      );
-    }
-  }
-
   function hide(notifyMap) {
     if (!isOpen) return;
     isOpen = false;
-    stopAnimation();
-    transition = null;
-    setStageBusy(false);
+    playbackToken += 1;
+    elements.video?.pause?.();
     setHidden(elements.root, true);
     if (notifyMap) callbacks?.close?.();
   }
@@ -354,37 +262,45 @@ export function createMountainScene({
       : progress.currentStageId !== "invitation" || progress.answers.length > 0
         ? "继续上次旅程"
         : null;
+
     if (Number.isFinite(progress.firstCompletedAt)) {
-      // 重新进入已完成剧情时保留首次正式证据，并从序幕开始重玩。
       progress = createMountainProgress(characterId, progress);
       persist(progress);
     }
+
     let stage = getMountainStage(progress.currentStageId);
-    let savedRecovery = true;
     if (!stage) {
       progress = advanceMountainProgress(progress, "invitation");
-      savedRecovery = persist(progress);
-      stage = getMountainStage(progress.currentStageId);
+      persist(progress);
+      stage = getMountainStage("invitation");
     }
+
     isOpen = true;
     setHidden(elements.root, false);
-    resizeCanvas();
-    setHidden(elements.saveWarning, savedRecovery);
-    showStage(stage);
-    stopAnimation();
-    renderFrame(now());
+    clearWarning();
+    showEntry(stage);
   }
 
   function dispose() {
-    close();
+    hide(false);
     elements.closeButton?.removeEventListener?.("click", close);
-    elements.continueButton?.removeEventListener?.("click", onContinue);
-    windowTarget?.removeEventListener?.("resize", resizeCanvas);
+    elements.startButton?.removeEventListener?.("click", onStart);
+    elements.playButton?.removeEventListener?.("click", playActiveVideo);
+    elements.continueButton?.removeEventListener?.("click", finish);
+    elements.video?.removeEventListener?.("ended", onVideoEnded);
+    elements.video?.removeEventListener?.("error", onVideoError);
+  }
+
+  function onStart() {
+    startStageMedia(currentStage);
   }
 
   elements.closeButton?.addEventListener?.("click", close);
-  elements.continueButton?.addEventListener?.("click", onContinue);
-  windowTarget?.addEventListener?.("resize", resizeCanvas);
+  elements.startButton?.addEventListener?.("click", onStart);
+  elements.playButton?.addEventListener?.("click", playActiveVideo);
+  elements.continueButton?.addEventListener?.("click", finish);
+  elements.video?.addEventListener?.("ended", onVideoEnded);
+  elements.video?.addEventListener?.("error", onVideoError);
 
   return Object.freeze({ open, close, dispose });
 }
