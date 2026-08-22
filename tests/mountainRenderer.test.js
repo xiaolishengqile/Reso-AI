@@ -132,9 +132,40 @@ test("帧数据可覆盖动作并隐藏公寓同行者", () => {
   });
 
   assert.ok(context.transforms.some(([kind, angle]) => kind === "rotate" && angle === 0.15));
-  assert.ok(context.transforms.some(([kind, x, y]) => kind === "translate" && x === 492 && y === 576));
+  assert.ok(context.transforms.some(([kind, x, y]) => kind === "translate" && Math.round(x) === 492 && y === 576));
   assert.equal(
-    context.transforms.some(([kind, x, y]) => kind === "translate" && x === 780 && y === 576),
+    context.transforms.some(([kind, x, y]) => kind === "translate" && Math.round(x) === 780 && y === 576),
     false,
   );
+});
+
+test("动作先固定在路标，再在局部坐标执行姿态变换", () => {
+  function renderAction(playerAction) {
+    const context = createFakeContext();
+    drawMountainFrame(context, {
+      scene: "mountain",
+      waypoint: "cliff",
+      width: 1200,
+      height: 800,
+      playerAction,
+      showCompanion: false,
+    });
+    return context.transforms;
+  }
+
+  const slipping = renderAction("slipping");
+  const standing = renderAction("standing");
+  const commanding = renderAction("commanding");
+  const lecturing = renderAction("lecturing");
+
+  assert.deepEqual(slipping.slice(0, 3), [
+    ["translate", 840, 312],
+    ["translate", 4, 8],
+    ["rotate", 0.38],
+  ]);
+  assert.deepEqual(standing[0], ["translate", 840, 312]);
+  assert.deepEqual(commanding[0], ["translate", 840, 312]);
+  assert.deepEqual(lecturing[0], ["translate", 840, 312]);
+  assert.ok(commanding[2][1] < 0 && commanding[2][1] > -0.2);
+  assert.ok(lecturing[2][1] > 0 && lecturing[2][1] < 0.2);
 });

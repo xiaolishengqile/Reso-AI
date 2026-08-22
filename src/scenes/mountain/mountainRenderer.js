@@ -202,13 +202,15 @@ function drawActor(context, characterId, actor, scale, elapsedSeconds) {
     standing: [0, 0, 0], walking: [0, 0, 0], climbing: [0, 0, -0.18],
     tired: [0, 5, 0.15], slipping: [4, 8, 0.38], supporting: [-3, 2, -0.16],
     hugging: [3, 2, 0.08], comforting: [-3, 2, -0.08], distant: [0, 0, 0],
+    commanding: [2, -1, -0.1], lecturing: [-2, -1, 0.1],
   }[actor.action] ?? [0, 0, 0];
   context.save();
+  context.translate(actor.x, actor.y);
   context.translate(adjustments[0], adjustments[1]);
   context.rotate(adjustments[2]);
   drawCharacter(context, {
     characterId,
-    position: { x: actor.x, z: actor.y },
+    position: { x: 0, z: 0 },
     direction: actor.direction,
     elapsedSeconds,
     moving,
