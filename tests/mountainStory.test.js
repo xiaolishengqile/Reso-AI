@@ -64,3 +64,32 @@ test("剧情校验会报告关键配置错误", () => {
   assert.ok(errors.includes("行动阶段不得记录证据：duplicate"));
   assert.ok(errors.includes("画像选项缺少检测指标：duplicate/missing-dimensions"));
 });
+
+test("七组画像选项都声明同行者情绪，缺失时配置校验会报错", () => {
+  const evidenceChoices = MOUNTAIN_STAGES
+    .filter(({ recordsEvidence }) => recordsEvidence)
+    .flatMap(({ choices }) => choices);
+  assert.ok(evidenceChoices.every(({ companionMood }) => companionMood));
+
+  const invalidStage = {
+    id: "missing-mood",
+    kind: "choice",
+    recordsEvidence: true,
+    dimensions: ["指标"],
+    choices: [{ id: "option", text: "选择", analysis: "分析", dimensions: ["指标"] }],
+    nextStageId: "complete",
+  };
+  const completeStage = {
+    id: "complete",
+    kind: "complete",
+    recordsEvidence: false,
+    choices: [],
+    nextStageId: null,
+  };
+
+  assert.ok(
+    validateMountainStory([invalidStage, completeStage]).includes(
+      "画像选项缺少同行者情绪：missing-mood/option",
+    ),
+  );
+});

@@ -57,6 +57,9 @@ export function validateMountainStory(stages) {
       if (stage.recordsEvidence && (!Array.isArray(option.dimensions) || option.dimensions.length === 0)) {
         errors.push(`画像选项缺少检测指标：${stage.id}/${option.id ?? "未知"}`);
       }
+      if (stage.recordsEvidence && !option.companionMood?.trim()) {
+        errors.push(`画像选项缺少同行者情绪：${stage.id}/${option.id ?? "未知"}`);
+      }
     }
   }
 
