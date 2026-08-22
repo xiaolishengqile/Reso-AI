@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="900mm"
+  height="600mm"
+  viewBox="0 0 1500 1000"
+  role="img"
+  aria-labelledby="poster-title poster-desc"
+>
+  <title id="poster-title">人生底色与关系匹配项目海报</title>
+  <desc id="poster-desc">通过主岛互动、分岛验证和人生匹配三个场景，表达在自然选择中理解用户并匹配合适伴侣的项目亮点。</desc>
+
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06141e" />
+      <stop offset="0.55" stop-color="#0b2230" />
+      <stop offset="1" stop-color="#071018" />
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d8edf0" />
+      <stop offset="0.6" stop-color="#a8cfd5" />
+      <stop offset="1" stop-color="#749eaa" />
+    </linearGradient>
+    <linearGradient id="sunset" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6e9cd" />
+      <stop offset="0.5" stop-color="#d7c39b" />
+      <stop offset="1" stop-color="#6f8e8e" />
+    </linearGradient>
+    <linearGradient id="islandTop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b8c98d" />
+      <stop offset="0.48" stop-color="#7fa178" />
+      <stop offset="1" stop-color="#4f735f" />
+    </linearGradient>
+    <linearGradient id="islandRock" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#806957" />
+      <stop offset="1" stop-color="#2c3435" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2dda7" />
+      <stop offset="0.46" stop-color="#d4a357" />
+      <stop offset="1" stop-color="#8c572a" />
+    </linearGradient>
+    <linearGradient id="roseShirt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e4a8a0" />
+      <stop offset="1" stop-color="#a75e62" />
+    </linearGradient>
+    <linearGradient id="creamShirt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4df" />
+      <stop offset="1" stop-color="#cbbda7" />
+    </linearGradient>
+    <radialGradient id="cloud" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#fffdf2" stop-opacity="0.96" />
+      <stop offset="1" stop-color="#bad0d3" stop-opacity="0.46" />
+    </radialGradient>
+
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#00070b" flood-opacity="0.5" />
+    </filter>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#061018" flood-opacity="0.42" />
+    </filter>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="paper" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" seed="8" result="noise" />
+      <feColorMatrix in="noise" type="saturate" values="0" result="mono" />
+      <feComponentTransfer in="mono" result="grain">
+        <feFuncA type="table" tableValues="0 0.1" />
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" in2="grain" mode="soft-light" />
+    </filter>
+    <filter id="rough" x="-8%" y="-8%" width="116%" height="116%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="3" result="turbulence" />
+      <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="2.2" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+
+    <clipPath id="sceneOneClip"><rect x="70" y="304" width="292" height="500" rx="30" /></clipPath>
+    <clipPath id="sceneTwoClip"><rect x="382" y="304" width="292" height="500" rx="30" /></clipPath>
+    <clipPath id="sceneThreeClip"><rect x="694" y="304" width="292" height="500" rx="30" /></clipPath>
+
+    <g id="smallCloud">
+      <ellipse cx="0" cy="10" rx="46" ry="23" fill="url(#cloud)" />
+      <circle cx="-26" cy="2" r="20" fill="url(#cloud)" />
+      <circle cx="4" cy="-5" r="27" fill="url(#cloud)" />
+      <circle cx="32" cy="4" r="18" fill="url(#cloud)" />
+    </g>
+
+    <g id="spark">
+      <path d="M0 -10 C2 -3 3 -2 10 0 C3 2 2 3 0 10 C-2 3 -3 2 -10 0 C-3 -2 -2 -3 0 -10Z" fill="#f2dda7" />
+    </g>
+  </defs>
+
+  <rect width="1500" height="1000" fill="url(#background)" />
+  <rect width="1500" height="1000" fill="url(#background)" filter="url(#paper)" opacity="0.58" />
+
+  <g fill="none" stroke="url(#gold)">
+    <rect x="24" y="24" width="1452" height="952" rx="18" stroke-width="2" />
+    <rect x="35" y="35" width="1430" height="930" rx="14" stroke-width="0.8" opacity="0.62" />
+    <path d="M24 104 Q68 104 68 60 M24 136 Q96 136 96 24 M1476 104 Q1432 104 1432 60 M1476 136 Q1404 136 1404 24" stroke-width="1.4" opacity="0.8" />
+    <path d="M24 896 Q68 896 68 940 M24 864 Q96 864 96 976 M1476 896 Q1432 896 1432 940 M1476 864 Q1404 864 1404 976" stroke-width="1.4" opacity="0.8" />
+  </g>
+
+  <g font-family="STKaiti, KaiTi, Kaiti SC, Songti SC, serif">
+    <text x="72" y="105" fill="#f4e9d0" font-size="62" font-weight="700" letter-spacing="8">项目名待定</text>
+    <text x="76" y="150" fill="#d4a357" font-size="20" letter-spacing="5">人生底色 · 关系匹配</text>
+    <line x1="72" y1="178" x2="482" y2="178" stroke="url(#gold)" stroke-width="2" />
+
+    <text x="548" y="93" fill="#f4e9d0" font-size="42" font-weight="700" letter-spacing="4">不问你想成为谁</text>
+    <text x="548" y="150" fill="#f2c27c" font-size="42" font-weight="700" letter-spacing="4">只看你自然怎么选</text>
+    <text x="550" y="190" fill="#b8ced0" font-size="20" letter-spacing="2">在沉浸式人生情境中，发现真实底色，遇见真正合适的人</text>
+  </g>
+
+  <path d="M72 230 H1428" stroke="#d4a357" stroke-width="1.5" opacity="0.62" />
+  <use href="#spark" transform="translate(60 230) scale(.7)" />
+  <use href="#spark" transform="translate(1440 230) scale(.7)" />
+
+  <g filter="url(#shadow)">
+    <rect x="56" y="272" width="944" height="568" rx="38" fill="#0b1b25" stroke="#c89249" stroke-width="2" />
+  </g>
+
+  <!-- 主岛：自然互动 -->
+  <g clip-path="url(#sceneOneClip)">
+    <rect x="70" y="304" width="292" height="500" fill="url(#sky)" />
+    <circle cx="310" cy="374" r="62" fill="#fff1c5" opacity="0.54" />
+    <use href="#smallCloud" transform="translate(112 390) scale(.8)" opacity="0.74" />
+    <use href="#smallCloud" transform="translate(328 438) scale(.58)" opacity="0.68" />
+
+    <g filter="url(#softShadow)" stroke="#3c4038" stroke-width="3" stroke-linejoin="round">
+      <path d="M84 624 C122 584 164 572 215 580 C275 568 326 593 352 632 L327 675 C274 696 142 696 96 666 Z" fill="url(#islandTop)" />
+      <path d="M96 666 C145 685 281 687 327 675 L294 765 L253 736 L218 786 L178 739 L136 771 Z" fill="url(#islandRock)" />
+      <path d="M111 645 C165 618 257 620 323 651" fill="none" stroke="#e4d8b3" stroke-width="15" stroke-linecap="round" />
+    </g>
+
+    <g filter="url(#rough)" stroke="#463e36" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M105 570 H210 M115 570 V614 M200 570 V614" fill="none" />
+      <path d="M115 585 H200" fill="none" stroke-width="12" />
+      <circle cx="158" cy="526" r="25" fill="#e7c8a8" />
+      <path d="M132 526 Q158 492 184 526 Q175 507 160 502 Q140 504 132 526Z" fill="#e7e0d2" />
+      <path d="M140 551 Q158 541 177 554 L184 604 H133Z" fill="#8e7967" />
+      <path d="M145 605 L140 638 M173 605 L180 638" fill="none" />
+    </g>
+
+    <g filter="url(#softShadow)" stroke="#463e36" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="267" cy="548" r="22" fill="#efd0b0" />
+      <path d="M246 546 Q251 514 275 521 Q292 527 287 552 Q275 533 246 546Z" fill="#72584b" />
+      <path d="M247 572 Q268 559 287 575 L292 635 H242Z" fill="url(#roseShirt)" />
+      <path d="M252 634 L249 668 M282 634 L286 668" fill="none" />
+      <path d="M246 586 L222 604" fill="none" />
+    </g>
+
+    <g filter="url(#softShadow)" font-family="STKaiti, KaiTi, serif">
+      <path d="M116 406 H286 Q304 406 304 424 V478 Q304 496 286 496 H205 L181 518 L185 496 H116 Q98 496 98 478 V424 Q98 406 116 406Z" fill="#fff9e9" stroke="#85663e" stroke-width="2" />
+      <text x="132" y="447" fill="#493b31" font-size="25" font-weight="700">“你是谁？”</text>
+      <text x="132" y="478" fill="#7d6550" font-size="16">回答、停留，或继续前行</text>
+    </g>
+  </g>
+  <rect x="70" y="304" width="292" height="500" rx="30" fill="none" stroke="#d4a357" stroke-width="2" />
+
+  <!-- 爬山岛：情境验证 -->
+  <g clip-path="url(#sceneTwoClip)">
+    <rect x="382" y="304" width="292" height="500" fill="url(#sunset)" />
+    <g stroke="#79919a" stroke-width="3" opacity="0.82">
+      <path d="M414 395 l-12 30 M452 376 l-12 30 M494 402 l-12 30 M535 374 l-12 30 M578 403 l-12 30 M624 377 l-12 30" />
+      <path d="M430 455 l-12 30 M474 470 l-12 30 M520 445 l-12 30 M563 472 l-12 30 M610 450 l-12 30 M650 477 l-12 30" />
+    </g>
+    <use href="#smallCloud" transform="translate(448 350) scale(.82)" />
+    <use href="#smallCloud" transform="translate(608 366) scale(.9)" />
+
+    <g filter="url(#softShadow)" stroke="#394341" stroke-width="3" stroke-linejoin="round">
+      <path d="M389 670 C425 620 457 603 499 617 C538 562 601 546 668 622 L674 680 C607 709 457 712 390 684Z" fill="url(#islandTop)" />
+      <path d="M390 684 C458 707 609 705 674 680 L644 783 L598 740 L556 796 L511 744 L466 783 L423 735Z" fill="url(#islandRock)" />
+      <path d="M438 675 Q480 639 509 650 Q542 665 562 615 Q582 588 629 607" fill="none" stroke="#eee0ba" stroke-width="17" stroke-linecap="round" />
+      <path d="M474 629 L522 552 L557 616Z" fill="#586d65" />
+      <path d="M520 552 L543 584 L508 581Z" fill="#e2ddd0" />
+      <path d="M540 615 L598 500 L652 623Z" fill="#48605b" />
+      <path d="M598 500 L624 552 L575 548Z" fill="#ece6d7" />
+    </g>
+
+    <g filter="url(#softShadow)" stroke="#453d36" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="504" cy="592" r="22" fill="#efd0b0" />
+      <path d="M483 591 Q488 560 514 566 Q530 574 526 599 Q512 578 483 591Z" fill="#71574a" />
+      <path d="M485 617 Q506 603 526 620 L531 680 H479Z" fill="url(#roseShirt)" />
+      <path d="M490 678 L486 708 M520 678 L525 708" fill="none" />
+    </g>
+
+    <g font-family="STKaiti, KaiTi, serif" filter="url(#softShadow)">
+      <path d="M406 434 H650 Q662 434 662 446 V523 Q662 535 650 535 H406 Q394 535 394 523 V446 Q394 434 406 434Z" fill="#fbf5e7" stroke="#85663e" stroke-width="2" />
+      <text x="417" y="467" fill="#493b31" font-size="18" font-weight="700">半路下雨，你会怎么选？</text>
+      <rect x="417" y="485" width="95" height="34" rx="17" fill="#c17866" />
+      <text x="443" y="508" fill="#fff7e7" font-size="16">继续</text>
+      <rect x="530" y="485" width="95" height="34" rx="17" fill="#728a88" />
+      <text x="556" y="508" fill="#fff7e7" font-size="16">返回</text>
+    </g>
+  </g>
+  <rect x="382" y="304" width="292" height="500" rx="30" fill="none" stroke="#d4a357" stroke-width="2" />
+
+  <!-- 相遇：两条人生路径汇合 -->
+  <g clip-path="url(#sceneThreeClip)">
+    <rect x="694" y="304" width="292" height="500" fill="url(#sky)" />
+    <circle cx="841" cy="434" r="74" fill="#fff0bd" opacity="0.7" filter="url(#glow)" />
+    <use href="#smallCloud" transform="translate(720 430) scale(.7)" opacity="0.82" />
+    <use href="#smallCloud" transform="translate(954 446) scale(.62)" opacity="0.72" />
+
+    <g filter="url(#softShadow)" stroke="#3b413a" stroke-width="3" stroke-linejoin="round">
+      <path d="M742 454 C776 418 814 408 848 424 C885 405 925 421 953 458 C917 485 779 486 742 454Z" fill="url(#islandTop)" />
+      <path d="M751 468 C798 484 906 483 944 467 L916 530 L877 507 L848 546 L814 508 L779 532Z" fill="url(#islandRock)" />
+      <path d="M834 470 C818 533 802 570 785 629" fill="none" stroke="#f4dc9c" stroke-width="25" stroke-linecap="round" />
+      <path d="M858 470 C874 533 891 570 907 629" fill="none" stroke="#f4dc9c" stroke-width="25" stroke-linecap="round" />
+      <path d="M785 629 Q846 604 907 629 L932 786 H758Z" fill="#cba86a" />
+      <path d="M767 652 Q846 625 923 652 M765 687 Q846 660 925 687 M762 722 Q846 695 928 722" fill="none" stroke="#795f3e" stroke-width="8" />
+    </g>
+
+    <!-- 牵手情侣，原创圆润手绘造型 -->
+    <g filter="url(#softShadow)" stroke="#4a4038" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="810" cy="761" rx="28" ry="9" fill="#3a3a39" opacity="0.3" stroke="none" />
+      <path d="M783 681 L786 758 L801 758 L805 702 L810 758 L826 758 L828 681Z" fill="#68717a" />
+      <path d="M781 604 Q804 589 829 606 L835 683 Q809 698 776 683Z" fill="url(#roseShirt)" />
+      <circle cx="806" cy="577" r="31" fill="#efcfb4" />
+      <path d="M774 581 Q772 534 806 534 Q838 534 840 583 L830 626 Q817 612 815 584 Q802 603 788 625 Q777 607 774 581Z" fill="#715344" />
+      <path d="M779 626 Q764 644 757 668" fill="none" />
+      <path d="M829 626 Q842 648 851 660" fill="none" />
+
+      <ellipse cx="882" cy="761" rx="28" ry="9" fill="#3a3a39" opacity="0.3" stroke="none" />
+      <path d="M857 681 L859 758 L874 758 L878 703 L883 758 L899 758 L902 681Z" fill="#514d49" />
+      <path d="M853 605 Q879 589 905 607 L910 683 Q882 697 847 683Z" fill="url(#creamShirt)" />
+      <circle cx="880" cy="578" r="30" fill="#efcfb4" />
+      <path d="M850 579 Q854 539 881 540 Q909 542 910 576 Q898 562 889 559 Q880 574 850 579Z" fill="#6d5143" />
+      <path d="M850 578 Q858 565 868 565" fill="none" stroke-width="3" />
+      <circle cx="862" cy="574" r="9" fill="none" stroke-width="3" />
+      <path d="M851 627 Q840 648 852 660" fill="none" />
+      <path d="M906 626 Q920 643 927 667" fill="none" />
+      <path d="M843 658 C846 651 852 652 856 657 C860 652 867 654 868 660 C869 667 861 671 856 675 C851 672 842 667 843 658Z" fill="#efcfb4" />
+    </g>
+
+    <g opacity="0.9">
+      <use href="#spark" transform="translate(845 548) scale(.55)" />
+      <use href="#spark" transform="translate(865 522) scale(.32)" />
+    </g>
+  </g>
+  <rect x="694" y="304" width="292" height="500" rx="30" fill="none" stroke="#d4a357" stroke-width="2" />
+
+  <!-- 场景标题置于画面上层，避免被场景内容遮挡 -->
+  <g font-family="STKaiti, KaiTi, Kaiti SC, Songti SC, serif" filter="url(#softShadow)">
+    <g>
+      <rect x="70" y="286" width="292" height="50" rx="20" fill="#112b37" stroke="#ba8747" />
+      <text x="96" y="320" fill="#f2dda7" font-size="23" font-weight="700">01 · 主岛初见</text>
+    </g>
+    <g>
+      <rect x="382" y="286" width="292" height="50" rx="20" fill="#112b37" stroke="#ba8747" />
+      <text x="408" y="320" fill="#f2dda7" font-size="23" font-weight="700">02 · 分岛验证</text>
+    </g>
+    <g>
+      <rect x="694" y="286" width="292" height="50" rx="20" fill="#112b37" stroke="#ba8747" />
+      <text x="720" y="320" fill="#f2dda7" font-size="23" font-weight="700">03 · 真实相遇</text>
+    </g>
+  </g>
+
+  <!-- 项目亮点 -->
+  <g filter="url(#shadow)">
+    <rect x="1030" y="272" width="414" height="568" rx="38" fill="#0b1b25" stroke="#c89249" stroke-width="2" />
+  </g>
+  <g font-family="STKaiti, KaiTi, Kaiti SC, Songti SC, serif">
+    <text x="1080" y="332" fill="#f2dda7" font-size="34" font-weight="700" letter-spacing="6">项目亮点</text>
+    <path d="M1080 352 H1395" stroke="url(#gold)" stroke-width="2" />
+
+    <g transform="translate(1068 388)">
+      <circle cx="28" cy="28" r="27" fill="none" stroke="#d4a357" stroke-width="2" />
+      <text x="28" y="37" fill="#f2dda7" font-size="24" font-weight="700" text-anchor="middle">一</text>
+      <text x="74" y="20" fill="#f4e9d0" font-size="25" font-weight="700">无感而真实</text>
+      <text x="74" y="53" fill="#b8ced0" font-size="18">不让用户回答抽象标签，</text>
+      <text x="74" y="82" fill="#b8ced0" font-size="18">而是在故事里自然做选择。</text>
+    </g>
+
+    <g transform="translate(1068 524)">
+      <circle cx="28" cy="28" r="27" fill="none" stroke="#d4a357" stroke-width="2" />
+      <text x="28" y="37" fill="#f2dda7" font-size="24" font-weight="700" text-anchor="middle">二</text>
+      <text x="74" y="20" fill="#f4e9d0" font-size="25" font-weight="700">跨场景校准</text>
+      <text x="74" y="53" fill="#b8ced0" font-size="18">一个选择只是一条线索，</text>
+      <text x="74" y="82" fill="#b8ced0" font-size="18">多座岛屿共同还原人生底色。</text>
+    </g>
+
+    <g transform="translate(1068 660)">
+      <circle cx="28" cy="28" r="27" fill="none" stroke="#d4a357" stroke-width="2" />
+      <text x="28" y="37" fill="#f2dda7" font-size="24" font-weight="700" text-anchor="middle">三</text>
+      <text x="74" y="20" fill="#f4e9d0" font-size="25" font-weight="700">为关系而理解</text>
+      <text x="74" y="53" fill="#b8ced0" font-size="18">不是给人贴标签，</text>
+      <text x="74" y="82" fill="#b8ced0" font-size="18">而是匹配更契合的伴侣与伙伴。</text>
+    </g>
+
+    <rect x="1068" y="775" width="338" height="48" rx="24" fill="#d4a357" opacity="0.16" stroke="#d4a357" />
+    <text x="1237" y="806" fill="#f2dda7" font-size="18" font-weight="700" text-anchor="middle" letter-spacing="2">让真实的选择，遇见真正合适的人</text>
+  </g>
+
+  <g font-family="STKaiti, KaiTi, Kaiti SC, Songti SC, serif">
+    <path d="M72 890 H1428" stroke="#d4a357" stroke-width="1.5" opacity="0.6" />
+    <text x="750" y="932" fill="#f4e9d0" font-size="27" font-weight="700" text-anchor="middle" letter-spacing="5">每一次自然选择，都比一次标准答案更接近真实</text>
+    <text x="750" y="962" fill="#8faeb3" font-size="15" text-anchor="middle" letter-spacing="3">项目海报构图预览 · 名称与最终文案可继续替换</text>
+  </g>
+</svg>
