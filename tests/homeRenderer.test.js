@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   drawHomeFrame,
+  resolveHomeActorScale,
   resolveHomeFrameState,
 } from "../src/scenes/home/homeRenderer.js";
 
@@ -56,4 +57,9 @@ test("雾谷画面会绘制清晨、道路、旧桥、小屋、老人和玩家",
   for (const required of ["fillRect", "bezierCurveTo", "ellipse", "arc", "stroke", "fillText"]) {
     assert.equal(operationNames.has(required), true, `缺少绘制操作：${required}`);
   }
+});
+
+test("超宽屏人物缩放保持可读且不会失控放大", () => {
+  assert.equal(resolveHomeActorScale(2884, 1494), 2.4);
+  assert.equal(resolveHomeActorScale(820, 560), 1.47);
 });

@@ -26,6 +26,11 @@ export function resolveHomeFrameState(stageId, choiceId = null) {
   };
 }
 
+export function resolveHomeActorScale(width, height) {
+  const scale = Math.max(1.2, Math.min(2.4, Math.min(width, height) / 380));
+  return Math.round(scale * 100) / 100;
+}
+
 function drawMorning(context, width, height) {
   const sky = context.createLinearGradient(0, 0, 0, height);
   sky.addColorStop(0, "#a8d4d4");
@@ -101,41 +106,42 @@ function drawCottage(context, width, height, elapsedSeconds) {
 function drawElder(context, width, height, action) {
   const x = width * 0.58;
   const ground = height * 0.72;
+  const scale = resolveHomeActorScale(width, height) / 1.5;
   context.strokeStyle = "#604d3f";
-  context.lineWidth = Math.max(5, width * 0.006);
+  context.lineWidth = 4 * scale;
   context.beginPath();
-  context.moveTo(x - width * 0.04, ground - height * 0.04);
-  context.lineTo(x + width * 0.055, ground - height * 0.04);
-  context.moveTo(x - width * 0.03, ground - height * 0.04);
-  context.lineTo(x - width * 0.035, ground + height * 0.04);
-  context.moveTo(x + width * 0.045, ground - height * 0.04);
-  context.lineTo(x + width * 0.05, ground + height * 0.04);
+  context.moveTo(x - 36 * scale, ground - 26 * scale);
+  context.lineTo(x + 44 * scale, ground - 26 * scale);
+  context.moveTo(x - 28 * scale, ground - 26 * scale);
+  context.lineTo(x - 32 * scale, ground + 30 * scale);
+  context.moveTo(x + 36 * scale, ground - 26 * scale);
+  context.lineTo(x + 40 * scale, ground + 30 * scale);
   context.stroke();
 
   context.fillStyle = "#594f49";
   context.beginPath();
-  context.ellipse(x, ground - height * 0.105, width * 0.027, height * 0.07, 0.08, 0, Math.PI * 2);
+  context.ellipse(x, ground - 70 * scale, 23 * scale, 46 * scale, 0.08, 0, Math.PI * 2);
   context.fill();
   context.fillStyle = "#dec3a6";
   context.beginPath();
-  context.arc(x, ground - height * 0.205, width * 0.022, 0, Math.PI * 2);
+  context.arc(x, ground - 132 * scale, 19 * scale, 0, Math.PI * 2);
   context.fill();
   context.fillStyle = "#e8e4d8";
   context.beginPath();
-  context.arc(x, ground - height * 0.225, width * 0.022, Math.PI, Math.PI * 2);
+  context.arc(x, ground - 139 * scale, 19 * scale, Math.PI, Math.PI * 2);
   context.fill();
 
   const handX = action === "calling" || action === "offering-tea" || action === "giving-map"
-    ? x - width * 0.075
-    : x - width * 0.035;
+    ? x - 62 * scale
+    : x - 30 * scale;
   context.strokeStyle = "#dec3a6";
-  context.lineWidth = Math.max(4, width * 0.005);
+  context.lineWidth = 4 * scale;
   context.beginPath();
-  context.moveTo(x - width * 0.018, ground - height * 0.15);
-  context.lineTo(handX, ground - height * (action === "calling" ? 0.23 : 0.14));
+  context.moveTo(x - 15 * scale, ground - 95 * scale);
+  context.lineTo(handX, ground - (action === "calling" ? 145 : 90) * scale);
   context.stroke();
   context.fillStyle = action === "giving-map" ? "#dfd4ad" : "#a46f45";
-  context.fillRect(handX - width * 0.012, ground - height * 0.17, width * 0.024, height * 0.024);
+  context.fillRect(handX - 10 * scale, ground - 108 * scale, 20 * scale, 17 * scale);
 }
 
 function drawFog(context, width, height, strength, elapsedSeconds) {
@@ -164,6 +170,7 @@ export function drawHomeFrame(context, frame = {}) {
   drawMorning(context, width, height);
   drawRoadAndBridge(context, width, height);
   drawCottage(context, width, height, elapsedSeconds);
+  drawFog(context, width, height, frame.fogStrength ?? 0.45, elapsedSeconds);
   drawElder(context, width, height, frame.elderAction ?? "seated");
 
   const moving = frame.playerAction === "walking";
@@ -176,11 +183,10 @@ export function drawHomeFrame(context, frame = {}) {
       : { x: 0, z: -1 },
     elapsedSeconds,
     moving,
-    scale: Math.max(1.2, Math.min(width, height) / 380),
+    scale: resolveHomeActorScale(width, height),
   });
 
   context.fillStyle = "rgba(244, 236, 204, 0.76)";
   context.font = `${Math.max(14, width * 0.018)}px serif`;
   context.fillText("雾谷", width * 0.78, height * 0.64);
-  drawFog(context, width, height, frame.fogStrength ?? 0.45, elapsedSeconds);
 }
