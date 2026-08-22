@@ -90,9 +90,12 @@
 
       .copy {
         position: absolute;
-        top: 6.8%;
+        top: 7.2%;
         left: 6.6%;
-        width: 48%;
+        display: flex;
+        align-items: flex-end;
+        gap: clamp(18px, 2.2vw, 36px);
+        width: 72%;
         color: var(--ink);
         text-shadow: 0 2px 0 rgb(255 255 255 / 42%);
       }
@@ -100,7 +103,7 @@
       .brand {
         margin: 0;
         font-family: Georgia, "Times New Roman", "Songti SC", serif;
-        font-size: clamp(58px, 8.4vw, 136px);
+        font-size: clamp(72px, 9.6vw, 156px);
         font-weight: 600;
         line-height: 0.88;
         letter-spacing: -0.055em;
@@ -119,70 +122,13 @@
       }
 
       .descriptor {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        margin: clamp(13px, 1.4vw, 24px) 0 0;
+        margin: 0 0 0.74em;
         color: var(--gold);
         font-family: "STKaiti", "KaiTi", "Songti SC", serif;
-        font-size: clamp(13px, 1.25vw, 20px);
+        font-size: clamp(14px, 1.45vw, 23px);
         font-weight: 700;
-        letter-spacing: 0.32em;
-      }
-
-      .descriptor::before {
-        width: clamp(32px, 4.2vw, 66px);
-        height: 1px;
-        background: currentColor;
-        content: "";
-      }
-
-      .headline {
-        margin: clamp(18px, 2.1vw, 34px) 0 0;
-        font-family: "STKaiti", "KaiTi", "Songti SC", serif;
-        font-size: clamp(24px, 3.15vw, 50px);
-        font-weight: 700;
-        line-height: 1.24;
-        letter-spacing: 0.08em;
-      }
-
-      .headline strong {
-        color: var(--rose);
-        font-weight: inherit;
-      }
-
-      .promise {
-        max-width: 31em;
-        margin: clamp(12px, 1.4vw, 23px) 0 0;
-        color: var(--ink-soft);
-        font-family: "STKaiti", "KaiTi", "Songti SC", serif;
-        font-size: clamp(12px, 1.32vw, 21px);
-        font-weight: 600;
-        line-height: 1.7;
-        letter-spacing: 0.06em;
-      }
-
-      .journey-line {
-        position: absolute;
-        right: 5.8%;
-        bottom: 5.6%;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin: 0;
-        color: rgb(84 62 50 / 78%);
-        font-family: "STKaiti", "KaiTi", "Songti SC", serif;
-        font-size: clamp(11px, 1.06vw, 17px);
-        font-weight: 700;
-        letter-spacing: 0.18em;
-        text-shadow: 0 1px 0 rgb(255 255 255 / 46%);
-      }
-
-      .journey-line::before {
-        width: 26px;
-        height: 1px;
-        background: currentColor;
-        content: "";
+        letter-spacing: 0.3em;
+        white-space: nowrap;
       }
 
       .fallback {
@@ -238,17 +184,7 @@
       <section class="copy" aria-label="项目亮点">
         <h1 class="brand">Reso</h1>
         <p class="descriptor">人生底色 · 关系匹配</p>
-        <p class="headline">
-          不问你想成为谁<br />
-          只看你<strong>自然怎么选</strong>
-        </p>
-        <p class="promise">
-          在沉浸式人生情境中，理解真实底色，<br />
-          让真实的选择遇见真正合适的人。
-        </p>
       </section>
-
-      <p class="journey-line">从不同人生出发，走向真正契合的相遇</p>
       <p id="fallback" class="fallback" hidden>
         海报插画暂时无法显示，请确认图片资源与预览页位于同一目录。
       </p>
