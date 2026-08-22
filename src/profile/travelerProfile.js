@@ -74,6 +74,8 @@ export function createTravelerProfile(input, now = Date.now()) {
 
   const shift = CHOICE_ADJUSTMENTS[input.choiceId];
   if (typeof shift !== "number") throw new Error("无效的老人对话选择");
+  const analysis = typeof input.analysis === "string" ? input.analysis.trim() : "";
+  if (!analysis) throw new Error("老人对话选择缺少分析");
 
   const baselineScores = createMbtiBaseline(validation.value.mbtiType);
   return {
@@ -87,6 +89,7 @@ export function createTravelerProfile(input, now = Date.now()) {
       stageId: "elder-choice",
       choiceId: input.choiceId,
       adjustment: { E: shift, I: -shift },
+      analysis,
       confidence: "low",
       recordedAt: now,
     }],
@@ -119,6 +122,8 @@ function isValidProfile(profile) {
     && isValidScores(profile.scores)
     && Array.isArray(profile.officialEvidence)
     && profile.officialEvidence.length === 1
+    && typeof profile.officialEvidence[0]?.analysis === "string"
+    && Boolean(profile.officialEvidence[0].analysis.trim())
     && profile.completed === true
     && Number.isFinite(profile.completedAt),
   );

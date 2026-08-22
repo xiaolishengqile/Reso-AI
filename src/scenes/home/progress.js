@@ -5,6 +5,7 @@ export const HOME_PROGRESS_KEY = "reso-ai.home-progress";
 const PROGRESS_VERSION = 1;
 const CHOICE_IDS = new Set(["A", "B", "C", "D"]);
 const STAGE_IDS = new Set(HOME_STAGES.map(({ id }) => id));
+const STAGES_REQUIRING_CHOICE = new Set(["elder-response", "traveler-record", "complete"]);
 const EMPTY_DRAFT = Object.freeze({ nickname: "", message: "", mbtiType: "" });
 
 function copyDraft(draft = EMPTY_DRAFT) {
@@ -49,9 +50,11 @@ function isValidProgress(progress, characterId) {
     && progress.characterId === characterId
     && STAGE_IDS.has(progress.currentStageId)
     && (progress.choiceId === null || CHOICE_IDS.has(progress.choiceId))
+    && (!STAGES_REQUIRING_CHOICE.has(progress.currentStageId) || CHOICE_IDS.has(progress.choiceId))
     && progress.draft
     && ["nickname", "message", "mbtiType"].every((key) => typeof progress.draft[key] === "string")
-    && typeof progress.completed === "boolean",
+    && typeof progress.completed === "boolean"
+    && (!progress.completed || progress.currentStageId === "complete")
   );
 }
 

@@ -195,6 +195,8 @@ export function createHomeScene({
   function submitRecord(event) {
     event?.preventDefault?.();
     if (currentStage?.kind !== "record" || !progress.choiceId) return;
+    const choice = getElderChoice(progress.choiceId);
+    if (!choice) return;
     const draft = readDraft();
     const validation = validateTravelerRecord(draft);
     showErrors(validation.errors);
@@ -211,6 +213,7 @@ export function createHomeScene({
     pendingProfile = existing ?? pendingProfile ?? createTravelerProfile({
       ...validation.value,
       choiceId: progress.choiceId,
+      analysis: choice.analysis,
     });
     if (!existing && !saveTravelerProfile(storage, pendingProfile)) {
       setHidden(elements.saveWarning, false);
@@ -235,6 +238,18 @@ export function createHomeScene({
     completedCallbackSent = false;
     pendingProfile = null;
     progress = loadHomeProgress(storage, characterId);
+    const profile = loadTravelerProfile(storage);
+    if (profile && !progress.completed) {
+      progress = completeHomeProgress(saveHomeDraft(
+        saveHomeChoice(progress, profile.choiceId),
+        profile,
+      ));
+      saveHomeProgress(storage, progress);
+    } else if (progress.completed && !profile) {
+      const repairStageId = progress.choiceId ? "traveler-record" : "elder-choice";
+      progress = advanceHomeProgress({ ...progress, completed: false }, repairStageId);
+      saveHomeProgress(storage, progress);
+    }
     currentStage = getHomeStage(progress.currentStageId) ?? getHomeStage("arrival");
     isOpen = true;
     elements.root.hidden = false;

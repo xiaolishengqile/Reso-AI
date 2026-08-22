@@ -1,5 +1,7 @@
 import { getScene } from "./scenes/registry.js";
 
-export function resolveInitialScene(profile) {
-  return profile?.completed === true ? null : getScene("home");
+export function resolveInitialScene(profile, homeProgress) {
+  return profile?.completed === true && homeProgress?.completed === true
+    ? null
+    : getScene("home");
 }

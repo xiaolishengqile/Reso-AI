@@ -67,6 +67,8 @@ test("损坏、未知阶段和角色不匹配的进度都会安全回到开场",
     "not-json",
     JSON.stringify({ ...createHomeProgress("boy"), currentStageId: "missing" }),
     JSON.stringify(createHomeProgress("girl")),
+    JSON.stringify({ ...createHomeProgress("boy"), currentStageId: "traveler-record" }),
+    JSON.stringify({ ...createHomeProgress("boy"), completed: true }),
   ];
 
   for (const value of invalidValues) {

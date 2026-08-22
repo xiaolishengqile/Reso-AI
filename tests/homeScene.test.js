@@ -1,8 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHomeScene } from "../src/scenes/home/createHomeScene.js";
-import { HOME_PROGRESS_KEY } from "../src/scenes/home/progress.js";
-import { TRAVELER_PROFILE_KEY } from "../src/profile/travelerProfile.js";
+import {
+  HOME_PROGRESS_KEY,
+  completeHomeProgress,
+  createHomeProgress,
+  saveHomeChoice,
+  saveHomeDraft,
+} from "../src/scenes/home/progress.js";
+import {
+  TRAVELER_PROFILE_KEY,
+  createTravelerProfile,
+} from "../src/profile/travelerProfile.js";
 
 class FakeElement {
   constructor() {
@@ -120,6 +129,7 @@ test("保存三项记录后生成画像，结语结束才返回地图", () => {
   const profile = JSON.parse(fixture.storage.getItem(TRAVELER_PROFILE_KEY));
   const progress = JSON.parse(fixture.storage.getItem(HOME_PROGRESS_KEY));
   assert.equal(profile.choiceId, "A");
+  assert.equal(profile.officialEvidence[0].analysis, "愿意主动建立联系并快速交换信息");
   assert.deepEqual(profile.scores.energy, { E: 70, I: 30 });
   assert.equal(progress.completed, true);
   assert.match(fixture.elements.text.textContent, /欢迎来到雾谷/);
@@ -169,4 +179,43 @@ test("画像或进度保存失败时留在记录页并允许重试", () => {
     assert.equal(fixture.elements.saveWarning.hidden, false);
     fixture.scene.dispose();
   }
+});
+
+test("只有完成进度但画像缺失时回到记录页修复", () => {
+  const inconsistent = completeHomeProgress(saveHomeDraft(
+    saveHomeChoice(createHomeProgress("girl"), "D"),
+    { nickname: "小雾", message: "我先看看", mbtiType: "ISTJ" },
+  ));
+  const fixture = createFixture(memoryStorage({
+    [HOME_PROGRESS_KEY]: JSON.stringify(inconsistent),
+  }));
+
+  fixture.scene.open({ complete() {} });
+
+  assert.equal(fixture.elements.recordForm.hidden, false);
+  assert.equal(fixture.elements.nickname.value, "小雾");
+  fixture.scene.dispose();
+});
+
+test("画像已保存但进度缺失时自动补齐完成状态", () => {
+  const profile = createTravelerProfile({
+    nickname: "小雾",
+    message: "慢慢走",
+    mbtiType: "INFJ",
+    choiceId: "B",
+    analysis: "礼貌接收帮助，同时保持自己的节奏与边界",
+  }, 1234);
+  const fixture = createFixture(memoryStorage({
+    [TRAVELER_PROFILE_KEY]: JSON.stringify(profile),
+  }));
+
+  fixture.scene.open({ complete() {} });
+
+  const repaired = JSON.parse(fixture.storage.getItem(HOME_PROGRESS_KEY));
+  assert.equal(repaired.completed, true);
+  assert.equal(repaired.choiceId, "B");
+  assert.equal(repaired.draft.nickname, "小雾");
+  assert.equal(fixture.elements.recordForm.hidden, true);
+  assert.match(fixture.elements.text.textContent, /欢迎来到雾谷/);
+  fixture.scene.dispose();
 });

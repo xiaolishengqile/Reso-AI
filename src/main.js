@@ -5,6 +5,7 @@ import { renderCharacterPreview } from "./entities/character.js";
 import { createGame } from "./game/createGame.js";
 import { loadTravelerProfile } from "./profile/travelerProfile.js";
 import { createHomeScene } from "./scenes/home/createHomeScene.js";
+import { loadHomeProgress } from "./scenes/home/progress.js";
 import { createMountainScene } from "./scenes/mountain/createMountainScene.js";
 import { loadMountainProgress } from "./scenes/mountain/progress.js";
 import { getScene } from "./scenes/registry.js";
@@ -96,7 +97,10 @@ function startGame(characterId) {
     characterDialog.close?.();
     characterDialog.removeAttribute("open");
     game.start();
-    const initialScene = resolveInitialScene(loadTravelerProfile(window.localStorage));
+    const initialScene = resolveInitialScene(
+      loadTravelerProfile(window.localStorage),
+      loadHomeProgress(window.localStorage, characterId),
+    );
     if (initialScene) game.enterScene(initialScene);
   } catch (error) {
     console.error("创建世界地图失败", error);

@@ -88,6 +88,7 @@ test("创建正式旅人画像时保留基线、修正分和首次证据", () =>
     message: "去看看雾后面有什么。",
     mbtiType: "ISTJ",
     choiceId: "D",
+    analysis: "先确认环境安全与他人是否值得靠近",
   }, 1234);
 
   assert.equal(profile.completed, true);
@@ -98,6 +99,7 @@ test("创建正式旅人画像时保留基线、修正分和首次证据", () =>
     stageId: "elder-choice",
     choiceId: "D",
     adjustment: { E: -12, I: 12 },
+    analysis: "先确认环境安全与他人是否值得靠近",
     confidence: "low",
     recordedAt: 1234,
   }]);
@@ -116,12 +118,14 @@ test("首份正式画像可保存恢复，之后不能被不同画像覆盖", ()
     message: "第一笔记录",
     mbtiType: "ENFP",
     choiceId: "A",
+    analysis: "愿意主动建立联系并快速交换信息",
   }, 1000);
   const second = createTravelerProfile({
     nickname: "另一位旅人",
     message: "第二笔记录",
     mbtiType: "INTJ",
     choiceId: "D",
+    analysis: "先确认环境安全与他人是否值得靠近",
   }, 2000);
 
   assert.equal(saveTravelerProfile(storage, first), true);
