@@ -1,9 +1,13 @@
 export const homeScene = Object.freeze({
   id: "home",
-  name: "家庭小屋",
-  label: "出 生 地 · 家 庭 场 景",
+  entryMode: "external",
+  name: "雾谷入口",
+  label: "序 章 · 雾 谷 初 遇",
   accent: "#b77b56",
-  description: "旅程从熟悉的家和院子开始。",
-  sceneDescription: "这里是玩家的出生地和家庭场景，不需要解锁。",
-  legendState: "出生地",
+  description: "薄雾中的路口，一位老人正在木椅旁等候。",
+  sceneDescription: "在雾谷入口与老人交谈，留下属于旅人的第一笔记录。",
+  legendState: "旅程起点",
+  completionMessage: "旅人的第一笔记录已经留在雾谷。",
+  closeMessage: "已返回世界地图。",
+  openFailureMessage: "雾谷序章暂时无法恢复，请稍后重试。",
 });

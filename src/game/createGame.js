@@ -10,6 +10,7 @@ import {
   PLAYER_SPEED,
   PLAYER_START,
   WALKABLE_AREAS,
+  WORLD_DECORATIONS,
   WORLD_BOUNDS,
 } from "../config/world.js";
 import { drawCharacter } from "../entities/character.js";
@@ -19,6 +20,7 @@ import {
   drawIslandLayers,
   drawLocationGlow,
   drawTarget,
+  drawWorldDecorations,
   drawWorldBackdrop,
 } from "./mapRenderer.js";
 import {
@@ -516,6 +518,7 @@ export function createGame({
       elapsedSeconds,
       effectImages.get("cloud-cover"),
     );
+    drawWorldDecorations(context, WORLD_DECORATIONS, decorationImages);
     for (const location of locations) {
       if (isLocationUnlocked(location, unlockedOrder)) {
         drawLocationGlow(
@@ -585,6 +588,10 @@ export function createGame({
   const effectImages = createIslandImageStore(windowTarget, [
     { id: "cloud-cover", assetUrl: CLOUD_COVER_ASSET_URL },
   ]);
+  const decorationImages = createIslandImageStore(
+    windowTarget,
+    WORLD_DECORATIONS,
+  );
 
   return Object.freeze({
     start() {
@@ -614,6 +621,7 @@ export function createGame({
       windowTarget.removeEventListener("resize", resize);
       islandImages.dispose();
       effectImages.dispose();
+      decorationImages.dispose();
       sceneManager.dispose();
       input.dispose();
     },

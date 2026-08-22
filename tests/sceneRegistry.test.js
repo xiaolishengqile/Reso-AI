@@ -23,7 +23,7 @@ test("地图地点会由各自场景模块补充业务信息", async () => {
   assert.deepEqual(
     locations.map(({ id, name, x, z }) => ({ id, name, x, z })),
     [
-      { id: "home", name: "家庭小屋", x: 10, z: 20 },
+      { id: "home", name: "雾谷入口", x: 10, z: 20 },
       { id: "mountain", name: "爬山岛", x: 30, z: 40 },
       { id: "office", name: "工作岛", x: 50, z: 60 },
     ],
@@ -49,7 +49,7 @@ test("图例状态由场景定义和解锁进度共同决定", async () => {
   const mountain = registry.getScene("mountain");
   const office = registry.getScene("office");
 
-  assert.equal(registry.getSceneLegendState(home, true, 1), "出生地");
+  assert.equal(registry.getSceneLegendState(home, true, 1), "旅程起点");
   assert.equal(registry.getSceneLegendState(mountain, true, 1), "下一站");
   assert.equal(registry.getSceneLegendState(mountain, true, 2), "已完成");
   assert.equal(registry.getSceneLegendState(office, false, 1), "未解锁");
@@ -62,7 +62,7 @@ test("探索提示由场景列表动态生成而不依赖主控制器文案", as
 
   assert.equal(
     registry.getSceneJourneyStatus(locations, 1),
-    "从家庭小屋出发，先前往爬山岛",
+    "从雾谷入口出发，先前往爬山岛",
   );
   assert.equal(
     registry.getSceneJourneyStatus(locations, 2),
@@ -84,4 +84,5 @@ test("地图配置只保存空间与解锁顺序而不承载场景业务", async
   assert.equal(mountainScene.entryLabel, "进入爬山剧情");
   assert.equal(mountainScene.unlocksOrder, 2);
   assert.equal(mountainScene.replayCompletionMessage, "爬山剧情已重温完成。");
+  assert.equal(registry.getScene("home").entryMode, "external");
 });

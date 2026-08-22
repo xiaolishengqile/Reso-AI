@@ -17,6 +17,18 @@ export const CLOUD_COVER_ASSET_URL = assetUrl(
   "assets/effects/cloud-cover.png",
 );
 
+export const WORLD_DECORATIONS = Object.freeze([
+  Object.freeze({
+    id: "fog-valley-elder",
+    sceneId: "home",
+    assetUrl: assetUrl("assets/characters/elder-bench.png"),
+    x: 1950,
+    z: 1840,
+    width: 96,
+    height: 118,
+  }),
+]);
+
 function freezeArea(points) {
   return Object.freeze(points.map((point) => Object.freeze(point)));
 }
