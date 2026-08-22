@@ -5,6 +5,7 @@ import "./scenes/story/storyScene.css";
 import "./scenes/wish/wishScene.css";
 import { renderCharacterPreview } from "./entities/character.js";
 import { createGame } from "./game/createGame.js";
+import { requestGameReset } from "./app/progressReset.js";
 import { getSceneController, resolveSavedUnlockOrder } from "./app/sceneRouting.js";
 import { loadTravelerProfile } from "./profile/travelerProfile.js";
 import { createHomeScene } from "./scenes/home/createHomeScene.js";
@@ -21,6 +22,7 @@ const canvas = document.querySelector("#world-canvas");
 const compatibilityError = document.querySelector("#compatibility-error");
 const characterDialog = document.querySelector("#character-dialog");
 const characterButtons = [...document.querySelectorAll("[data-character]")];
+const resetProgressButton = document.querySelector("#reset-progress-button");
 let game = null;
 let homeScene = null;
 let mountainScene = null;
@@ -110,9 +112,14 @@ function startGame(characterId) {
       story: storyScene,
       wish: wishScene,
     };
+    const proximityScene = resolveInitialScene(
+      loadTravelerProfile(window.localStorage),
+      loadHomeProgress(window.localStorage, characterId),
+    );
     game = createGame({
       canvas,
       characterId,
+      proximityScene,
       initialUnlockedOrder: getInitialUnlockedOrder(characterId),
       ui: {
         locationCard: document.querySelector("#location-card"),
@@ -140,11 +147,6 @@ function startGame(characterId) {
     characterDialog.close?.();
     characterDialog.removeAttribute("open");
     game.start();
-    const initialScene = resolveInitialScene(
-      loadTravelerProfile(window.localStorage),
-      loadHomeProgress(window.localStorage, characterId),
-    );
-    if (initialScene) game.enterScene(initialScene);
   } catch (error) {
     console.error("创建世界地图失败", error);
     homeScene?.dispose();
@@ -163,6 +165,14 @@ function startGame(characterId) {
     compatibilityError.hidden = false;
   }
 }
+
+resetProgressButton?.addEventListener("click", () => {
+  requestGameReset({
+    storage: window.localStorage,
+    confirmReset: () => window.confirm("确定清除全部旅程进度并从头开始吗？此操作无法撤销。"),
+    reload: () => window.location.reload(),
+  });
+});
 
 for (const button of characterButtons) {
   renderCharacterPreview(button.querySelector("canvas"), button.dataset.character);

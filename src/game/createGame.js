@@ -182,6 +182,7 @@ export function createGame({
   ui,
   characterId,
   onEnterScene = null,
+  proximityScene = null,
   initialUnlockedOrder = INITIAL_UNLOCK_ORDER,
   windowTarget = window,
 }) {
@@ -216,6 +217,12 @@ export function createGame({
   let started = false;
   let overviewRequested = false;
   let activeExternalScene = null;
+  let pendingProximityScene = proximityScene;
+  const proximityTrigger = WORLD_DECORATIONS.find(
+    ({ sceneId, interactionRadius }) => (
+      sceneId === proximityScene?.id && interactionRadius > 0
+    ),
+  ) ?? null;
 
   function completeScene(scene) {
     const completion = resolveLocationCompletion(unlockedOrder, scene);
@@ -353,6 +360,16 @@ export function createGame({
   }
 
   function openLocation(location) {
+    if (
+      pendingProximityScene?.id === location.id
+      && proximityTrigger
+    ) {
+      pointerTarget = { x: proximityTrigger.x, z: proximityTrigger.z };
+      targetLocationId = null;
+      stalledSeconds = 0;
+      setStatus("正在走近路边的老人", 1200);
+      return;
+    }
     pointerTarget = null;
     targetLocationId = null;
     stalledSeconds = 0;
@@ -486,14 +503,33 @@ export function createGame({
       }
     }
 
+    if (
+      pendingProximityScene
+      && proximityTrigger
+      && Math.hypot(
+        player.x - proximityTrigger.x,
+        player.z - proximityTrigger.z,
+      ) <= proximityTrigger.interactionRadius
+    ) {
+      const scene = pendingProximityScene;
+      pendingProximityScene = null;
+      openExternalScene(scene);
+      return moving;
+    }
+
     nearbyLocation = findNearbyLocation(player, locations);
     if (windowTarget.performance.now() >= statusLockedUntil) {
+      const awaitingProximityScene = Boolean(
+        pendingProximityScene && proximityTrigger,
+      );
       setStatus(getExplorationStatus({
         backgroundFailed,
-        nearbyLocation,
+        nearbyLocation: awaitingProximityScene ? null : nearbyLocation,
         nearbyUnlocked: !nearbyLocation
           || isLocationUnlocked(nearbyLocation, unlockedOrder),
-        journeyStatus: getSceneJourneyStatus(locations, unlockedOrder),
+        journeyStatus: awaitingProximityScene
+          ? "走近主岛路边的老人，开始雾谷序章"
+          : getSceneJourneyStatus(locations, unlockedOrder),
       }));
     }
     return moving;

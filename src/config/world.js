@@ -26,6 +26,7 @@ export const WORLD_DECORATIONS = Object.freeze([
     z: 1840,
     width: 96,
     height: 118,
+    interactionRadius: 110,
   }),
 ]);
 

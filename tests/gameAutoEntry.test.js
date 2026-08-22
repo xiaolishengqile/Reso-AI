@@ -126,3 +126,85 @@ test("抵达爬山岛后先显示入口，确认后才进入剧情", () => {
   assert.equal(dialog.open, false);
   game.dispose();
 });
+
+test("走近老人后自动触发雾谷序章且离开剧情后不会重复触发", () => {
+  const canvas = createCanvas();
+  const windowTarget = createWindow();
+  const status = { textContent: "" };
+  let openedCount = 0;
+  let sceneCallbacks = null;
+  const game = createGame({
+    canvas,
+    characterId: "girl",
+    windowTarget,
+    proximityScene: { id: "home", entryMode: "external" },
+    ui: {
+      legendItems: [],
+      status,
+      overviewButton: createButton(),
+      dialog: createDialog(),
+      dialogTitle: { textContent: "" },
+      dialogLabel: { textContent: "" },
+      dialogDescription: { textContent: "" },
+      primaryButton: createButton(),
+      closeButton: createButton(),
+    },
+    onEnterScene(scene, callbacks) {
+      openedCount += 1;
+      sceneCallbacks = callbacks;
+      assert.equal(scene.id, "home");
+    },
+  });
+  game.start();
+
+  for (let frame = 0; frame < 10; frame += 1) windowTarget.step();
+  assert.equal(openedCount, 0);
+  assert.match(status.textContent, /走近.*老人/);
+
+  // 老人在初始全景中的手工换算屏幕坐标。
+  canvas.click(442, 568);
+  for (let frame = 0; frame < 300 && openedCount === 0; frame += 1) {
+    windowTarget.step();
+  }
+  assert.equal(openedCount, 1);
+
+  sceneCallbacks.close();
+  for (let frame = 0; frame < 30; frame += 1) windowTarget.step();
+  assert.equal(openedCount, 1);
+  game.dispose();
+});
+
+test("序章待触发时点击雾谷地标会先走向老人而不是立即开场", () => {
+  const canvas = createCanvas();
+  const windowTarget = createWindow();
+  let openedCount = 0;
+  const game = createGame({
+    canvas,
+    characterId: "girl",
+    windowTarget,
+    proximityScene: { id: "home", entryMode: "external" },
+    ui: {
+      legendItems: [],
+      status: { textContent: "" },
+      overviewButton: createButton(),
+      dialog: createDialog(),
+      dialogTitle: { textContent: "" },
+      dialogLabel: { textContent: "" },
+      dialogDescription: { textContent: "" },
+      primaryButton: createButton(),
+      closeButton: createButton(),
+    },
+    onEnterScene() { openedCount += 1; },
+  });
+  game.start();
+  windowTarget.step();
+
+  // 雾谷地标在初始全景中的手工换算屏幕坐标。
+  canvas.click(480, 552);
+  assert.equal(openedCount, 0);
+  for (let frame = 0; frame < 300 && openedCount === 0; frame += 1) {
+    windowTarget.step();
+  }
+  assert.equal(openedCount, 1);
+  game.dispose();
+});
