@@ -16,7 +16,7 @@ const WAYPOINTS = Object.freeze({
   shelter: { player: [0.47, 0.56], companion: [0.55, 0.56], action: "hugging", companionAction: "comforting", scale: 1.3 },
   summit: { player: [0.71, 0.23], companion: [0.63, 0.27], action: "climbing", scale: 0.82 },
   return: { player: [0.42, 0.58], companion: [0.55, 0.62], action: "distant", scale: 0.94 },
-  apartment: { player: [0.41, 0.72], companion: [0.65, 0.72], action: "standing", scale: 1.15 },
+  apartment: { player: [0.7, 0.72], companion: [0.65, 0.72], action: "standing", scale: 1.15 },
 });
 
 const WAYPOINT_ALIASES = Object.freeze({

@@ -28,6 +28,13 @@ test("角色按画布比例从山脚移动到山腰和山顶", () => {
   assert.equal(summit.camera.scale, 0.82);
 });
 
+test("公寓尾声的玩家位于未被左侧剧情面板遮挡的右半区", () => {
+  const apartment = getMountainActorLayout("apartment", 1200, 800);
+
+  assert.ok(apartment.player.x > 600);
+  assert.equal(apartment.player.y, 576);
+});
+
 test("剧情路标会映射到对应场景位置而非回退山脚", () => {
   const aliases = [
     ["cafe-table", "cafe"],
@@ -132,7 +139,7 @@ test("帧数据可覆盖动作并隐藏公寓同行者", () => {
   });
 
   assert.ok(context.transforms.some(([kind, angle]) => kind === "rotate" && angle === 0.15));
-  assert.ok(context.transforms.some(([kind, x, y]) => kind === "translate" && Math.round(x) === 492 && y === 576));
+  assert.ok(context.transforms.some(([kind, x, y]) => kind === "translate" && Math.round(x) === 840 && y === 576));
   assert.equal(
     context.transforms.some(([kind, x, y]) => kind === "translate" && Math.round(x) === 780 && y === 576),
     false,
