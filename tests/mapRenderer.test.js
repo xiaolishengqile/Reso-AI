@@ -3,18 +3,16 @@ import assert from "node:assert/strict";
 import { ISLANDS, WORLD_DECORATIONS } from "../src/config/world.js";
 import * as renderer from "../src/game/mapRenderer.js";
 
-test("初始渲染会显示三张独立素材并用云层覆盖后续八岛", () => {
+test("初始渲染会直接显示十张独立岛图且没有云层", () => {
   assert.equal(typeof renderer.getIslandRenderState, "function");
 
   const state = renderer.getIslandRenderState(ISLANDS, 1);
 
   assert.deepEqual(
     state.filter(({ showAsset }) => showAsset).map(({ id }) => id),
-    ["home", "mountain", "office"],
-  );
-  assert.deepEqual(
-    state.filter(({ showCloud }) => showCloud).map(({ id }) => id),
     [
+      "home",
+      "mountain",
       "office",
       "dining",
       "cohabitation",
@@ -25,46 +23,19 @@ test("初始渲染会显示三张独立素材并用云层覆盖后续八岛", ()
       "wish",
     ],
   );
+  assert.deepEqual(state.filter(({ showCloud }) => showCloud), []);
   assert.deepEqual(
     state.filter(({ showGenerated }) => showGenerated).map(({ id }) => id),
-    ["dining", "cohabitation", "money", "social", "travel", "future", "wish"],
+    [],
   );
 });
 
-test("完成爬山后只移除工作岛云层，七座程序岛仍保持遮挡", () => {
+test("完成进度不会重新给任何岛屿增加遮挡", () => {
   assert.equal(typeof renderer.getIslandRenderState, "function");
 
   const state = renderer.getIslandRenderState(ISLANDS, 2);
 
-  assert.deepEqual(
-    state.filter(({ showCloud }) => showCloud).map(({ id }) => id),
-    [
-      "dining",
-      "cohabitation",
-      "money",
-      "social",
-      "travel",
-      "future",
-      "wish",
-    ],
-  );
-});
-
-test("没有图片素材的主题岛仍会绘制独立地形", () => {
-  const operations = [];
-  const context = new Proxy({}, {
-    get(_target, key) {
-      if (key === "canvas") return { width: 1000, height: 700 };
-      return (...args) => operations.push([key, ...args]);
-    },
-    set() { return true; },
-  });
-  const dining = ISLANDS.find(({ id }) => id === "dining");
-
-  renderer.drawIslandLayers(context, [dining], { get() { return null; } }, 3, 0);
-
-  assert.ok(operations.some(([name]) => name === "ellipse"));
-  assert.ok(operations.some(([name]) => name === "fillRect"));
+  assert.deepEqual(state.filter(({ showCloud }) => showCloud), []);
 });
 
 test("岛屿图片存储器释放后不再触发在途错误回调", () => {
@@ -87,94 +58,6 @@ test("岛屿图片存储器释放后不再触发在途错误回调", () => {
   image.dispatchEvent(new Event("error"));
   assert.deepEqual(failures, ["home"]);
   assert.equal(image.src, "");
-});
-
-test("未解锁岛屿只显示柔和云雾而不在云层中央写字", () => {
-  let textCount = 0;
-  const context = {
-    save() {},
-    restore() {},
-    beginPath() {},
-    moveTo() {},
-    lineTo() {},
-    quadraticCurveTo() {},
-    closePath() {},
-    fill() {},
-    ellipse() {},
-    fillText() { textCount += 1; },
-  };
-
-  renderer.drawCloudCover(context, ISLANDS[3], 0);
-
-  assert.equal(textCount, 0);
-});
-
-test("透明手绘云素材加载完成后会替代程序圆形云层", () => {
-  let imageCount = 0;
-  let ellipseCount = 0;
-  const context = {
-    save() {},
-    restore() {},
-    translate() {},
-    drawImage() { imageCount += 1; },
-    beginPath() {},
-    ellipse() { ellipseCount += 1; },
-    fill() {},
-  };
-  const cloudImage = { complete: true, naturalWidth: 1664 };
-
-  renderer.drawCloudCover(context, ISLANDS[3], 0, cloudImage);
-
-  assert.equal(imageCount, 1);
-  assert.equal(ellipseCount, 0);
-});
-
-test("锁定岛屿云层不会遮挡已开放的家庭岛和爬山岛", () => {
-  const cloudImage = { complete: true, naturalWidth: 1664 };
-  const visibleIslands = ISLANDS.slice(0, 2);
-  const lockedIslands = ISLANDS.slice(2);
-  const assetBounds = visibleIslands.map((island) => {
-    const halfWidth = island.bounds.width / 2;
-    const halfHeight = island.bounds.height / 2;
-    const cosine = Math.cos(island.rotation ?? 0);
-    const sine = Math.sin(island.rotation ?? 0);
-    const radiusX = Math.abs(cosine) * halfWidth + Math.abs(sine) * halfHeight;
-    const radiusZ = Math.abs(sine) * halfWidth + Math.abs(cosine) * halfHeight;
-    const centerX = island.bounds.x + halfWidth;
-    const centerZ = island.bounds.z + halfHeight;
-    return {
-      id: island.id,
-      x: centerX - radiusX,
-      z: centerZ - radiusZ,
-      width: radiusX * 2,
-      height: radiusZ * 2,
-    };
-  });
-
-  for (const island of lockedIslands) {
-    let cloudBounds = null;
-    const context = {
-      globalAlpha: 1,
-      save() {},
-      restore() {},
-      drawImage(_image, x, z, width, height) {
-        cloudBounds = { x, z, width, height };
-      },
-    };
-    renderer.drawCloudCover(context, island, 0, cloudImage);
-
-    for (const visible of assetBounds) {
-      const overlaps = cloudBounds.x < visible.x + visible.width
-        && cloudBounds.x + cloudBounds.width > visible.x
-        && cloudBounds.z < visible.z + visible.height
-        && cloudBounds.z + cloudBounds.height > visible.z;
-      assert.equal(
-        overlaps,
-        false,
-        island.id + " 云层不应遮挡 " + visible.id,
-      );
-    }
-  }
 });
 
 test("爬山岛会围绕自身中心旋转使道路朝向前后桥梁", () => {

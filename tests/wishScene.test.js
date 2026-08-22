@@ -135,7 +135,7 @@ test("完整证据默认在本地生成十二章节画像", async () => {
   await flushPromises();
 
   assert.match(elements.status.textContent, /已经生成/);
-  assert.match(elements.progress.textContent, /49/);
+  assert.match(elements.progress.textContent, /42/);
   assert.match(elements.summary.textContent, /关系|伴侣|相处/);
   assert.equal(elements.result.children.length, 12);
   assert.equal(elements.retryButton.hidden, true);

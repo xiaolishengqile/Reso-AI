@@ -18,6 +18,7 @@ test("确认重新开始只清除本游戏进度并重新加载页面", () => {
     "reso-ai.home-progress": "home",
     "reso-ai.mountain-progress": "mountain",
     "reso-ai.story-progress": "stories",
+    "reso-ai.journey-visits": "visits",
     "other-app.preference": "keep",
   });
   let reloadCount = 0;
@@ -33,6 +34,7 @@ test("确认重新开始只清除本游戏进度并重新加载页面", () => {
   assert.equal(storage.getItem("reso-ai.home-progress"), null);
   assert.equal(storage.getItem("reso-ai.mountain-progress"), null);
   assert.equal(storage.getItem("reso-ai.story-progress"), null);
+  assert.equal(storage.getItem("reso-ai.journey-visits"), null);
   assert.equal(storage.getItem("other-app.preference"), "keep");
   assert.equal(reloadCount, 1);
 });

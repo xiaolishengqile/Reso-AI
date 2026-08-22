@@ -79,7 +79,7 @@ export function createWishScene({
     const journey = loadJourney(storage, characterId);
     const readiness = validatePortraitReadiness(journey);
     clearResult();
-    elements.progress.textContent = `已收集 ${readiness.evidenceCount} / 49 组剧情证据`;
+    elements.progress.textContent = `已收集 ${readiness.evidenceCount} / 42 组剧情证据`;
     setHidden(elements.retryButton, true);
 
     if (!readiness.ready) {
@@ -92,8 +92,8 @@ export function createWishScene({
     const baselineEvidence = normalizeTravelerEvidence(journey.profile);
     const validationSource = { evidence, baselineEvidence };
     elements.status.textContent = requestPortrait
-      ? "正在根据八座剧情岛的证据生成画像……"
-      : "正在离线整理八座剧情岛的证据……";
+      ? "正在根据七座剧情岛的证据生成画像……"
+      : "正在离线整理七座剧情岛的证据……";
     elements.root.setAttribute?.("aria-busy", "true");
     elements.retryButton.disabled = true;
 

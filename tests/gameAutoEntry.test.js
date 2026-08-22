@@ -2,10 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createGame } from "../src/game/createGame.js";
 
-function createContext() {
+function createContext(canvas) {
   const gradient = { addColorStop() {} };
   return new Proxy({
     createLinearGradient() { return gradient; },
+    setTransform() { canvas.frameScales = []; },
+    scale(x) {
+      canvas.frameScales.push(x);
+      if (canvas.frameScales.length === 1) canvas.worldScale = x;
+    },
   }, {
     get(target, key) {
       return key in target ? target[key] : () => {};
@@ -15,20 +20,34 @@ function createContext() {
 
 function createCanvas() {
   const listeners = new Map();
-  return {
+  const canvas = {
     width: 1200,
     height: 800,
     clientWidth: 1200,
     clientHeight: 800,
     classList: { toggle() {} },
-    getContext() { return createContext(); },
+    frameScales: [],
+    worldScale: 0,
+    getContext() { return context; },
     getBoundingClientRect() {
       return { left: 0, top: 0, width: 1200, height: 800 };
     },
     addEventListener(type, listener) { listeners.set(type, listener); },
     removeEventListener(type) { listeners.delete(type); },
     click(x, y) { listeners.get("click")?.({ clientX: x, clientY: y }); },
+    pointer(type, x, y, pointerId = 1) {
+      listeners.get(type)?.({
+        clientX: x,
+        clientY: y,
+        pointerId,
+        preventDefault() {},
+      });
+    },
+    setPointerCapture() {},
+    releasePointerCapture() {},
   };
+  const context = createContext(canvas);
+  return canvas;
 }
 
 function createWindow() {
@@ -206,5 +225,47 @@ test("序章待触发时点击雾谷地标会先走向老人而不是立即开�
     windowTarget.step();
   }
   assert.equal(openedCount, 1);
+  game.dispose();
+});
+
+test("拖动云海只平移地图，不会误触地点或移动人物", () => {
+  const canvas = createCanvas();
+  const windowTarget = createWindow();
+  const status = { textContent: "" };
+  let openedCount = 0;
+  const overviewButton = createButton();
+  const game = createGame({
+    canvas,
+    characterId: "girl",
+    windowTarget,
+    ui: {
+      legendItems: [],
+      status,
+      overviewButton,
+      dialog: createDialog(),
+      dialogTitle: { textContent: "" },
+      dialogLabel: { textContent: "" },
+      dialogDescription: { textContent: "" },
+      primaryButton: createButton(),
+      closeButton: createButton(),
+    },
+    onEnterScene() { openedCount += 1; },
+  });
+  game.start();
+  windowTarget.step(1400);
+  overviewButton.dispatchEvent(new Event("click"));
+  for (let frame = 0; frame < 120; frame += 1) windowTarget.step();
+  const overviewScale = canvas.worldScale;
+
+  canvas.pointer("pointerdown", 20, 20);
+  canvas.pointer("pointermove", 180, 120);
+  windowTarget.step();
+  canvas.pointer("pointerup", 180, 120);
+  canvas.click(180, 120);
+  for (let frame = 0; frame < 30; frame += 1) windowTarget.step();
+
+  assert.equal(openedCount, 0);
+  assert.ok(canvas.worldScale > overviewScale);
+  assert.doesNotMatch(status.textContent, /正在前往|沿着地图/);
   game.dispose();
 });

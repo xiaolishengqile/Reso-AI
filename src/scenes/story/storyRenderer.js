@@ -4,15 +4,43 @@ function companionId(characterId) {
   return characterId === "boy" ? "girl" : "boy";
 }
 
-export function getStoryFrameState(story, stage, companionMood = "") {
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+export function getStoryMapViewport(positionX, visibleRatio = 0.58) {
+  const ratio = clamp(visibleRatio, 0.35, 1);
+  const sourceX = clamp(positionX - ratio / 2, 0, 1 - ratio);
+  return Object.freeze({
+    sourceX,
+    sourceWidth: ratio,
+    playerX: clamp((positionX - sourceX) / ratio, 0, 1),
+  });
+}
+
+export function getStoryFrameState(
+  story,
+  stage,
+  companionMood = "",
+  position = { x: 0.6, y: 0.68 },
+  traveling = false,
+) {
   const distant = ["疏离", "失落", "压力", "退缩", "不安"].includes(companionMood);
+  const viewport = getStoryMapViewport(position.x);
   return {
     sky: story?.theme?.sky ?? "#9fcbd4",
     ground: story?.theme?.ground ?? "#566b65",
     accent: story?.theme?.accent ?? "#f0c98d",
     prop: story?.theme?.prop ?? "city",
-    playerX: 0.6,
-    companionX: distant ? 0.86 : 0.74,
+    sourceX: viewport.sourceX,
+    sourceWidth: viewport.sourceWidth,
+    playerX: viewport.playerX,
+    companionX: clamp(
+      viewport.playerX + (traveling ? -0.1 : distant ? 0.2 : 0.12),
+      0.04,
+      0.96,
+    ),
+    playerY: clamp(position.y, 0.3, 0.82),
     stageId: stage?.id ?? "",
   };
 }
@@ -78,40 +106,62 @@ export function drawStoryFrame(context, frame) {
     playerCharacterId,
     companionCharacterId = companionId(playerCharacterId),
   } = frame;
-  const state = getStoryFrameState(frame.story, frame.stage, frame.companionMood);
-  const gradient = context.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, state.sky);
-  gradient.addColorStop(1, state.ground);
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, width, height);
-
-  context.fillStyle = "rgba(255,255,255,0.15)";
-  for (let index = 0; index < 6; index += 1) {
-    context.beginPath();
-    context.arc(
-      width * (0.44 + index * 0.1),
-      height * (0.16 + Math.sin(elapsedSeconds * 0.35 + index) * 0.025),
-      22 + index * 4,
+  const position = frame.position ?? { x: 0.6, y: 0.68 };
+  const state = getStoryFrameState(
+    frame.story,
+    frame.stage,
+    frame.companionMood,
+    position,
+    frame.traveling,
+  );
+  const image = frame.mapImage;
+  const hasMapImage = Boolean(
+    image
+    && image.complete !== false
+    && image.naturalWidth > 0
+    && image.naturalHeight > 0,
+  );
+  if (hasMapImage) {
+    context.drawImage(
+      image,
+      image.naturalWidth * state.sourceX,
       0,
-      Math.PI * 2,
+      image.naturalWidth * state.sourceWidth,
+      image.naturalHeight,
+      0,
+      0,
+      width,
+      height,
     );
-    context.fill();
+  } else {
+    const gradient = context.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, state.sky);
+    gradient.addColorStop(1, state.ground);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, width, height);
+    drawProp(context, state.prop, width, height, state.accent);
   }
 
-  drawProp(context, state.prop, width, height, state.accent);
+  const shade = context.createLinearGradient(0, height * 0.48, 0, height);
+  shade.addColorStop(0, "rgba(17, 27, 28, 0)");
+  shade.addColorStop(1, "rgba(17, 27, 28, 0.22)");
+  context.fillStyle = shade;
+  context.fillRect(0, height * 0.48, width, height * 0.52);
   const scale = Math.max(1.45, Math.min(width, height) / 290);
   drawCharacter(context, {
     characterId: playerCharacterId,
-    position: { x: width * state.playerX, z: height * 0.78 },
+    position: { x: width * state.playerX, z: height * state.playerY },
     direction: { x: 1, z: 0 },
     elapsedSeconds,
+    moving: frame.traveling,
     scale,
   });
   drawCharacter(context, {
     characterId: companionCharacterId,
-    position: { x: width * state.companionX, z: height * 0.78 },
+    position: { x: width * state.companionX, z: height * state.playerY },
     direction: { x: -1, z: 0 },
     elapsedSeconds,
+    moving: frame.traveling,
     scale,
   });
 }

@@ -111,22 +111,23 @@ test("只收集有效的首次正式剧情证据", () => {
 
   const collected = collectOfficialEvidence(input);
 
-  assert.equal(collected.length, 49);
-  assert.equal(new Set(collected.map(({ islandId }) => islandId)).size, 8);
+  assert.equal(collected.length, 42);
+  assert.equal(new Set(collected.map(({ islandId }) => islandId)).size, 7);
+  assert.equal(collected.some(({ islandId }) => islandId === "mountain"), false);
 });
 
-test("四十九组剧情证据和雾谷资料齐全后才允许生成", () => {
+test("七岛四十二组剧情证据和雾谷资料齐全后才允许生成", () => {
   const input = completeInput();
   assert.deepEqual(validatePortraitReadiness(input), {
     ready: true,
     missing: [],
-    evidenceCount: 49,
+    evidenceCount: 42,
   });
 
   input.storyProgress.travel.officialEvidence.pop();
   const incomplete = validatePortraitReadiness(input);
   assert.equal(incomplete.ready, false);
-  assert.equal(incomplete.evidenceCount, 48);
+  assert.equal(incomplete.evidenceCount, 41);
   assert.match(incomplete.missing.join("\n"), /旅行岛.*6.*5/);
 
   input.profile = null;
@@ -238,7 +239,7 @@ test("远程请求只包含聚合摘要，不泄露原始选项或存储对象",
   });
   const serialized = JSON.stringify(request);
 
-  assert.equal(request.evidenceCount, 49);
+  assert.equal(request.evidenceCount, 42);
   assert.ok(request.requestId);
   assert.ok(request.aggregated.partner);
   assert.equal(request.travelerBaseline.fogEvidence.islandId, "home");

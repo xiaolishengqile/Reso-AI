@@ -36,29 +36,14 @@ export function createSceneLocations(mapLocations) {
   }));
 }
 
-export function getSceneLegendState(scene, unlocked, unlockedOrder) {
-  if (!unlocked) return "未解锁";
-  if (scene.completedAtOrder && unlockedOrder >= scene.completedAtOrder) {
-    return scene.completedLegendState;
-  }
+export function getSceneLegendState(scene, status = {}) {
+  if (status.completed) return scene.completedLegendState ?? "已完成";
+  if (status.visited) return "已到访";
   return scene.legendState;
 }
 
-export function getSceneJourneyStatus(locations, unlockedOrder) {
-  const orderedLocations = [...locations].sort(
-    (left, right) => left.unlockOrder - right.unlockOrder,
-  );
-  const origin = orderedLocations[0];
-  const current = orderedLocations
-    .filter((location) => location.unlockOrder <= unlockedOrder)
-    .at(-1);
-
-  if (!origin || !current) return "继续探索人生群岛";
-  if (current.unlockOrder <= 1) {
-    return `从${origin.name}出发，先前往${current.name}`;
-  }
-  if (current === orderedLocations.at(-1)) {
-    return `${current.name}已解锁，前往查看旅程答案`;
-  }
-  return `${current.name}已解锁，沿着下一座桥继续前往`;
+export function getSceneJourneyStatus(locations) {
+  return locations?.length
+    ? "十座岛均已开放，靠近并点击地点开始探索"
+    : "继续探索人生群岛";
 }

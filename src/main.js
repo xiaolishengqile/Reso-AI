@@ -5,6 +5,10 @@ import "./scenes/story/storyScene.css";
 import "./scenes/wish/wishScene.css";
 import { renderCharacterPreview } from "./entities/character.js";
 import { createGame } from "./game/createGame.js";
+import {
+  loadVisitedLocationIds,
+  markLocationVisited,
+} from "./game/journeyProgress.js";
 import { requestGameReset } from "./app/progressReset.js";
 import { getSceneController, resolveSavedUnlockOrder } from "./app/sceneRouting.js";
 import { loadTravelerProfile } from "./profile/travelerProfile.js";
@@ -29,22 +33,44 @@ let mountainScene = null;
 let storyScene = null;
 let wishScene = null;
 
-function getInitialUnlockedOrder(characterId) {
+function getInitialJourneyState(characterId) {
   const stories = getAllStories();
+  const mountainProgress = loadMountainProgress(window.localStorage, characterId);
+  const homeProgress = loadHomeProgress(window.localStorage, characterId);
+  const profile = loadTravelerProfile(window.localStorage);
   const storyProgress = Object.fromEntries(stories.map((story) => [
     story.id,
     loadStoryProgress(window.localStorage, characterId, story.id, story.initialStageId),
   ]));
-  return resolveSavedUnlockOrder({
-    mountainProgress: loadMountainProgress(window.localStorage, characterId),
-    storyProgress,
-    stories,
-  });
+  const completedLocationIds = [
+    ...(homeProgress.completed ? ["home"] : []),
+    ...(mountainProgress.completed ? ["mountain"] : []),
+    ...stories
+      .filter(({ id }) => storyProgress[id]?.completed)
+      .map(({ id }) => id),
+  ];
+  return {
+    profile,
+    homeProgress,
+    initialUnlockedOrder: resolveSavedUnlockOrder({
+      mountainProgress,
+      storyProgress,
+      stories,
+    }),
+    initialVisitedLocationIds: [
+      ...new Set([
+        ...loadVisitedLocationIds(window.localStorage, characterId),
+        ...completedLocationIds,
+      ]),
+    ],
+    initialCompletedLocationIds: completedLocationIds,
+  };
 }
 
 function startGame(characterId) {
   if (game) return;
   try {
+    const initialJourney = getInitialJourneyState(characterId);
     homeScene = createHomeScene({
       characterId,
       elements: {
@@ -113,14 +139,19 @@ function startGame(characterId) {
       wish: wishScene,
     };
     const proximityScene = resolveInitialScene(
-      loadTravelerProfile(window.localStorage),
-      loadHomeProgress(window.localStorage, characterId),
+      initialJourney.profile,
+      initialJourney.homeProgress,
     );
     game = createGame({
       canvas,
       characterId,
       proximityScene,
-      initialUnlockedOrder: getInitialUnlockedOrder(characterId),
+      initialUnlockedOrder: initialJourney.initialUnlockedOrder,
+      initialVisitedLocationIds: initialJourney.initialVisitedLocationIds,
+      initialCompletedLocationIds: initialJourney.initialCompletedLocationIds,
+      onVisitLocation: (locationId) => {
+        markLocationVisited(window.localStorage, characterId, locationId);
+      },
       ui: {
         locationCard: document.querySelector("#location-card"),
         locationName: document.querySelector("#location-name"),

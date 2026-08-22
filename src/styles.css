@@ -76,6 +76,10 @@ kbd {
   cursor: pointer;
 }
 
+#world-canvas.is-dragging {
+  cursor: grabbing;
+}
+
 .paper-texture {
   position: absolute;
   z-index: 2;

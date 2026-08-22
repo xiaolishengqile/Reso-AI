@@ -54,17 +54,6 @@ test("只有点击地点与玩家附近地点相同时才允许进入", () => {
   assert.equal(game.getLocationInteraction(mountain, null).canEnter, false);
 });
 
-test("未解锁岛屿不能自动前往或进入", () => {
-  const office = { id: "office", name: "工作岛" };
-  const interaction = game.getLocationInteraction(office, office, false);
-
-  assert.deepEqual(interaction, {
-    canEnter: false,
-    canApproach: false,
-    message: "工作岛尚未解锁，请先完成爬山。",
-  });
-});
-
 test("只命中鼠标范围内最近的地标", () => {
   const locations = [
     { id: "mountain", x: 100, z: 100, hitRadius: 40 },

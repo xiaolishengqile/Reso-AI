@@ -21,7 +21,7 @@ export function createStorySceneDefinition(config) {
     completedLegendState: "已完成",
     completedAtOrder: unlocksOrder,
     unlocksOrder,
-    completionMessage: `${name}已完成，通往${nextName}的桥已解锁。`,
+    completionMessage: `${name}已完成，下一站${nextName}仍可随时前往。`,
     replayCompletionMessage: `${name}剧情已重温完成。`,
     closeMessage: `已返回世界地图，${name}进度会在下次进入时恢复。`,
     openFailureMessage: `${name}剧情暂时无法恢复，请稍后重试。`,

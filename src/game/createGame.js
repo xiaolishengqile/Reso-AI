@@ -1,6 +1,5 @@
 import {
   BRIDGES,
-  CLOUD_COVER_ASSET_URL,
   ISLANDS,
   LOCATIONS,
   LOCKED_GATES,
@@ -26,6 +25,8 @@ import {
 import {
   createFollowTransform,
   createOverviewTransform,
+  createPannableTransform,
+  panMapTransform,
   resolveCameraMode,
   stepCamera,
 } from "../systems/camera.js";
@@ -53,6 +54,7 @@ import {
 } from "../scenes/registry.js";
 
 const BACKGROUND_ERROR_MESSAGE = "手绘地图底图加载失败，请刷新页面重试。";
+const MAP_DRAG_THRESHOLD = 5;
 const REGISTERED_LOCATIONS = createSceneLocations(LOCATIONS);
 
 export function getLocationInteraction(
@@ -184,6 +186,9 @@ export function createGame({
   onEnterScene = null,
   proximityScene = null,
   initialUnlockedOrder = INITIAL_UNLOCK_ORDER,
+  initialVisitedLocationIds = [],
+  initialCompletedLocationIds = [],
+  onVisitLocation = null,
   windowTarget = window,
 }) {
   const context = canvas.getContext("2d");
@@ -216,8 +221,13 @@ export function createGame({
   let frameId = 0;
   let started = false;
   let overviewRequested = false;
+  let manualPanActive = false;
+  let pointerDrag = null;
+  let suppressNextClick = false;
   let activeExternalScene = null;
   let pendingProximityScene = proximityScene;
+  const visitedLocationIds = new Set(initialVisitedLocationIds);
+  const completedLocationIds = new Set(initialCompletedLocationIds);
   const proximityTrigger = WORLD_DECORATIONS.find(
     ({ sceneId, interactionRadius }) => (
       sceneId === proximityScene?.id && interactionRadius > 0
@@ -228,10 +238,10 @@ export function createGame({
     const completion = resolveLocationCompletion(unlockedOrder, scene);
     const changed = completion.unlockedOrder !== unlockedOrder;
     unlockedOrder = completion.unlockedOrder;
-    if (changed) {
-      updateLegend();
-      showLocationCard(hoveredLocation);
-    }
+    completedLocationIds.add(scene.id);
+    visitedLocationIds.add(scene.id);
+    updateLegend();
+    if (changed) showLocationCard(hoveredLocation);
     setStatus(completion.message, 2600);
   }
 
@@ -248,6 +258,7 @@ export function createGame({
   }
 
   function toggleOverview() {
+    manualPanActive = false;
     setOverviewRequested(!overviewRequested);
   }
 
@@ -277,14 +288,15 @@ export function createGame({
     for (const item of ui.legendItems ?? []) {
       const location = locations.find(({ id }) => id === item.dataset.locationId);
       if (!location) continue;
-      const unlocked = isLocationUnlocked(location, unlockedOrder);
-      item.classList.toggle("is-locked", !unlocked);
+      item.classList.toggle("is-locked", false);
       const state = item.querySelector("[data-location-state]");
       if (!state) continue;
       state.textContent = getSceneLegendState(
         location,
-        unlocked,
-        unlockedOrder,
+        {
+          visited: visitedLocationIds.has(location.id),
+          completed: completedLocationIds.has(location.id),
+        },
       );
     }
   }
@@ -294,14 +306,10 @@ export function createGame({
     if (!location) return;
     if (ui.locationName) ui.locationName.textContent = location.name;
     if (ui.locationDescription) {
-      ui.locationDescription.textContent = isLocationUnlocked(location, unlockedOrder)
-        ? location.description
-        : location.lockedDescription;
+      ui.locationDescription.textContent = location.description;
     }
     if (ui.locationHint) {
-      ui.locationHint.textContent = isLocationUnlocked(location, unlockedOrder)
-        ? "靠近后点击进入"
-        : "按顺序完成上一座岛后解锁";
+      ui.locationHint.textContent = "靠近后点击进入";
     }
   }
 
@@ -322,7 +330,68 @@ export function createGame({
 
   function onPointerMove(event) {
     if (activeExternalScene) return;
+    if (pointerDrag?.pointerId === event.pointerId) {
+      const delta = {
+        x: event.clientX - pointerDrag.lastX,
+        y: event.clientY - pointerDrag.lastY,
+      };
+      pointerDrag.lastX = event.clientX;
+      pointerDrag.lastY = event.clientY;
+      pointerDrag.distance += Math.hypot(delta.x, delta.y);
+      if (pointerDrag.distance >= MAP_DRAG_THRESHOLD) {
+        if (!pointerDrag.moved) {
+          transform = createPannableTransform(
+            transform,
+            { x: pointerDrag.startX, y: pointerDrag.startY },
+            pointerDrag.mapPoint,
+            width,
+            height,
+            MAP_SIZE.width,
+            MAP_SIZE.height,
+          );
+          setOverviewRequested(false);
+        }
+        pointerDrag.moved = true;
+        manualPanActive = true;
+        transform = panMapTransform(
+          transform,
+          delta,
+          width,
+          height,
+          MAP_SIZE.width,
+          MAP_SIZE.height,
+        );
+        canvas.classList.toggle("is-dragging", true);
+        event.preventDefault?.();
+      }
+      return;
+    }
     setHoveredLocation(findLocationAtPoint(eventToMap(event), locations));
+  }
+
+  function onPointerDown(event) {
+    if (activeExternalScene) return;
+    const point = eventToMap(event);
+    if (findLocationAtPoint(point, locations) || canStandAt(point)) return;
+    pointerDrag = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      mapPoint: point,
+      distance: 0,
+      moved: false,
+    };
+    canvas.setPointerCapture?.(event.pointerId);
+  }
+
+  function endPointerDrag(event) {
+    if (pointerDrag?.pointerId !== event.pointerId) return;
+    suppressNextClick = pointerDrag.moved;
+    pointerDrag = null;
+    canvas.classList.toggle("is-dragging", false);
+    canvas.releasePointerCapture?.(event.pointerId);
   }
 
   function onPointerLeave() {
@@ -360,6 +429,11 @@ export function createGame({
   }
 
   function openLocation(location) {
+    if (!visitedLocationIds.has(location.id)) {
+      visitedLocationIds.add(location.id);
+      onVisitLocation?.(location.id);
+      updateLegend();
+    }
     if (
       pendingProximityScene?.id === location.id
       && proximityTrigger
@@ -395,9 +469,15 @@ export function createGame({
 
   function onCanvasClick(event) {
     if (activeExternalScene) return;
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      return;
+    }
     const point = eventToMap(event);
     const location = findLocationAtPoint(point, locations);
     if (location) {
+      manualPanActive = false;
+      setOverviewRequested(false);
       const interaction = getLocationInteraction(
         location,
         nearbyLocation,
@@ -415,6 +495,8 @@ export function createGame({
     }
 
     if (canStandAt(point)) {
+      manualPanActive = false;
+      setOverviewRequested(false);
       pointerTarget = point;
       targetLocationId = null;
       stalledSeconds = 0;
@@ -437,12 +519,14 @@ export function createGame({
       MAP_SIZE.width,
       MAP_SIZE.height,
     );
+    manualPanActive = false;
   }
 
   function update(deltaSeconds) {
     if (activeExternalScene) return false;
     let direction = input.getDirection();
     if (direction.x !== 0 || direction.z !== 0) {
+      manualPanActive = false;
       pointerTarget = null;
       targetLocationId = null;
       stalledSeconds = 0;
@@ -545,14 +629,11 @@ export function createGame({
     context.translate(transform.offsetX, transform.offsetY);
     context.scale(transform.scale, transform.scale);
     drawWorldBackdrop(context, MAP_SIZE, elapsedSeconds);
-    drawBridges(context, BRIDGES, unlockedOrder);
+    drawBridges(context, BRIDGES);
     drawIslandLayers(
       context,
       ISLANDS,
       islandImages,
-      unlockedOrder,
-      elapsedSeconds,
-      effectImages.get("cloud-cover"),
     );
     drawWorldDecorations(context, WORLD_DECORATIONS, decorationImages);
     for (const location of locations) {
@@ -603,12 +684,17 @@ export function createGame({
           MAP_SIZE.width,
           MAP_SIZE.height,
         );
-    transform = stepCamera(transform, cameraTarget, deltaSeconds);
+    if (!manualPanActive) {
+      transform = stepCamera(transform, cameraTarget, deltaSeconds);
+    }
     render(time / 1000, moving);
     frameId = windowTarget.requestAnimationFrame(tick);
   }
 
+  canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
+  canvas.addEventListener("pointerup", endPointerDrag);
+  canvas.addEventListener("pointercancel", endPointerDrag);
   canvas.addEventListener("pointerleave", onPointerLeave);
   canvas.addEventListener("click", onCanvasClick);
   ui.overviewButton?.addEventListener("click", toggleOverview);
@@ -623,9 +709,6 @@ export function createGame({
       nearbyLocation,
     }));
   });
-  const effectImages = createIslandImageStore(windowTarget, [
-    { id: "cloud-cover", assetUrl: CLOUD_COVER_ASSET_URL },
-  ]);
   const decorationImages = createIslandImageStore(
     windowTarget,
     WORLD_DECORATIONS,
@@ -652,13 +735,15 @@ export function createGame({
     },
     dispose() {
       windowTarget.cancelAnimationFrame(frameId);
+      canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", endPointerDrag);
+      canvas.removeEventListener("pointercancel", endPointerDrag);
       canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("click", onCanvasClick);
       ui.overviewButton?.removeEventListener("click", toggleOverview);
       windowTarget.removeEventListener("resize", resize);
       islandImages.dispose();
-      effectImages.dispose();
       decorationImages.dispose();
       sceneManager.dispose();
       input.dispose();

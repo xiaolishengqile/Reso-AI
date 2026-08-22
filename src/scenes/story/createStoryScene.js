@@ -8,9 +8,17 @@ import {
   saveStoryProgress,
 } from "./progress.js";
 import { adaptStoryText, getStoryStage } from "./story.js";
+import {
+  createStoryTravel,
+  getStoryMap,
+  getStoryStop,
+  getStoryTravelFrame,
+} from "./storyMap.js";
 import { drawStoryFrame } from "./storyRenderer.js";
 
 const EVIDENCE_COUNT = 6;
+const TRAVEL_DURATION_MS = 1400;
+const INTERACTIVE_CLICK_SELECTOR = "button, input, textarea, select, option, label, form";
 
 function setHidden(element, hidden) {
   if (!element) return;
@@ -31,8 +39,16 @@ export function createStoryScene({
 
   const canvasContext = elements.canvas?.getContext?.("2d") ?? null;
   let story = null;
+  let storyMap = null;
+  let mapImage = null;
   let progress = null;
   let currentStage = null;
+  let pendingStage = null;
+  let currentPosition = null;
+  let travel = null;
+  let dialoguePhase = "moving";
+  let narrationBeats = [];
+  let narrationBeatIndex = 0;
   let callbacks = null;
   let pendingStageId = null;
   let stageStartedAt = 0;
@@ -63,8 +79,25 @@ export function createStoryScene({
     elements.canvas.height = Math.round(height * ratio);
   }
 
+  function loadMapImage() {
+    const ImageConstructor = windowTarget?.Image;
+    mapImage = ImageConstructor && storyMap?.assetUrl
+      ? new ImageConstructor()
+      : null;
+    if (mapImage) mapImage.src = storyMap.assetUrl;
+  }
+
   function render(timestamp = now()) {
     if (!isOpen || !story || !currentStage) return;
+    let traveling = Boolean(travel);
+    if (travel) {
+      const travelFrame = getStoryTravelFrame(travel, timestamp);
+      currentPosition = travelFrame.position;
+      if (travelFrame.arrived) {
+        traveling = false;
+        showStage(pendingStage ?? currentStage, timestamp);
+      }
+    }
     if (canvasContext && elements.canvas) {
       const ratio = Math.min(windowTarget?.devicePixelRatio ?? 1, 2);
       const width = elements.canvas.width / ratio;
@@ -74,7 +107,11 @@ export function createStoryScene({
         width,
         height,
         story,
+        storyMap,
+        mapImage,
         stage: currentStage,
+        position: currentPosition,
+        traveling,
         companionMood,
         playerCharacterId: characterId,
         elapsedSeconds: timestamp / 1000,
@@ -95,36 +132,82 @@ export function createStoryScene({
     return `${mode}第 ${Math.min(answered + 1, EVIDENCE_COUNT)} / ${EVIDENCE_COUNT} 组选择`;
   }
 
-  function showStage(stage) {
-    currentStage = stage;
-    pendingStageId = null;
-    submitting = false;
-    stageStartedAt = now();
-    elements.root?.setAttribute?.("aria-busy", "false");
-    elements.title.textContent = stage.title;
-    elements.text.textContent = adaptStoryText(
-      [stage.narration, stage.prompt].filter(Boolean).join("\n"),
-      characterId,
-    );
-    elements.progress.textContent = progressLabel(stage);
-    elements.choices.replaceChildren?.();
-    setHidden(elements.continueButton, stage.kind !== "complete");
-    elements.continueButton.disabled = false;
-    elements.continueButton.textContent = stage.kind === "complete" ? "完成这座岛" : "继续剧情";
-    if (stage.kind === "complete") return;
+  function renderNarrationBeat() {
+    elements.text.textContent = narrationBeats[narrationBeatIndex] ?? "";
+    elements.continueButton.textContent = currentStage?.kind === "complete"
+      && narrationBeatIndex === narrationBeats.length - 1
+      ? "完成这座岛"
+      : "点击继续";
+  }
 
-    for (const option of stage.choices) {
+  function showQuestion() {
+    dialoguePhase = "question";
+    elements.root.dataset.storyPhase = dialoguePhase;
+    elements.text.textContent = adaptStoryText(currentStage.prompt, characterId);
+    elements.choices.replaceChildren?.();
+    setHidden(elements.continueButton, true);
+    for (const option of currentStage.choices) {
       const button = documentTarget?.createElement?.("button");
       if (!button) continue;
       button.type = "button";
       button.dataset.optionId = option.id;
       button.textContent = adaptStoryText(option.text, characterId);
-      button.addEventListener("click", () => selectOption(stage, option));
+      button.addEventListener("click", (event) => {
+        event?.stopPropagation?.();
+        selectOption(currentStage, option);
+      });
       elements.choices.append?.(button);
     }
   }
 
+  function showStage(stage, timestamp = now()) {
+    currentStage = stage;
+    pendingStage = null;
+    travel = null;
+    pendingStageId = null;
+    submitting = false;
+    stageStartedAt = timestamp;
+    currentPosition = getStoryStop(story, stage.id) ?? currentPosition;
+    dialoguePhase = stage.kind === "complete" ? "complete" : "narration";
+    narrationBeats = adaptStoryText(stage.narration, characterId)
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    narrationBeatIndex = 0;
+    elements.root?.setAttribute?.("aria-busy", "false");
+    elements.root.dataset.storyPhase = dialoguePhase;
+    elements.title.textContent = stage.title;
+    elements.progress.textContent = progressLabel(stage);
+    elements.choices.replaceChildren?.();
+    setHidden(elements.continueButton, false);
+    elements.continueButton.disabled = false;
+    renderNarrationBeat();
+  }
+
+  function beginTravel(stage) {
+    if (!stage) return;
+    currentStage = stage;
+    pendingStage = stage;
+    dialoguePhase = "moving";
+    elements.root.dataset.storyPhase = dialoguePhase;
+    elements.root?.setAttribute?.("aria-busy", "true");
+    elements.title.textContent = `前往「${stage.title}」`;
+    elements.text.textContent = "你们沿着岛上的道路，走向下一段故事。";
+    elements.progress.textContent = progressLabel(stage);
+    elements.choices.replaceChildren?.();
+    setHidden(elements.continueButton, true);
+    const destination = getStoryStop(story, stage.id) ?? currentPosition;
+    travel = createStoryTravel(
+      currentPosition ?? destination,
+      destination,
+      now(),
+      TRAVEL_DURATION_MS,
+    );
+  }
+
   function showFeedback(stage, option) {
+    dialoguePhase = "feedback";
+    elements.root.dataset.storyPhase = dialoguePhase;
     companionMood = option.companionMood;
     elements.title.textContent = stage.title;
     elements.text.textContent = adaptStoryText(option.feedback, characterId);
@@ -183,17 +266,32 @@ export function createStoryScene({
   }
 
   function continueStory() {
-    if (currentStage?.kind === "complete") {
+    if (!currentStage || dialoguePhase === "moving" || dialoguePhase === "question") return;
+    if (dialoguePhase === "feedback") {
+      beginTravel(getStoryStage(story, pendingStageId ?? progress.currentStageId));
+      return;
+    }
+    if (narrationBeatIndex < narrationBeats.length - 1) {
+      narrationBeatIndex += 1;
+      renderNarrationBeat();
+      return;
+    }
+    if (currentStage.kind === "complete") {
       finish();
       return;
     }
-    const nextStage = getStoryStage(story, pendingStageId ?? progress.currentStageId);
-    if (nextStage) showStage(nextStage);
+    showQuestion();
+  }
+
+  function clickToContinue(event) {
+    if (event?.target?.closest?.(INTERACTIVE_CLICK_SELECTOR)) return;
+    continueStory();
   }
 
   function open(nextStory, nextCallbacks = {}) {
     if (!nextStory) throw new Error("缺少要打开的剧情");
     story = nextStory;
+    storyMap = getStoryMap(story.id);
     callbacks = nextCallbacks;
     completedCallbackSent = false;
     progress = loadStoryProgress(
@@ -213,11 +311,13 @@ export function createStoryScene({
       currentStage = getStoryStage(story, story.initialStageId);
     }
     companionMood = progress.companionMood ?? "";
+    currentPosition = storyMap?.entry ?? { x: 0.08, y: 0.74 };
+    loadMapImage();
     isOpen = true;
     setHidden(elements.root, false);
     setHidden(elements.saveWarning, true);
     resizeCanvas();
-    showStage(currentStage);
+    beginTravel(currentStage);
     stopAnimation();
     render(now());
   }
@@ -226,8 +326,19 @@ export function createStoryScene({
     hide(true);
   }
 
-  elements.continueButton?.addEventListener?.("click", continueStory);
-  elements.closeButton?.addEventListener?.("click", close);
+  function onContinueClick(event) {
+    event?.stopPropagation?.();
+    continueStory();
+  }
+
+  function onCloseClick(event) {
+    event?.stopPropagation?.();
+    close();
+  }
+
+  elements.root?.addEventListener?.("click", clickToContinue);
+  elements.continueButton?.addEventListener?.("click", onContinueClick);
+  elements.closeButton?.addEventListener?.("click", onCloseClick);
   windowTarget?.addEventListener?.("resize", resizeCanvas);
 
   return Object.freeze({
@@ -235,8 +346,9 @@ export function createStoryScene({
     close,
     dispose() {
       hide(false);
-      elements.continueButton?.removeEventListener?.("click", continueStory);
-      elements.closeButton?.removeEventListener?.("click", close);
+      elements.root?.removeEventListener?.("click", clickToContinue);
+      elements.continueButton?.removeEventListener?.("click", onContinueClick);
+      elements.closeButton?.removeEventListener?.("click", onCloseClick);
       windowTarget?.removeEventListener?.("resize", resizeCanvas);
     },
   });

@@ -1,7 +1,7 @@
 export const INITIAL_UNLOCK_ORDER = 1;
 
-export function isLocationUnlocked(location, unlockedOrder) {
-  return location.unlockOrder <= unlockedOrder;
+export function isLocationUnlocked(location) {
+  return Boolean(location);
 }
 
 export function advanceUnlockOrder(unlockedOrder, completedLocation) {

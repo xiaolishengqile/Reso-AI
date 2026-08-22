@@ -24,17 +24,18 @@ test("十座岛屿使用独立图层并按顺序串联", () => {
       { id: "wish", unlockOrder: 9 },
     ],
   );
-  assert.deepEqual(
-    ISLANDS.filter(({ assetUrl }) => assetUrl).map(({ id, assetUrl }) => ({
-      id,
-      assetUrl,
-    })),
-    [
-      { id: "home", assetUrl: "./assets/islands/home.png" },
-      { id: "mountain", assetUrl: "./assets/islands/mountain.png" },
-      { id: "office", assetUrl: "./assets/islands/office.png" },
-    ],
-  );
+  assert.deepEqual(ISLANDS.map(({ id, assetUrl }) => ({ id, assetUrl })), [
+    { id: "home", assetUrl: "./assets/islands/home.png" },
+    { id: "mountain", assetUrl: "./assets/islands/mountain.png" },
+    { id: "office", assetUrl: "./assets/islands/office.png" },
+    { id: "dining", assetUrl: "./assets/islands/dining.png" },
+    { id: "cohabitation", assetUrl: "./assets/islands/cohabitation.png" },
+    { id: "money", assetUrl: "./assets/islands/money.png" },
+    { id: "social", assetUrl: "./assets/islands/social.png" },
+    { id: "travel", assetUrl: "./assets/islands/travel.png" },
+    { id: "future", assetUrl: "./assets/islands/future.png" },
+    { id: "wish", assetUrl: "./assets/islands/wish.png" },
+  ]);
 
   for (const location of LOCATIONS) {
     assert.ok(location.x > 0 && location.x < MAP_SIZE.width);
@@ -51,27 +52,9 @@ test("十座岛屿使用独立图层并按顺序串联", () => {
   }
 });
 
-test("七座程序岛屿被比场景占位更大的云层完整覆盖", () => {
-  assert.equal(Array.isArray(world.ISLANDS), true);
-  const generatedIslands = world.ISLANDS.filter(({ renderMode }) => renderMode === "generated");
-  assert.equal(generatedIslands.length, 7);
-
-  for (const island of generatedIslands) {
-    assert.equal(island.assetUrl, null);
-    assert.ok(island.theme?.ground);
-    assert.ok(island.theme?.accent);
-    assert.ok(island.cloudCover.x <= island.bounds.x);
-    assert.ok(island.cloudCover.z <= island.bounds.z);
-    assert.ok(
-      island.cloudCover.x + island.cloudCover.width
-        >= island.bounds.x + island.bounds.width,
-    );
-    assert.ok(
-      island.cloudCover.z + island.cloudCover.height
-        >= island.bounds.z + island.bounds.height,
-    );
-    assert.ok(island.cloudCover.opacity >= 0.9);
-  }
+test("十座图片岛屿从开局完整显示且不声明云层", () => {
+  assert.equal(world.ISLANDS.every(({ renderMode }) => renderMode === "asset"), true);
+  assert.equal(world.ISLANDS.every(({ cloudCover }) => cloudCover == null), true);
 });
 
 test("玩家出生在家庭岛且移动速度固定为舒适值", () => {
@@ -202,21 +185,6 @@ test("爬山岛道路轴线与家庭到工作的桥梁方向一致", () => {
   }
 });
 
-test("八座后续门禁与待解锁桥梁逐一对应", () => {
-  const lockedBridges = world.BRIDGES.filter(
-    ({ requiredOrder }) => requiredOrder >= 2,
-  );
-
-  assert.equal(lockedBridges.length, 8);
-  assert.equal(world.LOCKED_GATES.length, lockedBridges.length);
-  assert.deepEqual(
-    world.LOCKED_GATES.map(({ bridgeId, requiredOrder }) => ({
-      bridgeId,
-      requiredOrder,
-    })),
-    lockedBridges.map(({ id, requiredOrder }) => ({
-      bridgeId: id,
-      requiredOrder,
-    })),
-  );
+test("全部桥梁从开局开放且没有顺序门禁", () => {
+  assert.deepEqual(world.LOCKED_GATES, []);
 });

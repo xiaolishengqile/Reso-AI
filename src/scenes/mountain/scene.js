@@ -7,7 +7,7 @@ export const mountainScene = Object.freeze({
   accent: "#9b745c",
   description: "第一站：沿着山路走向云端。",
   sceneDescription: "走过绳桥后将从咖啡馆邀约开始这段爬山旅程。完整结束后，工作岛才会解锁。",
-  legendState: "下一站",
+  legendState: "已解锁",
   completedLegendState: "已完成",
   completedAtOrder: 2,
   unlocksOrder: 2,

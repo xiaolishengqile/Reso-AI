@@ -1,13 +1,9 @@
-import { drawGeneratedIsland } from "./generatedIslandRenderer.js";
-
-export function getIslandRenderState(islands, unlockedOrder) {
+export function getIslandRenderState(islands) {
   return islands.map((island) => ({
     ...island,
     showAsset: Boolean(island.assetUrl),
-    showGenerated: island.renderMode === "generated",
-    showCloud: Boolean(
-      island.cloudCover && island.unlockOrder > unlockedOrder,
-    ),
+    showGenerated: false,
+    showCloud: false,
   }));
 }
 
@@ -79,9 +75,8 @@ function bridgeGeometry(bridge) {
   };
 }
 
-function drawBridge(context, bridge, unlockedOrder) {
+function drawBridge(context, bridge) {
   const geometry = bridgeGeometry(bridge);
-  const locked = unlockedOrder < bridge.requiredOrder;
   context.save();
   context.translate(bridge.from.x, bridge.from.z);
   context.rotate(geometry.angle);
@@ -94,14 +89,14 @@ function drawBridge(context, bridge, unlockedOrder) {
   context.lineTo(geometry.length, 10);
   context.stroke();
 
-  context.strokeStyle = locked ? "#b9aa90" : "#bf8f50";
+  context.strokeStyle = "#bf8f50";
   context.lineWidth = bridge.width - 22;
   context.beginPath();
   context.moveTo(0, 0);
   context.lineTo(geometry.length, 0);
   context.stroke();
 
-  context.strokeStyle = locked ? "#8d8376" : "#73513c";
+  context.strokeStyle = "#73513c";
   context.lineWidth = 5;
   for (let x = 8; x < geometry.length; x += 26) {
     context.beginPath();
@@ -121,33 +116,11 @@ function drawBridge(context, bridge, unlockedOrder) {
   }
   context.restore();
 
-  if (locked) drawBridgeLock(context, bridge, geometry);
 }
 
-function drawBridgeLock(context, bridge, geometry) {
-  const x = (bridge.from.x + bridge.to.x) / 2;
-  const z = (bridge.from.z + bridge.to.z) / 2;
-  context.save();
-  context.translate(x, z);
-  context.rotate(geometry.angle);
-  context.fillStyle = "rgba(247, 242, 222, 0.95)";
-  context.strokeStyle = "#6f5b4e";
-  context.lineWidth = 4;
-  context.beginPath();
-  context.arc(0, 0, 34, 0, Math.PI * 2);
-  context.fill();
-  context.stroke();
-  context.beginPath();
-  context.arc(0, -7, 10, Math.PI, Math.PI * 2);
-  context.stroke();
-  context.fillStyle = "#6f5b4e";
-  context.fillRect(-13, -7, 26, 22);
-  context.restore();
-}
-
-export function drawBridges(context, bridges, unlockedOrder) {
+export function drawBridges(context, bridges) {
   for (const bridge of bridges) {
-    drawBridge(context, bridge, unlockedOrder);
+    drawBridge(context, bridge);
   }
 }
 
@@ -164,90 +137,15 @@ function drawIslandAsset(context, island, image) {
   context.restore();
 }
 
-const CLOUD_PUFFS = Object.freeze([
-  [0.08, 0.46, 0.19, 0.28], [0.18, 0.27, 0.2, 0.3],
-  [0.32, 0.18, 0.22, 0.32], [0.5, 0.2, 0.24, 0.35],
-  [0.68, 0.17, 0.22, 0.32], [0.84, 0.28, 0.2, 0.3],
-  [0.93, 0.48, 0.18, 0.27], [0.79, 0.67, 0.23, 0.31],
-  [0.61, 0.76, 0.25, 0.3], [0.4, 0.75, 0.26, 0.31],
-  [0.21, 0.68, 0.22, 0.3], [0.49, 0.49, 0.4, 0.38],
-]);
-
-function drawCloudPuffs(context, cover, drift, size, alpha, color) {
-  context.globalAlpha = alpha;
-  context.fillStyle = color;
-  for (const [x, z, radiusX, radiusZ] of CLOUD_PUFFS) {
-    context.beginPath();
-    context.ellipse(
-      cover.x + cover.width * x + drift,
-      cover.z + cover.height * z,
-      cover.width * radiusX * size,
-      cover.height * radiusZ * size,
-      0,
-      0,
-      Math.PI * 2,
-    );
-    context.fill();
-  }
-}
-
-export function drawCloudCover(
-  context,
-  island,
-  elapsedSeconds,
-  cloudImage = null,
-) {
-  const cover = island.cloudCover;
-  if (!cover) return;
-  const drift = Math.sin(elapsedSeconds * 0.65 + island.unlockOrder) * 8;
-
-  if (cloudImage?.complete && cloudImage.naturalWidth) {
-    context.save();
-    context.globalAlpha = cover.opacity;
-    context.drawImage(
-      cloudImage,
-      cover.x - cover.width * 0.06 + drift,
-      cover.z - cover.height * 0.08,
-      cover.width * 1.12,
-      cover.height * 1.16,
-    );
-    context.restore();
-    return;
-  }
-
-  context.save();
-  context.shadowColor = "rgba(73, 109, 121, 0.24)";
-  context.shadowBlur = 48;
-  context.shadowOffsetY = 22;
-  drawCloudPuffs(context, cover, drift, 1.07, 0.34, "#dcecea");
-  context.shadowBlur = 26;
-  context.shadowOffsetY = 12;
-  drawCloudPuffs(context, cover, drift, 0.9, cover.opacity, "#edf6f2");
-  context.shadowColor = "transparent";
-  drawCloudPuffs(context, cover, drift - 5, 0.58, 0.46, "#ffffff");
-  context.restore();
-}
-
 export function drawIslandLayers(
   context,
   islands,
   imageStore,
-  unlockedOrder,
-  elapsedSeconds,
-  cloudImage = null,
 ) {
-  const states = getIslandRenderState(islands, unlockedOrder);
-  for (const island of states) {
-    if (island.showGenerated) drawGeneratedIsland(context, island);
-  }
+  const states = getIslandRenderState(islands);
   for (const island of states) {
     if (island.showAsset) {
       drawIslandAsset(context, island, imageStore.get(island.id));
-    }
-  }
-  for (const island of states) {
-    if (island.showCloud) {
-      drawCloudCover(context, island, elapsedSeconds, cloudImage);
     }
   }
 }

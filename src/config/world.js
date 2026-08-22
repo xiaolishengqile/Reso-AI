@@ -13,10 +13,6 @@ function assetUrl(path) {
   return ASSET_BASE_URL + path;
 }
 
-export const CLOUD_COVER_ASSET_URL = assetUrl(
-  "assets/effects/cloud-cover.png",
-);
-
 export const WORLD_DECORATIONS = Object.freeze([
   Object.freeze({
     id: "fog-valley-elder",
@@ -38,22 +34,11 @@ function bounds(x, z, width, height) {
   return Object.freeze({ x, z, width, height });
 }
 
-function cloudCover(sceneBounds, opacity = 0.96) {
-  return Object.freeze({
-    x: Math.max(0, sceneBounds.x - 100),
-    z: Math.max(0, sceneBounds.z - 100),
-    width: sceneBounds.width + 200,
-    height: sceneBounds.height + 200,
-    opacity,
-  });
-}
-
 function sceneIsland(
   id,
   unlockOrder,
   assetUrl,
   sceneBounds,
-  cover = null,
   rotation = 0,
   theme = null,
 ) {
@@ -64,19 +49,17 @@ function sceneIsland(
     assetUrl,
     renderMode: assetUrl ? "asset" : "generated",
     bounds: sceneBounds,
-    cloudCover: cover,
     rotation,
     theme,
   });
 }
 
-function generatedIsland(id, unlockOrder, sceneBounds, theme) {
+function illustratedIsland(id, unlockOrder, sceneBounds, theme) {
   return sceneIsland(
     id,
     unlockOrder,
-    null,
+    assetUrl(`assets/islands/${id}.png`),
     sceneBounds,
-    cloudCover(sceneBounds),
     0,
     Object.freeze(theme),
   );
@@ -93,7 +76,6 @@ export const ISLANDS = Object.freeze([
     1,
     assetUrl("assets/islands/mountain.png"),
     MOUNTAIN_BOUNDS,
-    null,
     -0.29,
   ),
   sceneIsland(
@@ -101,27 +83,26 @@ export const ISLANDS = Object.freeze([
     2,
     assetUrl("assets/islands/office.png"),
     OFFICE_BOUNDS,
-    cloudCover(OFFICE_BOUNDS, 0.94),
   ),
-  generatedIsland("dining", 3, bounds(1500, 110, 620, 480), {
+  illustratedIsland("dining", 3, bounds(1500, 110, 620, 480), {
     ground: "#bd8a62", accent: "#f4d091", detail: "#f8ebce", prop: "dining",
   }),
-  generatedIsland("cohabitation", 4, bounds(2160, 380, 620, 480), {
+  illustratedIsland("cohabitation", 4, bounds(2160, 380, 620, 480), {
     ground: "#8f9f83", accent: "#e9c8a0", detail: "#dfe9d7", prop: "cohabitation",
   }),
-  generatedIsland("money", 5, bounds(2670, 900, 620, 480), {
+  illustratedIsland("money", 5, bounds(2670, 900, 620, 480), {
     ground: "#8c9675", accent: "#e8c46f", detail: "#e6edd2", prop: "money",
   }),
-  generatedIsland("social", 6, bounds(3300, 1320, 620, 480), {
+  illustratedIsland("social", 6, bounds(3300, 1320, 620, 480), {
     ground: "#7e718b", accent: "#efb3c5", detail: "#e7dcef", prop: "social",
   }),
-  generatedIsland("travel", 7, bounds(3890, 940, 620, 450), {
+  illustratedIsland("travel", 7, bounds(3890, 940, 620, 450), {
     ground: "#c39c68", accent: "#f3d78b", detail: "#d4edf0", prop: "travel",
   }),
-  generatedIsland("future", 8, bounds(4320, 260, 620, 460), {
+  illustratedIsland("future", 8, bounds(4320, 260, 620, 460), {
     ground: "#777998", accent: "#edc2aa", detail: "#ddd9f1", prop: "future",
   }),
-  generatedIsland("wish", 9, bounds(4650, 1010, 600, 470), {
+  illustratedIsland("wish", 9, bounds(4650, 1010, 600, 470), {
     ground: "#8b7698", accent: "#f2c5d5", detail: "#f5e9c8", prop: "wish",
   }),
 ]);
@@ -177,44 +158,7 @@ export const BRIDGES = Object.freeze(
   )),
 );
 
-function gateAcrossBridge(bridge, depth = 70) {
-  const dx = bridge.to.x - bridge.from.x;
-  const dz = bridge.to.z - bridge.from.z;
-  const length = Math.hypot(dx, dz);
-  const along = { x: dx / length, z: dz / length };
-  const side = { x: -along.z, z: along.x };
-  const center = {
-    x: (bridge.from.x + bridge.to.x) / 2,
-    z: (bridge.from.z + bridge.to.z) / 2,
-  };
-  const corners = [];
-  for (const alongSign of [-1, 1]) {
-    for (const sideSign of [-1, 1]) {
-      corners.push({
-        x: center.x
-          + along.x * depth / 2 * alongSign
-          + side.x * bridge.width / 2 * sideSign,
-        z: center.z
-          + along.z * depth / 2 * alongSign
-          + side.z * bridge.width / 2 * sideSign,
-      });
-    }
-  }
-  return Object.freeze({
-    bridgeId: bridge.id,
-    requiredOrder: bridge.requiredOrder,
-    minX: Math.min(...corners.map(({ x }) => x)),
-    maxX: Math.max(...corners.map(({ x }) => x)),
-    minZ: Math.min(...corners.map(({ z }) => z)),
-    maxZ: Math.max(...corners.map(({ z }) => z)),
-  });
-}
-
-export const LOCKED_GATES = Object.freeze(
-  BRIDGES
-    .filter(({ requiredOrder }) => requiredOrder >= 2)
-    .map((bridge) => gateAcrossBridge(bridge)),
-);
+export const LOCKED_GATES = Object.freeze([]);
 
 function ellipseArea(
   centerX,

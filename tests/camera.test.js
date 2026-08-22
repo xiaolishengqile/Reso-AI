@@ -100,6 +100,65 @@ test("镜头会平滑接近目标而不会瞬间跳变", async () => {
   assert.ok(next.offsetY < current.offsetY && next.offsetY > target.offsetY);
 });
 
+test("拖动云海会平移地图并限制在地图边界内", async () => {
+  const camera = await cameraPromise;
+  assert.equal(typeof camera.panMapTransform, "function");
+
+  assert.deepEqual(
+    camera.panMapTransform(
+      { scale: 0.5, offsetX: -200, offsetY: -100 },
+      { x: 120, y: -80 },
+      1200,
+      800,
+      MAP_SIZE.width,
+      MAP_SIZE.height,
+    ),
+    { scale: 0.5, offsetX: -80, offsetY: -180 },
+  );
+
+  assert.deepEqual(
+    camera.panMapTransform(
+      { scale: 0.5, offsetX: -80, offsetY: -180 },
+      { x: 1000, y: -2000 },
+      1200,
+      800,
+      MAP_SIZE.width,
+      MAP_SIZE.height,
+    ),
+    { scale: 0.5, offsetX: 0, offsetY: -300 },
+  );
+});
+
+test("全景完整容纳地图时开始拖动会进入可平移尺度", async () => {
+  const camera = await cameraPromise;
+  assert.equal(typeof camera.createPannableTransform, "function");
+  const overview = camera.createOverviewTransform(
+    1200,
+    800,
+    MAP_SIZE.width,
+    MAP_SIZE.height,
+  );
+  const anchor = { x: 180, y: 160 };
+  const mapPoint = {
+    x: (anchor.x - overview.offsetX) / overview.scale,
+    z: (anchor.y - overview.offsetY) / overview.scale,
+  };
+
+  const pannable = camera.createPannableTransform(
+    overview,
+    anchor,
+    mapPoint,
+    1200,
+    800,
+    MAP_SIZE.width,
+    MAP_SIZE.height,
+  );
+
+  assert.ok(pannable.scale > overview.scale);
+  assert.ok(MAP_SIZE.width * pannable.scale > 1200);
+  assert.ok(MAP_SIZE.height * pannable.scale > 800);
+});
+
 test("开场短暂展示全景后即使静止也锁定人物近景", async () => {
   const camera = await cameraPromise;
   assert.equal(typeof camera.resolveCameraMode, "function");

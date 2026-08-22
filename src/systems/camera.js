@@ -75,6 +75,51 @@ export function stepCamera(
   };
 }
 
+export function panMapTransform(
+  current,
+  delta,
+  viewWidth,
+  viewHeight,
+  mapWidth,
+  mapHeight,
+) {
+  const scaledWidth = mapWidth * current.scale;
+  const scaledHeight = mapHeight * current.scale;
+  const offsetX = scaledWidth <= viewWidth
+    ? (viewWidth - scaledWidth) / 2
+    : clamp(current.offsetX + delta.x, viewWidth - scaledWidth, 0);
+  const offsetY = scaledHeight <= viewHeight
+    ? (viewHeight - scaledHeight) / 2
+    : clamp(current.offsetY + delta.y, viewHeight - scaledHeight, 0);
+  return { scale: current.scale, offsetX, offsetY };
+}
+
+export function createPannableTransform(
+  current,
+  anchor,
+  mapPoint,
+  viewWidth,
+  viewHeight,
+  mapWidth,
+  mapHeight,
+) {
+  const scale = Math.max(
+    current.scale,
+    Math.max(viewWidth / mapWidth, viewHeight / mapHeight) * 1.12,
+  );
+  const scaledWidth = mapWidth * scale;
+  const scaledHeight = mapHeight * scale;
+  return {
+    scale,
+    offsetX: scaledWidth <= viewWidth
+      ? (viewWidth - scaledWidth) / 2
+      : clamp(anchor.x - mapPoint.x * scale, viewWidth - scaledWidth, 0),
+    offsetY: scaledHeight <= viewHeight
+      ? (viewHeight - scaledHeight) / 2
+      : clamp(anchor.y - mapPoint.z * scale, viewHeight - scaledHeight, 0),
+  };
+}
+
 export function resolveCameraMode({
   elapsedSeconds = 0,
   overviewRequested = false,

@@ -1,5 +1,4 @@
 import { validateEvidence } from "./evidence.js";
-import { MOUNTAIN_STAGES } from "../scenes/mountain/storyContent.js";
 import { getAllStories } from "../scenes/story/catalog.js";
 
 export const PORTRAIT_GENERATOR_VERSION = 2;
@@ -20,18 +19,13 @@ export const PORTRAIT_SECTION_TITLES = Object.freeze([
 ]);
 
 const STORY_SCHEMAS = getAllStories();
-const EXPECTED_EVIDENCE = Object.freeze([
-  Object.freeze({
-    islandId: "mountain",
-    islandName: "爬山岛",
-    stages: MOUNTAIN_STAGES.filter(({ recordsEvidence }) => recordsEvidence),
-  }),
-  ...STORY_SCHEMAS.map((story) => Object.freeze({
+const EXPECTED_EVIDENCE = Object.freeze(
+  STORY_SCHEMAS.map((story) => Object.freeze({
     islandId: story.id,
     islandName: story.title,
     stages: story.stages.filter(({ recordsEvidence }) => recordsEvidence),
   })),
-]);
+);
 const ISLAND_NAMES = Object.freeze(Object.fromEntries(
   EXPECTED_EVIDENCE.map(({ islandId, islandName }) => [islandId, islandName]),
 ));
@@ -74,11 +68,9 @@ function storyProgressList(storyProgress) {
     : [];
 }
 
-export function collectOfficialEvidence({ mountainProgress, storyProgress } = {}) {
-  const candidates = [
-    ...(mountainProgress?.officialEvidence ?? []),
-    ...storyProgressList(storyProgress).flatMap(({ officialEvidence = [] } = {}) => officialEvidence),
-  ];
+export function collectOfficialEvidence({ storyProgress } = {}) {
+  const candidates = storyProgressList(storyProgress)
+    .flatMap(({ officialEvidence = [] } = {}) => officialEvidence);
   const expectedIslands = new Set(EXPECTED_EVIDENCE.map(({ islandId }) => islandId));
   const seen = new Set();
   return candidates.filter((item) => {
@@ -95,7 +87,6 @@ export function collectOfficialEvidence({ mountainProgress, storyProgress } = {}
 }
 
 function getIslandProgress(input, islandId) {
-  if (islandId === "mountain") return input.mountainProgress;
   if (Array.isArray(input.storyProgress)) {
     return input.storyProgress.find((progress) => progress?.islandId === islandId);
   }
@@ -106,7 +97,7 @@ export function validatePortraitReadiness(input = {}) {
   const evidence = collectOfficialEvidence(input);
   const missing = [];
   if (input.profile?.completed !== true) missing.push("雾谷旅人记录尚未完成");
-  const expectedCharacterId = input.characterId ?? input.mountainProgress?.characterId ?? null;
+  const expectedCharacterId = input.characterId ?? null;
 
   for (const { islandId, islandName, stages } of EXPECTED_EVIDENCE) {
     const progress = getIslandProgress(input, islandId);
@@ -310,7 +301,7 @@ function overallConfidence(evidence, aggregated) {
   const islands = new Set(evidence.map(({ islandId }) => islandId)).size;
   const hasHighConfidencePattern = aggregateEntries(aggregated)
     .some(({ confidence }) => confidence === "high");
-  if (evidence.length >= 49 && islands === 8 && hasHighConfidencePattern) return "high";
+  if (evidence.length >= 42 && islands === 7 && hasHighConfidencePattern) return "high";
   return islands >= 4 ? "medium" : "low";
 }
 
@@ -349,7 +340,7 @@ export function generateLocalPortrait({
         : isEvidenceSection
           ? overallConfidence(validEvidence, aggregated)
           : confidenceForEntries(entries),
-      evidenceRefs: evidenceRefs.slice(0, isEvidenceSection ? 49 : 12),
+      evidenceRefs: evidenceRefs.slice(0, isEvidenceSection ? 42 : 12),
     };
   });
   const coreEntry = aggregateEntries(aggregated)
