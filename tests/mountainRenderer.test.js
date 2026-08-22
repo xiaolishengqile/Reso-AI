@@ -24,7 +24,7 @@ test("角色按画布比例从山脚移动到山腰和山顶", () => {
 
   assert.ok(foot.player.y > middle.player.y);
   assert.ok(middle.player.y > summit.player.y);
-  assert.equal(foot.player.x, 1200 * 0.28);
+  assert.ok(foot.player.x < middle.player.x);
   assert.equal(summit.camera.scale, 0.82);
 });
 
@@ -33,6 +33,18 @@ test("公寓尾声的玩家位于未被左侧剧情面板遮挡的右半区", ()
 
   assert.ok(apartment.player.x > 600);
   assert.equal(apartment.player.y, 576);
+});
+
+test("宽屏全部剧情路标的可见角色都位于左侧面板右边", () => {
+  const waypoints = ["cafe", "foot", "lower", "middle", "cliff", "shelter", "summit", "return", "apartment"];
+
+  for (const waypoint of waypoints) {
+    const layout = getMountainActorLayout(waypoint, 1200, 800);
+    assert.ok(layout.player.x > 540, waypoint + " 的玩家不应被左侧面板遮挡");
+    if (waypoint !== "apartment") {
+      assert.ok(layout.companion.x > 540, waypoint + " 的同行者不应被左侧面板遮挡");
+    }
+  }
 });
 
 test("剧情路标会映射到对应场景位置而非回退山脚", () => {
@@ -166,13 +178,13 @@ test("动作先固定在路标，再在局部坐标执行姿态变换", () => {
   const lecturing = renderAction("lecturing");
 
   assert.deepEqual(slipping.slice(0, 3), [
-    ["translate", 840, 312],
+    ["translate", 864, 312],
     ["translate", 4, 8],
     ["rotate", 0.38],
   ]);
-  assert.deepEqual(standing[0], ["translate", 840, 312]);
-  assert.deepEqual(commanding[0], ["translate", 840, 312]);
-  assert.deepEqual(lecturing[0], ["translate", 840, 312]);
+  assert.deepEqual(standing[0], ["translate", 864, 312]);
+  assert.deepEqual(commanding[0], ["translate", 864, 312]);
+  assert.deepEqual(lecturing[0], ["translate", 864, 312]);
   assert.ok(commanding[2][1] < 0 && commanding[2][1] > -0.2);
   assert.ok(lecturing[2][1] > 0 && lecturing[2][1] < 0.2);
 });

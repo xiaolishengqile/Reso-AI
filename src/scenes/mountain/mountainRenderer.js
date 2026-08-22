@@ -8,14 +8,14 @@ const PALETTES = Object.freeze({
 });
 
 const WAYPOINTS = Object.freeze({
-  cafe: { player: [0.39, 0.69], companion: [0.61, 0.69], action: "standing", scale: 1.15 },
-  foot: { player: [0.28, 0.79], companion: [0.34, 0.75], action: "walking", scale: 1 },
-  lower: { player: [0.42, 0.67], companion: [0.48, 0.63], action: "walking", scale: 1.04 },
-  middle: { player: [0.58, 0.53], companion: [0.64, 0.49], action: "tired", scale: 1.1 },
-  cliff: { player: [0.7, 0.39], companion: [0.63, 0.43], action: "slipping", companionAction: "supporting", scale: 1.22 },
-  shelter: { player: [0.47, 0.56], companion: [0.55, 0.56], action: "hugging", companionAction: "comforting", scale: 1.3 },
-  summit: { player: [0.71, 0.23], companion: [0.63, 0.27], action: "climbing", scale: 0.82 },
-  return: { player: [0.42, 0.58], companion: [0.55, 0.62], action: "distant", scale: 0.94 },
+  cafe: { player: [0.57, 0.69], companion: [0.69, 0.69], action: "standing", scale: 1.15 },
+  foot: { player: [0.55, 0.79], companion: [0.61, 0.75], action: "walking", scale: 1 },
+  lower: { player: [0.59, 0.67], companion: [0.65, 0.63], action: "walking", scale: 1.04 },
+  middle: { player: [0.64, 0.53], companion: [0.7, 0.49], action: "tired", scale: 1.1 },
+  cliff: { player: [0.72, 0.39], companion: [0.66, 0.43], action: "slipping", companionAction: "supporting", scale: 1.22 },
+  shelter: { player: [0.6, 0.56], companion: [0.67, 0.56], action: "hugging", companionAction: "comforting", scale: 1.3 },
+  summit: { player: [0.75, 0.23], companion: [0.68, 0.27], action: "climbing", scale: 0.82 },
+  return: { player: [0.58, 0.58], companion: [0.67, 0.62], action: "distant", scale: 0.94 },
   apartment: { player: [0.7, 0.72], companion: [0.65, 0.72], action: "standing", scale: 1.15 },
 });
 
