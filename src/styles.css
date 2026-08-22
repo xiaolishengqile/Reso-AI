@@ -35,7 +35,7 @@ kbd {
   background:
     radial-gradient(circle at 48% 38%, rgba(237, 251, 247, 0.95) 0 12%, transparent 48%),
     linear-gradient(160deg, rgba(196, 232, 239, 0.2), rgba(134, 196, 218, 0.2)),
-    url("/assets/world-map-painted.jpg") center / cover no-repeat;
+    url("/assets/world-map-chain.jpg") center / cover no-repeat;
 }
 
 .app-shell::before,
@@ -200,6 +200,19 @@ kbd {
   gap: 8px;
 }
 
+.map-legend li.is-locked {
+  opacity: 0.55;
+  filter: grayscale(0.75);
+}
+
+.map-legend__state,
+.map-legend li small {
+  margin-left: auto;
+  color: #8b6d5e;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .marker {
   width: 9px;
   height: 9px;
@@ -208,9 +221,9 @@ kbd {
   border-radius: 2px;
 }
 
-.marker--mountain { background: #c9826d; }
-.marker--forest { background: #6f9f73; }
-.marker--ruins { background: #b18a76; }
+.marker--home { background: #c9826d; }
+.marker--mountain { background: #9b806a; }
+.marker--office { background: #6f8f99; }
 
 .location-card {
   top: 48%;
@@ -462,6 +475,12 @@ kbd {
 .scene-dialog button:active {
   transform: translateY(2px);
   box-shadow: 0 2px 0 #4e6c57;
+}
+
+.scene-dialog__complete {
+  margin: 0 7px 10px 0;
+  background: #b77b56 !important;
+  box-shadow: 0 4px 0 #85543b !important;
 }
 
 .compatibility-error {

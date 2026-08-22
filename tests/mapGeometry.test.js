@@ -33,3 +33,24 @@ test("多边形边界能够区分浮岛与天空", () => {
   assert.equal(movement.isPointInPolygon({ x: 5, z: 4 }, island), true);
   assert.equal(movement.isPointInPolygon({ x: 12, z: 4 }, island), false);
 });
+
+test("多座岛屿与重叠桥梁可以组成连续可行走区", () => {
+  const areas = [
+    [
+      { x: 0, z: 0 },
+      { x: 6, z: 0 },
+      { x: 6, z: 6 },
+      { x: 0, z: 6 },
+    ],
+    [
+      { x: 5, z: 2 },
+      { x: 12, z: 2 },
+      { x: 12, z: 4 },
+      { x: 5, z: 4 },
+    ],
+  ];
+
+  assert.equal(movement.isPointInPolygons({ x: 10, z: 3 }, areas), true);
+  assert.equal(movement.isPointInPolygons({ x: 10, z: 7 }, areas), false);
+  assert.equal(movement.isCircleInPolygons({ x: 5.5, z: 3 }, 1, areas), true);
+});

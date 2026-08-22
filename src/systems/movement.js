@@ -50,6 +50,10 @@ export function isPointInPolygon(point, polygon) {
   return inside;
 }
 
+export function isPointInPolygons(point, polygons) {
+  return polygons.some((polygon) => isPointInPolygon(point, polygon));
+}
+
 export function isCircleInPolygon(point, radius, polygon) {
   if (!isPointInPolygon(point, polygon)) return false;
   for (let index = 0; index < 8; index += 1) {
@@ -61,6 +65,26 @@ export function isCircleInPolygon(point, radius, polygon) {
     if (!isPointInPolygon(edge, polygon)) return false;
   }
   return true;
+}
+
+export function isCircleInPolygons(point, radius, polygons) {
+  const points = [point];
+  for (let index = 0; index < 8; index += 1) {
+    const angle = (index * Math.PI) / 4;
+    points.push({
+      x: point.x + Math.cos(angle) * radius,
+      z: point.z + Math.sin(angle) * radius,
+    });
+  }
+  return points.every((sample) => isPointInPolygons(sample, polygons));
+}
+
+export function directionFromMovement(previousPosition, nextPosition, fallback) {
+  const direction = {
+    x: nextPosition.x - previousPosition.x,
+    z: nextPosition.z - previousPosition.z,
+  };
+  return Math.hypot(direction.x, direction.z) < 0.01 ? fallback : direction;
 }
 
 export function getStallDuration(

@@ -73,6 +73,17 @@ test("斜向移动被阻挡时会沿可行走方向滑动", () => {
   assert.deepEqual(next, { x: 0, z: 1 });
 });
 
+test("角色朝向使用滑动后的真实位移", () => {
+  assert.deepEqual(
+    movement.directionFromMovement(
+      { x: 0, z: 0 },
+      { x: 0, z: 0.447 },
+      { x: 2, z: 1 },
+    ),
+    { x: 0, z: 0.447 },
+  );
+});
+
 test("自动移动连续原地时会累计阻塞时间", () => {
   assert.ok(
     Math.abs(

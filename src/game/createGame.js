@@ -1,39 +1,70 @@
 import {
   LOCATIONS,
+  LOCKED_GATES,
   MAP_SIZE,
   OBSTACLES,
+  PLAYER_RADIUS,
+  PLAYER_SPEED,
   PLAYER_START,
-  WALKABLE_POLYGON,
+  WALKABLE_AREAS,
   WORLD_BOUNDS,
 } from "../config/world.js";
 import { drawCharacter } from "../entities/character.js";
+import {
+  drawLocationGlow,
+  drawLockedLocation,
+  drawTarget,
+} from "./mapRenderer.js";
 import { createInput } from "../systems/createInput.js";
 import {
   createCoverTransform,
+  directionFromMovement,
   directionToTarget,
   findNearbyLocation,
   getStallDuration,
-  isCircleInPolygon,
-  isPointInPolygon,
+  isCircleInPolygons,
   moveActor,
   screenToMap,
 } from "../systems/movement.js";
+import {
+  advanceUnlockOrder,
+  canTraversePoint,
+  INITIAL_UNLOCK_ORDER,
+  isLocationUnlocked,
+} from "../systems/progression.js";
 
-const PLAYER_RADIUS = 15;
-const PLAYER_SPEED = 230;
+const BACKGROUND_ERROR_MESSAGE = "手绘地图底图加载失败，请刷新页面重试。";
 
-export function getLocationInteraction(clickedLocation, nearbyLocation) {
+export function getLocationInteraction(
+  clickedLocation,
+  nearbyLocation,
+  unlocked = true,
+) {
   if (!clickedLocation) {
-    return Object.freeze({ canEnter: false, message: "请选择一个地点。" });
+    return Object.freeze({
+      canEnter: false,
+      canApproach: false,
+      message: "请选择一个地点。",
+    });
+  }
+  if (!unlocked) {
+    return Object.freeze({
+      canEnter: false,
+      canApproach: false,
+      message: clickedLocation.lockedDescription
+        ?? `${clickedLocation.name}尚未解锁，请先完成爬山。`,
+    });
   }
   if (clickedLocation.id === nearbyLocation?.id) {
     return Object.freeze({
       canEnter: true,
+      canApproach: false,
       message: `准备进入「${clickedLocation.name}」`,
     });
   }
   return Object.freeze({
     canEnter: false,
+    canApproach: true,
     message: `正在前往「${clickedLocation.name}」`,
   });
 }
@@ -48,47 +79,37 @@ export function findLocationAtPoint(point, locations) {
     .sort((left, right) => left.distance - right.distance)[0]?.location ?? null;
 }
 
-export function getExplorationStatus({ backgroundFailed, nearbyLocation }) {
+export function getExplorationStatus({
+  backgroundFailed,
+  nearbyLocation,
+  nearbyUnlocked = true,
+  unlockedOrder = INITIAL_UNLOCK_ORDER,
+}) {
   if (backgroundFailed) {
-    return "手绘地图底图加载失败，请刷新页面重试。";
+    return BACKGROUND_ERROR_MESSAGE;
+  }
+  if (nearbyLocation && !nearbyUnlocked) {
+    return nearbyLocation.lockedDescription;
   }
   return nearbyLocation
     ? `已抵达「${nearbyLocation.name}」附近 · 点击地标进入`
-    : "沿着道路探索，寻找三个发光地点";
+    : unlockedOrder >= 2
+      ? "工作岛已解锁，沿着第二座桥继续前往"
+      : "从家庭小屋出发，先前往爬山岛";
 }
 
-function drawLocationGlow(context, location, active, elapsedSeconds) {
-  const pulse = 1 + Math.sin(elapsedSeconds * 2.2 + location.x) * 0.06;
-  const radius = location.hitRadius * 0.44 * pulse;
-  context.save();
-  context.globalAlpha = active ? 0.82 : 0.2;
-  context.strokeStyle = location.accent;
-  context.lineWidth = active ? 4 : 2;
-  context.setLineDash(active ? [10, 7] : [5, 12]);
-  context.beginPath();
-  context.ellipse(
-    location.x,
-    location.z + 18,
-    radius,
-    radius * 0.42,
-    0,
-    0,
-    Math.PI * 2,
-  );
-  context.stroke();
-  context.restore();
-}
-
-function drawTarget(context, target, elapsedSeconds) {
-  if (!target) return;
-  const radius = 10 + Math.sin(elapsedSeconds * 4) * 2;
-  context.save();
-  context.strokeStyle = "rgba(112, 76, 51, 0.72)";
-  context.lineWidth = 2;
-  context.beginPath();
-  context.ellipse(target.x, target.z, radius, radius * 0.45, 0, 0, Math.PI * 2);
-  context.stroke();
-  context.restore();
+export function resolveStatusUpdate({
+  backgroundFailed,
+  message,
+  now,
+  lockMilliseconds,
+}) {
+  return backgroundFailed
+    ? {
+        message: BACKGROUND_ERROR_MESSAGE,
+        lockedUntil: Number.POSITIVE_INFINITY,
+      }
+    : { message, lockedUntil: now + lockMilliseconds };
 }
 
 export function createGame({
@@ -96,7 +117,7 @@ export function createGame({
   ui,
   characterId,
   windowTarget = window,
-  imageUrl = "/assets/world-map-painted.jpg",
+  imageUrl = "/assets/world-map-chain.jpg",
 }) {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("当前浏览器无法创建二维画布");
@@ -112,6 +133,8 @@ export function createGame({
   let targetLocationId = null;
   let hoveredLocation = null;
   let nearbyLocation = null;
+  let activeLocation = null;
+  let unlockedOrder = INITIAL_UNLOCK_ORDER;
   let backgroundFailed = false;
   let stalledSeconds = 0;
   let lastDirection = { x: 0, z: 1 };
@@ -120,9 +143,36 @@ export function createGame({
   let frameId = 0;
   let started = false;
 
+  function canStandAt(point) {
+    return isCircleInPolygons(point, PLAYER_RADIUS, WALKABLE_AREAS)
+      && canTraversePoint(point, unlockedOrder, LOCKED_GATES);
+  }
+
   function setStatus(message, lockMilliseconds = 0) {
-    if (ui.status) ui.status.textContent = message;
-    statusLockedUntil = windowTarget.performance.now() + lockMilliseconds;
+    const update = resolveStatusUpdate({
+      backgroundFailed,
+      message,
+      now: windowTarget.performance.now(),
+      lockMilliseconds,
+    });
+    if (ui.status) ui.status.textContent = update.message;
+    statusLockedUntil = update.lockedUntil;
+  }
+
+  function updateLegend() {
+    for (const item of ui.legendItems ?? []) {
+      const location = LOCATIONS.find(({ id }) => id === item.dataset.locationId);
+      if (!location) continue;
+      const unlocked = isLocationUnlocked(location, unlockedOrder);
+      item.classList.toggle("is-locked", !unlocked);
+      const state = item.querySelector("[data-location-state]");
+      if (!state) continue;
+      if (location.id === "home") state.textContent = "出生地";
+      else if (!unlocked) state.textContent = "未解锁";
+      else if (location.id === "mountain" && unlockedOrder >= 2) {
+        state.textContent = "已完成";
+      } else state.textContent = location.id === "mountain" ? "下一站" : "已解锁";
+    }
   }
 
   function showLocationCard(location) {
@@ -130,7 +180,14 @@ export function createGame({
     if (!location) return;
     if (ui.locationName) ui.locationName.textContent = location.name;
     if (ui.locationDescription) {
-      ui.locationDescription.textContent = location.description;
+      ui.locationDescription.textContent = isLocationUnlocked(location, unlockedOrder)
+        ? location.description
+        : location.lockedDescription;
+    }
+    if (ui.locationHint) {
+      ui.locationHint.textContent = isLocationUnlocked(location, unlockedOrder)
+        ? "靠近后点击进入"
+        : "完成爬山后解锁";
     }
   }
 
@@ -158,9 +215,24 @@ export function createGame({
   }
 
   function openLocationDialog(location) {
+    activeLocation = location;
     if (ui.dialogTitle) ui.dialogTitle.textContent = location.name;
+    if (ui.dialogLabel) {
+      ui.dialogLabel.textContent = location.id === "home"
+        ? "出 生 地 · 家 庭 场 景"
+        : location.id === "mountain"
+          ? "第 一 站 · 爬 山 场 景"
+          : "第 二 站 · 工 作 场 景";
+    }
     if (ui.dialogDescription) {
       ui.dialogDescription.textContent = location.sceneDescription;
+    }
+    if (ui.completeButton) {
+      const canComplete = Boolean(
+        location.completionLabel && unlockedOrder < location.unlocksOrder,
+      );
+      ui.completeButton.hidden = !canComplete;
+      ui.completeButton.textContent = location.completionLabel ?? "";
     }
     ui.dialog?.style.setProperty("--scene-accent", location.accent);
     if (typeof ui.dialog?.showModal === "function" && !ui.dialog.open) {
@@ -174,14 +246,18 @@ export function createGame({
     const point = eventToMap(event);
     const location = findLocationAtPoint(point, LOCATIONS);
     if (location) {
-      const interaction = getLocationInteraction(location, nearbyLocation);
+      const interaction = getLocationInteraction(
+        location,
+        nearbyLocation,
+        isLocationUnlocked(location, unlockedOrder),
+      );
       setStatus(interaction.message, 1800);
       if (interaction.canEnter) {
         pointerTarget = null;
         targetLocationId = null;
         stalledSeconds = 0;
         openLocationDialog(location);
-      } else {
+      } else if (interaction.canApproach) {
         pointerTarget = location.approach;
         targetLocationId = location.id;
         stalledSeconds = 0;
@@ -189,7 +265,7 @@ export function createGame({
       return;
     }
 
-    if (isPointInPolygon(point, WALKABLE_POLYGON)) {
+    if (canStandAt(point)) {
       pointerTarget = point;
       targetLocationId = null;
       stalledSeconds = 0;
@@ -205,6 +281,18 @@ export function createGame({
     } else {
       ui.dialog?.removeAttribute("open");
     }
+    activeLocation = null;
+  }
+
+  function completeLocation() {
+    if (!activeLocation) return;
+    const nextOrder = advanceUnlockOrder(unlockedOrder, activeLocation);
+    if (nextOrder === unlockedOrder) return;
+    unlockedOrder = nextOrder;
+    updateLegend();
+    showLocationCard(hoveredLocation);
+    closeDialog();
+    setStatus("爬山已完成，通往工作岛的桥已解锁。", 2600);
   }
 
   function resize() {
@@ -237,9 +325,9 @@ export function createGame({
       }
     }
 
-    const moving = direction.x !== 0 || direction.z !== 0;
-    if (moving) {
-      lastDirection = direction;
+    const wantsToMove = direction.x !== 0 || direction.z !== 0;
+    let moving = false;
+    if (wantsToMove) {
       const previousPosition = { x: player.x, z: player.z };
       const next = moveActor({
         position: player,
@@ -249,12 +337,17 @@ export function createGame({
         radius: PLAYER_RADIUS,
         bounds: WORLD_BOUNDS,
         obstacles: OBSTACLES,
-        isWalkable: (point) => (
-          isCircleInPolygon(point, PLAYER_RADIUS, WALKABLE_POLYGON)
-        ),
+        isWalkable: canStandAt,
       });
       player.x = next.x;
       player.z = next.z;
+      const actualDirection = directionFromMovement(
+        previousPosition,
+        next,
+        lastDirection,
+      );
+      moving = actualDirection !== lastDirection;
+      if (moving) lastDirection = actualDirection;
 
       if (pointerTarget) {
         stalledSeconds = getStallDuration(
@@ -274,7 +367,13 @@ export function createGame({
 
     nearbyLocation = findNearbyLocation(player, LOCATIONS);
     if (windowTarget.performance.now() >= statusLockedUntil) {
-      setStatus(getExplorationStatus({ backgroundFailed, nearbyLocation }));
+      setStatus(getExplorationStatus({
+        backgroundFailed,
+        nearbyLocation,
+        nearbyUnlocked: !nearbyLocation
+          || isLocationUnlocked(nearbyLocation, unlockedOrder),
+        unlockedOrder,
+      }));
     }
     return moving;
   }
@@ -298,12 +397,16 @@ export function createGame({
     context.translate(transform.offsetX, transform.offsetY);
     context.scale(transform.scale, transform.scale);
     for (const location of LOCATIONS) {
-      drawLocationGlow(
-        context,
-        location,
-        location === hoveredLocation || location === nearbyLocation,
-        elapsedSeconds,
-      );
+      if (isLocationUnlocked(location, unlockedOrder)) {
+        drawLocationGlow(
+          context,
+          location,
+          location === hoveredLocation || location === nearbyLocation,
+          elapsedSeconds,
+        );
+      } else {
+        drawLockedLocation(context, location, elapsedSeconds);
+      }
     }
     drawTarget(context, pointerTarget, elapsedSeconds);
     drawCharacter(context, {
@@ -328,6 +431,7 @@ export function createGame({
   canvas.addEventListener("pointerleave", onPointerLeave);
   canvas.addEventListener("click", onCanvasClick);
   ui.closeButton?.addEventListener("click", closeDialog);
+  ui.completeButton?.addEventListener("click", completeLocation);
   windowTarget.addEventListener("resize", resize);
   const onBackgroundError = () => {
     backgroundFailed = true;
@@ -341,6 +445,7 @@ export function createGame({
       if (started) return;
       started = true;
       resize();
+      updateLegend();
       previousTime = windowTarget.performance.now();
       frameId = windowTarget.requestAnimationFrame(tick);
     },
@@ -350,6 +455,7 @@ export function createGame({
       canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("click", onCanvasClick);
       ui.closeButton?.removeEventListener("click", closeDialog);
+      ui.completeButton?.removeEventListener("click", completeLocation);
       windowTarget.removeEventListener("resize", resize);
       background.removeEventListener("error", onBackgroundError);
       input.dispose();

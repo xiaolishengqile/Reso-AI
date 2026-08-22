@@ -13,17 +13,29 @@
       <div class="paper-texture" aria-hidden="true"></div>
 
       <header class="world-title" aria-label="地图名称">
-        <span class="world-title__eyebrow">浮 岛 纪 行 · WORLD MAP</span>
+        <span class="world-title__eyebrow">人 生 群 岛 · WORLD MAP</span>
         <h1>云上原野</h1>
-        <span class="world-title__subtitle">沿着路，去往故事发生的地方</span>
+        <span class="world-title__subtitle">从家出发，一座一座岛地前行</span>
       </header>
 
       <aside class="map-legend" aria-label="地图地点">
         <span class="map-legend__title">旅行手记</span>
         <ul>
-          <li><i class="marker marker--mountain"></i>云脊山</li>
-          <li><i class="marker marker--forest"></i>风语林</li>
-          <li><i class="marker marker--ruins"></i>星痕遗迹</li>
+          <li data-location-id="home">
+            <i class="marker marker--home"></i>
+            <span>家庭小屋</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="mountain">
+            <i class="marker marker--mountain"></i>
+            <span>爬山岛</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="office">
+            <i class="marker marker--office"></i>
+            <span>工作岛</span>
+            <small data-location-state></small>
+          </li>
         </ul>
       </aside>
 
@@ -31,7 +43,7 @@
         <span class="location-card__label">发现地点</span>
         <h2 id="location-name"></h2>
         <p id="location-description"></p>
-        <small>靠近后点击进入</small>
+        <small id="location-hint">靠近后点击进入</small>
       </aside>
 
       <section class="controls" aria-label="操作说明">
@@ -45,7 +57,7 @@
       </section>
 
       <section id="status" class="status" aria-live="polite">
-        沿着道路探索，寻找三个发光地点
+        从家庭小屋出发，先前往爬山岛
       </section>
 
       <dialog id="character-dialog" class="character-dialog" aria-labelledby="character-title">
@@ -69,9 +81,10 @@
 
       <dialog id="scene-dialog" class="scene-dialog">
         <div class="scene-dialog__ornament" aria-hidden="true">✦</div>
-        <span class="scene-dialog__label">独 立 场 景</span>
+        <span id="dialog-label" class="scene-dialog__label">独 立 场 景</span>
         <h2 id="dialog-title"></h2>
         <p id="dialog-description"></p>
+        <button id="dialog-complete" class="scene-dialog__complete" type="button" hidden></button>
         <button id="dialog-close" type="button" aria-label="返回世界地图">
           返回世界地图
         </button>

@@ -18,10 +18,14 @@ function startGame(characterId) {
         locationCard: document.querySelector("#location-card"),
         locationName: document.querySelector("#location-name"),
         locationDescription: document.querySelector("#location-description"),
+        locationHint: document.querySelector("#location-hint"),
+        legendItems: document.querySelectorAll("[data-location-id]"),
         status: document.querySelector("#status"),
         dialog: document.querySelector("#scene-dialog"),
+        dialogLabel: document.querySelector("#dialog-label"),
         dialogTitle: document.querySelector("#dialog-title"),
         dialogDescription: document.querySelector("#dialog-description"),
+        completeButton: document.querySelector("#dialog-complete"),
         closeButton: document.querySelector("#dialog-close"),
       },
     });
@@ -30,6 +34,10 @@ function startGame(characterId) {
     game.start();
   } catch (error) {
     console.error("创建世界地图失败", error);
+    game?.dispose();
+    game = null;
+    characterDialog.close?.();
+    characterDialog.removeAttribute("open");
     canvas.hidden = true;
     compatibilityError.hidden = false;
   }
