@@ -294,7 +294,7 @@ export function createGame({
     if (ui.locationHint) {
       ui.locationHint.textContent = isLocationUnlocked(location, unlockedOrder)
         ? "靠近后点击进入"
-        : "完成爬山后解锁";
+        : "按顺序完成上一座岛后解锁";
     }
   }
 

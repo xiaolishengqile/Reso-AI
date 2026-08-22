@@ -54,27 +54,31 @@ function sceneIsland(
   sceneBounds,
   cover = null,
   rotation = 0,
+  theme = null,
 ) {
   return Object.freeze({
     id,
     kind: "scene",
     unlockOrder,
     assetUrl,
+    renderMode: assetUrl ? "asset" : "generated",
     bounds: sceneBounds,
     cloudCover: cover,
     rotation,
+    theme,
   });
 }
 
-function futureIsland(unlockOrder, sceneBounds) {
-  return Object.freeze({
-    id: "future-" + unlockOrder,
-    kind: "future",
+function generatedIsland(id, unlockOrder, sceneBounds, theme) {
+  return sceneIsland(
+    id,
     unlockOrder,
-    assetUrl: null,
-    bounds: sceneBounds,
-    cloudCover: cloudCover(sceneBounds),
-  });
+    null,
+    sceneBounds,
+    cloudCover(sceneBounds),
+    0,
+    Object.freeze(theme),
+  );
 }
 
 const HOME_BOUNDS = bounds(1750, 1580, 740, 580);
@@ -98,13 +102,27 @@ export const ISLANDS = Object.freeze([
     OFFICE_BOUNDS,
     cloudCover(OFFICE_BOUNDS, 0.94),
   ),
-  futureIsland(3, bounds(1500, 110, 620, 480)),
-  futureIsland(4, bounds(2160, 380, 620, 480)),
-  futureIsland(5, bounds(2670, 900, 620, 480)),
-  futureIsland(6, bounds(3300, 1320, 620, 480)),
-  futureIsland(7, bounds(3890, 940, 620, 450)),
-  futureIsland(8, bounds(4320, 260, 620, 460)),
-  futureIsland(9, bounds(4650, 1010, 600, 470)),
+  generatedIsland("dining", 3, bounds(1500, 110, 620, 480), {
+    ground: "#bd8a62", accent: "#f4d091", detail: "#f8ebce", prop: "dining",
+  }),
+  generatedIsland("cohabitation", 4, bounds(2160, 380, 620, 480), {
+    ground: "#8f9f83", accent: "#e9c8a0", detail: "#dfe9d7", prop: "cohabitation",
+  }),
+  generatedIsland("money", 5, bounds(2670, 900, 620, 480), {
+    ground: "#8c9675", accent: "#e8c46f", detail: "#e6edd2", prop: "money",
+  }),
+  generatedIsland("social", 6, bounds(3300, 1320, 620, 480), {
+    ground: "#7e718b", accent: "#efb3c5", detail: "#e7dcef", prop: "social",
+  }),
+  generatedIsland("travel", 7, bounds(3890, 940, 620, 450), {
+    ground: "#c39c68", accent: "#f3d78b", detail: "#d4edf0", prop: "travel",
+  }),
+  generatedIsland("future", 8, bounds(4320, 260, 620, 460), {
+    ground: "#777998", accent: "#edc2aa", detail: "#ddd9f1", prop: "future",
+  }),
+  generatedIsland("wish", 9, bounds(4650, 1010, 600, 470), {
+    ground: "#8b7698", accent: "#f2c5d5", detail: "#f5e9c8", prop: "wish",
+  }),
 ]);
 
 function islandWalkEllipse(island) {
@@ -285,6 +303,21 @@ export const LOCATIONS = Object.freeze([
     hitRadius: 135,
     interactionRadius: 305,
     approach: Object.freeze({ x: 640, z: 450 }),
+  }),
+  ...ISLANDS.slice(3).map((island) => {
+    const center = {
+      x: island.bounds.x + island.bounds.width / 2,
+      z: island.bounds.z + island.bounds.height * 0.52,
+    };
+    return Object.freeze({
+      id: island.id,
+      unlockOrder: island.unlockOrder,
+      x: center.x,
+      z: center.z,
+      hitRadius: 125,
+      interactionRadius: 285,
+      approach: Object.freeze({ ...center }),
+    });
   }),
 ]);
 

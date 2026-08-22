@@ -8,13 +8,20 @@ test("十座岛屿使用独立图层并按顺序串联", () => {
   assert.equal(Array.isArray(ISLANDS), true);
   assert.equal(ISLANDS.length, 10);
   assert.equal(new Set(ISLANDS.map(({ id }) => id)).size, 10);
-  assert.equal(LOCATIONS.length, 3);
+  assert.equal(LOCATIONS.length, 10);
   assert.deepEqual(
     LOCATIONS.map(({ id, unlockOrder }) => ({ id, unlockOrder })),
     [
       { id: "home", unlockOrder: 0 },
       { id: "mountain", unlockOrder: 1 },
       { id: "office", unlockOrder: 2 },
+      { id: "dining", unlockOrder: 3 },
+      { id: "cohabitation", unlockOrder: 4 },
+      { id: "money", unlockOrder: 5 },
+      { id: "social", unlockOrder: 6 },
+      { id: "travel", unlockOrder: 7 },
+      { id: "future", unlockOrder: 8 },
+      { id: "wish", unlockOrder: 9 },
     ],
   );
   assert.deepEqual(
@@ -44,13 +51,15 @@ test("十座岛屿使用独立图层并按顺序串联", () => {
   }
 });
 
-test("七座后续岛屿被比场景占位更大的云层完整覆盖", () => {
+test("七座程序岛屿被比场景占位更大的云层完整覆盖", () => {
   assert.equal(Array.isArray(world.ISLANDS), true);
-  const futureIslands = world.ISLANDS.filter(({ kind }) => kind === "future");
-  assert.equal(futureIslands.length, 7);
+  const generatedIslands = world.ISLANDS.filter(({ renderMode }) => renderMode === "generated");
+  assert.equal(generatedIslands.length, 7);
 
-  for (const island of futureIslands) {
+  for (const island of generatedIslands) {
     assert.equal(island.assetUrl, null);
+    assert.ok(island.theme?.ground);
+    assert.ok(island.theme?.accent);
     assert.ok(island.cloudCover.x <= island.bounds.x);
     assert.ok(island.cloudCover.z <= island.bounds.z);
     assert.ok(

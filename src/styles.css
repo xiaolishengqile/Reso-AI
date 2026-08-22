@@ -209,6 +209,7 @@ kbd {
   background: rgba(255, 247, 222, 0.84);
   box-shadow: 3px 5px 0 rgba(83, 65, 53, 0.14);
   backdrop-filter: blur(7px);
+  pointer-events: none;
 }
 
 .map-legend__title {
@@ -240,13 +241,6 @@ kbd {
   filter: grayscale(0.75);
 }
 
-.map-legend__future {
-  margin-top: 4px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(92, 65, 51, 0.35);
-  color: #8b6d5e;
-}
-
 .map-legend__state,
 .map-legend li small {
   margin-left: auto;
@@ -266,6 +260,13 @@ kbd {
 .marker--home { background: #c9826d; }
 .marker--mountain { background: #9b806a; }
 .marker--office { background: #6f8f99; }
+.marker--dining { background: #bd8a62; }
+.marker--cohabitation { background: #8f9f83; }
+.marker--money { background: #8c9675; }
+.marker--social { background: #7e718b; }
+.marker--travel { background: #c39c68; }
+.marker--future { background: #777998; }
+.marker--wish { background: #b882a4; }
 
 .location-card {
   top: 48%;

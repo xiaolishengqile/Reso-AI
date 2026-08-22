@@ -46,10 +46,40 @@
             <span>工作岛</span>
             <small data-location-state></small>
           </li>
-          <li class="map-legend__future">
-            <i class="marker"></i>
-            <span>后续旅程</span>
-            <small>7 座岛在云中</small>
+          <li data-location-id="dining">
+            <i class="marker marker--dining"></i>
+            <span>吃饭岛</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="cohabitation">
+            <i class="marker marker--cohabitation"></i>
+            <span>同居岛</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="money">
+            <i class="marker marker--money"></i>
+            <span>金钱岛</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="social">
+            <i class="marker marker--social"></i>
+            <span>社交岛</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="travel">
+            <i class="marker marker--travel"></i>
+            <span>旅行岛</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="future">
+            <i class="marker marker--future"></i>
+            <span>未来岛</span>
+            <small data-location-state></small>
+          </li>
+          <li data-location-id="wish">
+            <i class="marker marker--wish"></i>
+            <span>心愿岛</span>
+            <small data-location-state></small>
           </li>
         </ul>
       </aside>
@@ -172,6 +202,22 @@
           <div class="story-scene__footer">
             <button id="story-continue" type="button" hidden>继续剧情</button>
             <button id="story-close" type="button">返回世界地图</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="wish-scene" class="wish-scene" aria-label="心仪对象画像" hidden>
+        <div class="wish-scene__panel">
+          <p class="wish-scene__eyebrow">终 章 · 心 愿 岛</p>
+          <h2>心仪对象画像</h2>
+          <p id="wish-progress" class="wish-scene__progress"></p>
+          <p id="wish-status" class="wish-scene__status" aria-live="polite"></p>
+          <p id="wish-summary" class="wish-scene__summary"></p>
+          <p id="wish-confidence" class="wish-scene__confidence"></p>
+          <div id="wish-result" class="wish-scene__result"></div>
+          <div class="wish-scene__actions">
+            <button id="wish-retry" type="button" hidden>重新生成</button>
+            <button id="wish-close" type="button">返回世界地图</button>
           </div>
         </div>
       </section>

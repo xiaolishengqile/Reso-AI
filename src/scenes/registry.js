@@ -1,11 +1,25 @@
 import { homeScene } from "./home/scene.js";
 import { mountainScene } from "./mountain/scene.js";
 import { officeScene } from "./office/scene.js";
+import { diningScene } from "./dining/scene.js";
+import { cohabitationScene } from "./cohabitation/scene.js";
+import { moneyScene } from "./money/scene.js";
+import { socialScene } from "./social/scene.js";
+import { travelScene } from "./travel/scene.js";
+import { futureScene } from "./future/scene.js";
+import { wishScene } from "./wish/scene.js";
 
 export const SCENES = Object.freeze([
   homeScene,
   mountainScene,
   officeScene,
+  diningScene,
+  cohabitationScene,
+  moneyScene,
+  socialScene,
+  travelScene,
+  futureScene,
+  wishScene,
 ]);
 
 const SCENE_BY_ID = new Map(SCENES.map((scene) => [scene.id, scene]));
@@ -42,6 +56,9 @@ export function getSceneJourneyStatus(locations, unlockedOrder) {
   if (!origin || !current) return "继续探索人生群岛";
   if (current.unlockOrder <= 1) {
     return `从${origin.name}出发，先前往${current.name}`;
+  }
+  if (current === orderedLocations.at(-1)) {
+    return `${current.name}已解锁，前往查看旅程答案`;
   }
   return `${current.name}已解锁，沿着下一座桥继续前往`;
 }

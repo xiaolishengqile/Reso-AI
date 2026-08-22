@@ -1,0 +1,17 @@
+export const wishScene = Object.freeze({
+  id: "wish",
+  entryMode: "confirmed-external",
+  entryLabel: "查看心仪对象画像",
+  name: "心愿岛",
+  label: "终 章 · 心 愿 画 像",
+  accent: "#9b708e",
+  description: "雾后的最后一站，将一路选择汇成心仪对象画像。",
+  lockedDescription: "心愿岛尚未解锁，请先完成未来岛。",
+  sceneDescription: "系统会根据爬山岛与后续七岛的选择，生成带证据来源的心仪对象画像。",
+  legendState: "画像待生成",
+  completedLegendState: "画像已生成",
+  completionMessage: "心仪对象画像已经生成。",
+  replayCompletionMessage: "心仪对象画像已重新查看。",
+  closeMessage: "已返回世界地图。",
+  openFailureMessage: "画像暂时无法生成，请稍后重试。",
+});

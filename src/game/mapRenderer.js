@@ -1,7 +1,10 @@
+import { drawGeneratedIsland } from "./generatedIslandRenderer.js";
+
 export function getIslandRenderState(islands, unlockedOrder) {
   return islands.map((island) => ({
     ...island,
     showAsset: Boolean(island.assetUrl),
+    showGenerated: island.renderMode === "generated",
     showCloud: Boolean(
       island.cloudCover && island.unlockOrder > unlockedOrder,
     ),
@@ -234,6 +237,9 @@ export function drawIslandLayers(
   cloudImage = null,
 ) {
   const states = getIslandRenderState(islands, unlockedOrder);
+  for (const island of states) {
+    if (island.showGenerated) drawGeneratedIsland(context, island);
+  }
   for (const island of states) {
     if (island.showAsset) {
       drawIslandAsset(context, island, imageStore.get(island.id));

@@ -51,6 +51,13 @@ test("出生时家庭和爬山可进入，工作岛仍锁定", async () => {
     home: true,
     mountain: true,
     office: false,
+    dining: false,
+    cohabitation: false,
+    money: false,
+    social: false,
+    travel: false,
+    future: false,
+    wish: false,
   });
 });
 
@@ -161,36 +168,23 @@ test("八座待解锁桥梁的中心线都会按角色半径阻挡", async () =>
   }
 });
 
-test("点击地点后两段自动路线都沿可行走区直达入口", async () => {
+test("相邻十岛的自动路线均受顺序门禁约束并可直达入口", async () => {
   const progression = await progressionPromise;
-  const mountain = locations.find(({ id }) => id === "mountain");
-  const office = locations.find(({ id }) => id === "office");
-  const mountainRoute = simulateRoute(
-    world.PLAYER_START,
-    mountain.approach,
-    1,
-    progression,
-  );
-  const lockedOfficeRoute = simulateRoute(
-    mountain.approach,
-    office.approach,
-    1,
-    progression,
-  );
-  const officeRoute = simulateRoute(
-    mountain.approach,
-    office.approach,
-    2,
-    progression,
-  );
+  for (let index = 1; index < locations.length; index += 1) {
+    const from = index === 1 ? world.PLAYER_START : locations[index - 1].approach;
+    const target = locations[index].approach;
+    const requiredOrder = locations[index].unlockOrder;
+    const openRoute = simulateRoute(from, target, requiredOrder, progression);
 
-  assert.equal(mountainRoute.arrived, true);
-  assert.equal(officeRoute.arrived, true);
-  assert.equal(lockedOfficeRoute.arrived, false);
-  assert.ok(
-    Math.hypot(
-      lockedOfficeRoute.position.x - office.approach.x,
-      lockedOfficeRoute.position.z - office.approach.z,
-    ) > 80,
-  );
+    assert.equal(openRoute.arrived, true, locations[index].id + " 应可抵达");
+
+    if (requiredOrder >= 2) {
+      const lockedRoute = simulateRoute(from, target, requiredOrder - 1, progression);
+      assert.equal(lockedRoute.arrived, false, locations[index].id + " 应被门禁阻挡");
+      assert.ok(Math.hypot(
+        lockedRoute.position.x - target.x,
+        lockedRoute.position.z - target.z,
+      ) > 80);
+    }
+  }
 });

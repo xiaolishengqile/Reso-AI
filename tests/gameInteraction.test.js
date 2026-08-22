@@ -10,11 +10,13 @@ test("场景类型区分直接剧情、确认后剧情和普通入口面板", ()
   );
   assert.equal(game.getLocationSceneType({ id: "home" }), "dialog");
   assert.equal(game.getLocationSceneType({ id: "office" }), "dialog");
+  assert.equal(game.getLocationSceneType({ id: "wish", entryMode: "confirmed-external" }), "confirmed-external");
 });
 
 test("地图初始解锁顺序默认安全回退，并接受已完成爬山的恢复值", () => {
   assert.equal(game.resolveInitialUnlockedOrder(), 1);
   assert.equal(game.resolveInitialUnlockedOrder(2), 2);
+  assert.equal(game.resolveInitialUnlockedOrder(9), 9);
   assert.equal(game.resolveInitialUnlockedOrder(0), 1);
 });
 

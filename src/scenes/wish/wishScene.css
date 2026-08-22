@@ -1,0 +1,95 @@
+.wish-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 4vw, 48px);
+  color: #493f4d;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 247, 215, 0.86), transparent 30%),
+    linear-gradient(145deg, #b5cbd1 0%, #bea8c6 48%, #836f91 100%);
+}
+
+.wish-scene[hidden] { display: none; }
+
+.wish-scene__panel {
+  width: min(940px, 100%);
+  max-height: min(88vh, 880px);
+  overflow: auto;
+  padding: clamp(22px, 4vw, 46px);
+  border: 1px solid rgba(93, 72, 98, 0.24);
+  border-radius: 26px;
+  background: rgba(255, 252, 242, 0.94);
+  box-shadow: 0 24px 70px rgba(66, 54, 72, 0.28);
+}
+
+.wish-scene__eyebrow,
+.wish-scene__progress,
+.wish-scene__confidence {
+  color: #836a87;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+
+.wish-scene h2 {
+  margin: 8px 0;
+  color: #654f69;
+  font-family: Georgia, "Noto Serif SC", serif;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+}
+
+.wish-scene__status { margin: 14px 0; }
+
+.wish-scene__summary {
+  margin: 18px 0 8px;
+  padding: 18px 20px;
+  border-left: 4px solid #b882a4;
+  border-radius: 8px;
+  background: #f7edf2;
+  font-size: 1.08rem;
+  line-height: 1.8;
+}
+
+.wish-scene__result {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.wish-section {
+  padding: 18px;
+  border: 1px solid rgba(139, 105, 133, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.wish-section h3 { margin: 0 0 8px; font-size: 1rem; color: #6f5673; }
+.wish-section p { margin: 0; line-height: 1.7; white-space: pre-line; }
+.wish-section small { display: block; margin-top: 12px; color: #8c7b8c; }
+
+.wish-scene__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.wish-scene__actions button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #9b7897;
+  border-radius: 999px;
+  color: #604b63;
+  background: #fffaf1;
+  cursor: pointer;
+}
+
+.wish-scene__actions button:first-child { color: #fff; background: #8f6c8b; }
+
+@media (max-width: 720px) {
+  .wish-scene { padding: 8px; }
+  .wish-scene__panel { max-height: 96vh; padding: 20px 16px; border-radius: 18px; }
+  .wish-scene__result { grid-template-columns: 1fr; }
+}

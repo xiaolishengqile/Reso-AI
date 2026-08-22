@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { ISLANDS, WORLD_DECORATIONS } from "../src/config/world.js";
 import * as renderer from "../src/game/mapRenderer.js";
 
-test("初始渲染会显示三张独立素材并用云层覆盖工作岛和未来岛", () => {
+test("初始渲染会显示三张独立素材并用云层覆盖后续八岛", () => {
   assert.equal(typeof renderer.getIslandRenderState, "function");
 
   const state = renderer.getIslandRenderState(ISLANDS, 1);
@@ -16,18 +16,22 @@ test("初始渲染会显示三张独立素材并用云层覆盖工作岛和未�
     state.filter(({ showCloud }) => showCloud).map(({ id }) => id),
     [
       "office",
-      "future-3",
-      "future-4",
-      "future-5",
-      "future-6",
-      "future-7",
-      "future-8",
-      "future-9",
+      "dining",
+      "cohabitation",
+      "money",
+      "social",
+      "travel",
+      "future",
+      "wish",
     ],
+  );
+  assert.deepEqual(
+    state.filter(({ showGenerated }) => showGenerated).map(({ id }) => id),
+    ["dining", "cohabitation", "money", "social", "travel", "future", "wish"],
   );
 });
 
-test("完成爬山后只移除工作岛云层，七座未来岛仍保持遮挡", () => {
+test("完成爬山后只移除工作岛云层，七座程序岛仍保持遮挡", () => {
   assert.equal(typeof renderer.getIslandRenderState, "function");
 
   const state = renderer.getIslandRenderState(ISLANDS, 2);
@@ -35,15 +39,32 @@ test("完成爬山后只移除工作岛云层，七座未来岛仍保持遮挡",
   assert.deepEqual(
     state.filter(({ showCloud }) => showCloud).map(({ id }) => id),
     [
-      "future-3",
-      "future-4",
-      "future-5",
-      "future-6",
-      "future-7",
-      "future-8",
-      "future-9",
+      "dining",
+      "cohabitation",
+      "money",
+      "social",
+      "travel",
+      "future",
+      "wish",
     ],
   );
+});
+
+test("没有图片素材的主题岛仍会绘制独立地形", () => {
+  const operations = [];
+  const context = new Proxy({}, {
+    get(_target, key) {
+      if (key === "canvas") return { width: 1000, height: 700 };
+      return (...args) => operations.push([key, ...args]);
+    },
+    set() { return true; },
+  });
+  const dining = ISLANDS.find(({ id }) => id === "dining");
+
+  renderer.drawIslandLayers(context, [dining], { get() { return null; } }, 3, 0);
+
+  assert.ok(operations.some(([name]) => name === "ellipse"));
+  assert.ok(operations.some(([name]) => name === "fillRect"));
 });
 
 test("岛屿图片存储器释放后不再触发在途错误回调", () => {

@@ -1,14 +1,20 @@
 import "./styles.css";
 import "./scenes/home/homeScene.css";
 import "./scenes/mountain/mountainScene.css";
+import "./scenes/story/storyScene.css";
+import "./scenes/wish/wishScene.css";
 import { renderCharacterPreview } from "./entities/character.js";
 import { createGame } from "./game/createGame.js";
+import { getSceneController, resolveSavedUnlockOrder } from "./app/sceneRouting.js";
 import { loadTravelerProfile } from "./profile/travelerProfile.js";
 import { createHomeScene } from "./scenes/home/createHomeScene.js";
 import { loadHomeProgress } from "./scenes/home/progress.js";
 import { createMountainScene } from "./scenes/mountain/createMountainScene.js";
 import { loadMountainProgress } from "./scenes/mountain/progress.js";
-import { getScene } from "./scenes/registry.js";
+import { createStoryScene } from "./scenes/story/createStoryScene.js";
+import { getAllStories, getStory } from "./scenes/story/catalog.js";
+import { loadStoryProgress } from "./scenes/story/progress.js";
+import { createWishScene } from "./scenes/wish/createWishScene.js";
 import { resolveInitialScene } from "./startup.js";
 
 const canvas = document.querySelector("#world-canvas");
@@ -18,13 +24,20 @@ const characterButtons = [...document.querySelectorAll("[data-character]")];
 let game = null;
 let homeScene = null;
 let mountainScene = null;
+let storyScene = null;
+let wishScene = null;
 
 function getInitialUnlockedOrder(characterId) {
-  const progress = loadMountainProgress(window.localStorage, characterId);
-  const mountainLocation = getScene("mountain");
-  return progress.completed || progress.isReplay
-    ? mountainLocation?.unlocksOrder
-    : undefined;
+  const stories = getAllStories();
+  const storyProgress = Object.fromEntries(stories.map((story) => [
+    story.id,
+    loadStoryProgress(window.localStorage, characterId, story.id, story.initialStageId),
+  ]));
+  return resolveSavedUnlockOrder({
+    mountainProgress: loadMountainProgress(window.localStorage, characterId),
+    storyProgress,
+    stories,
+  });
 }
 
 function startGame(characterId) {
@@ -65,10 +78,39 @@ function startGame(characterId) {
         progress: document.querySelector("#mountain-progress"),
       },
     });
-    const sceneControllers = new Map([
-      ["home", homeScene],
-      ["mountain", mountainScene],
-    ]);
+    storyScene = createStoryScene({
+      characterId,
+      elements: {
+        root: document.querySelector("#story-scene"),
+        canvas: document.querySelector("#story-scene-canvas"),
+        title: document.querySelector("#story-stage-title"),
+        text: document.querySelector("#story-text"),
+        choices: document.querySelector("#story-choices"),
+        continueButton: document.querySelector("#story-continue"),
+        closeButton: document.querySelector("#story-close"),
+        saveWarning: document.querySelector("#story-save-warning"),
+        progress: document.querySelector("#story-progress"),
+      },
+    });
+    wishScene = createWishScene({
+      characterId,
+      elements: {
+        root: document.querySelector("#wish-scene"),
+        status: document.querySelector("#wish-status"),
+        progress: document.querySelector("#wish-progress"),
+        summary: document.querySelector("#wish-summary"),
+        confidence: document.querySelector("#wish-confidence"),
+        result: document.querySelector("#wish-result"),
+        retryButton: document.querySelector("#wish-retry"),
+        closeButton: document.querySelector("#wish-close"),
+      },
+    });
+    const sceneControllers = {
+      home: homeScene,
+      mountain: mountainScene,
+      story: storyScene,
+      wish: wishScene,
+    };
     game = createGame({
       canvas,
       characterId,
@@ -89,9 +131,11 @@ function startGame(characterId) {
         overviewButton: document.querySelector("#overview-button"),
       },
       onEnterScene: (scene, callbacks) => {
-        const controller = sceneControllers.get(scene.id);
+        const controller = getSceneController(scene.id, sceneControllers);
         if (!controller) throw new Error(`场景未实现：${scene.id}`);
-        controller.open(callbacks);
+        const story = getStory(scene.id);
+        if (story) controller.open(story, callbacks);
+        else controller.open(callbacks);
       },
     });
     characterDialog.close?.();
@@ -108,6 +152,10 @@ function startGame(characterId) {
     homeScene = null;
     mountainScene?.dispose();
     mountainScene = null;
+    storyScene?.dispose();
+    storyScene = null;
+    wishScene?.dispose();
+    wishScene = null;
     game?.dispose();
     game = null;
     characterDialog.close?.();
@@ -131,5 +179,7 @@ else characterDialog.setAttribute("open", "");
 window.addEventListener("beforeunload", () => {
   homeScene?.dispose();
   mountainScene?.dispose();
+  storyScene?.dispose();
+  wishScene?.dispose();
   game?.dispose();
 }, { once: true });
