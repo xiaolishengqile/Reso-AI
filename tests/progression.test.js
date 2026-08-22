@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as world from "../src/config/world.js";
 import * as movement from "../src/systems/movement.js";
+import { createSceneLocations } from "../src/scenes/registry.js";
 
 const progressionPromise = import("../src/systems/progression.js");
+const locations = createSceneLocations(world.LOCATIONS);
 
 function simulateRoute(from, target, unlockedOrder, progression) {
   let position = { ...from };
@@ -39,7 +41,7 @@ function simulateRoute(from, target, unlockedOrder, progression) {
 test("出生时家庭和爬山可进入，工作岛仍锁定", async () => {
   const progression = await progressionPromise;
   const access = Object.fromEntries(
-    world.LOCATIONS.map((location) => [
+    locations.map((location) => [
       location.id,
       progression.isLocationUnlocked(location, 1),
     ]),
@@ -54,8 +56,8 @@ test("出生时家庭和爬山可进入，工作岛仍锁定", async () => {
 
 test("完成爬山后解锁工作岛，家庭场景不会跳级", async () => {
   const progression = await progressionPromise;
-  const home = world.LOCATIONS.find(({ id }) => id === "home");
-  const mountain = world.LOCATIONS.find(({ id }) => id === "mountain");
+  const home = locations.find(({ id }) => id === "home");
+  const mountain = locations.find(({ id }) => id === "mountain");
 
   assert.equal(progression.advanceUnlockOrder(1, home), 1);
   assert.equal(progression.advanceUnlockOrder(1, mountain), 2);
@@ -161,8 +163,8 @@ test("八座待解锁桥梁的中心线都会按角色半径阻挡", async () =>
 
 test("点击地点后两段自动路线都沿可行走区直达入口", async () => {
   const progression = await progressionPromise;
-  const mountain = world.LOCATIONS.find(({ id }) => id === "mountain");
-  const office = world.LOCATIONS.find(({ id }) => id === "office");
+  const mountain = locations.find(({ id }) => id === "mountain");
+  const office = locations.find(({ id }) => id === "office");
   const mountainRoute = simulateRoute(
     world.PLAYER_START,
     mountain.approach,

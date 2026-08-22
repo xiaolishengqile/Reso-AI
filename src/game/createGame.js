@@ -43,8 +43,15 @@ import {
   INITIAL_UNLOCK_ORDER,
   isLocationUnlocked,
 } from "../systems/progression.js";
+import { createSceneManager } from "../scenes/createSceneManager.js";
+import {
+  createSceneLocations,
+  getSceneJourneyStatus,
+  getSceneLegendState,
+} from "../scenes/registry.js";
 
 const BACKGROUND_ERROR_MESSAGE = "手绘地图底图加载失败，请刷新页面重试。";
+const REGISTERED_LOCATIONS = createSceneLocations(LOCATIONS);
 
 export function getLocationInteraction(
   clickedLocation,
@@ -81,13 +88,15 @@ export function getLocationInteraction(
 }
 
 export function getLocationSceneType(location) {
-  return location?.id === "mountain" ? "mountain-story" : "dialog";
+  return location?.entryMode === "external" ? "external" : "dialog";
 }
 
 export function resolveInitialUnlockedOrder(initialUnlockedOrder) {
   const maximumOrder = Math.max(
     INITIAL_UNLOCK_ORDER,
-    ...LOCATIONS.map(({ unlocksOrder }) => unlocksOrder ?? INITIAL_UNLOCK_ORDER),
+    ...REGISTERED_LOCATIONS.map(
+      ({ unlocksOrder }) => unlocksOrder ?? INITIAL_UNLOCK_ORDER,
+    ),
   );
   const requestedOrder = Number.isInteger(initialUnlockedOrder)
     ? initialUnlockedOrder
@@ -97,20 +106,20 @@ export function resolveInitialUnlockedOrder(initialUnlockedOrder) {
 
 export function resolveLocationCompletion(unlockedOrder, location) {
   const nextOrder = advanceUnlockOrder(unlockedOrder, location);
-  const isMountainReplay = location?.id === "mountain"
-    && nextOrder === unlockedOrder
-    && unlockedOrder >= location.unlocksOrder;
+  const repeated = nextOrder === unlockedOrder;
   return {
     unlockedOrder: nextOrder,
-    message: isMountainReplay
-      ? "爬山剧情已重温完成。"
-      : "爬山已完成，通往工作岛的桥已解锁。",
+    message: repeated
+      ? location?.replayCompletionMessage
+        ?? location?.completionMessage
+        ?? "场景已完成。"
+      : location?.completionMessage ?? "场景已完成。",
   };
 }
 
-export function tryOpenMountainScene(onEnterMountain, callbacks) {
+export function tryOpenExternalScene(onEnterScene, scene, callbacks) {
   try {
-    onEnterMountain(callbacks);
+    onEnterScene(scene, callbacks);
     return true;
   } catch {
     return false;
@@ -132,7 +141,7 @@ export function getExplorationStatus({
   failedAssetName,
   nearbyLocation,
   nearbyUnlocked = true,
-  unlockedOrder = INITIAL_UNLOCK_ORDER,
+  journeyStatus = "继续探索人生群岛",
 }) {
   if (backgroundFailed) {
     return failedAssetName
@@ -144,9 +153,7 @@ export function getExplorationStatus({
   }
   return nearbyLocation
     ? `已抵达「${nearbyLocation.name}」附近 · 点击地标进入`
-    : unlockedOrder >= 2
-      ? "工作岛已解锁，沿着第二座桥继续前往"
-      : "从家庭小屋出发，先前往爬山岛";
+    : journeyStatus;
 }
 
 export function resolveStatusUpdate({
@@ -170,7 +177,7 @@ export function createGame({
   canvas,
   ui,
   characterId,
-  onEnterMountain = null,
+  onEnterScene = null,
   initialUnlockedOrder = INITIAL_UNLOCK_ORDER,
   windowTarget = window,
 }) {
@@ -178,6 +185,7 @@ export function createGame({
   if (!context) throw new Error("当前浏览器无法创建二维画布");
 
   const input = createInput(windowTarget);
+  const locations = REGISTERED_LOCATIONS;
   const player = { x: PLAYER_START.x, z: PLAYER_START.z };
   let transform = createOverviewTransform(
     1,
@@ -192,7 +200,6 @@ export function createGame({
   let targetLocationId = null;
   let hoveredLocation = null;
   let nearbyLocation = null;
-  let activeLocation = null;
   let unlockedOrder = resolveInitialUnlockedOrder(initialUnlockedOrder);
   let backgroundFailed = false;
   let failedAssetName = null;
@@ -204,7 +211,20 @@ export function createGame({
   let frameId = 0;
   let started = false;
   let overviewRequested = false;
-  let mountainSceneActive = false;
+  let activeExternalScene = null;
+
+  function completeScene(scene) {
+    const completion = resolveLocationCompletion(unlockedOrder, scene);
+    const changed = completion.unlockedOrder !== unlockedOrder;
+    unlockedOrder = completion.unlockedOrder;
+    if (changed) {
+      updateLegend();
+      showLocationCard(hoveredLocation);
+    }
+    setStatus(completion.message, 2600);
+  }
+
+  const sceneManager = createSceneManager({ ui, onComplete: completeScene });
 
   function setOverviewRequested(requested) {
     overviewRequested = requested;
@@ -244,17 +264,17 @@ export function createGame({
 
   function updateLegend() {
     for (const item of ui.legendItems ?? []) {
-      const location = LOCATIONS.find(({ id }) => id === item.dataset.locationId);
+      const location = locations.find(({ id }) => id === item.dataset.locationId);
       if (!location) continue;
       const unlocked = isLocationUnlocked(location, unlockedOrder);
       item.classList.toggle("is-locked", !unlocked);
       const state = item.querySelector("[data-location-state]");
       if (!state) continue;
-      if (location.id === "home") state.textContent = "出生地";
-      else if (!unlocked) state.textContent = "未解锁";
-      else if (location.id === "mountain" && unlockedOrder >= 2) {
-        state.textContent = "已完成";
-      } else state.textContent = location.id === "mountain" ? "下一站" : "已解锁";
+      state.textContent = getSceneLegendState(
+        location,
+        unlocked,
+        unlockedOrder,
+      );
     }
   }
 
@@ -290,59 +310,32 @@ export function createGame({
   }
 
   function onPointerMove(event) {
-    if (mountainSceneActive) return;
-    setHoveredLocation(findLocationAtPoint(eventToMap(event), LOCATIONS));
+    if (activeExternalScene) return;
+    setHoveredLocation(findLocationAtPoint(eventToMap(event), locations));
   }
 
   function onPointerLeave() {
-    if (mountainSceneActive) return;
+    if (activeExternalScene) return;
     setHoveredLocation(null);
   }
 
-  function closeMountainScene() {
-    mountainSceneActive = false;
-    activeLocation = null;
-    setStatus("已返回世界地图，爬山进度会在下次进入时恢复。", 1800);
+  function closeExternalScene() {
+    const scene = activeExternalScene;
+    activeExternalScene = null;
+    setStatus(scene?.closeMessage ?? "已返回世界地图。", 1800);
   }
 
-  function completeMountainScene() {
-    if (!mountainSceneActive) return;
-    mountainSceneActive = false;
-    completeLocation();
-  }
-
-  function openLocationDialog(location) {
-    activeLocation = location;
-    if (ui.dialogTitle) ui.dialogTitle.textContent = location.name;
-    if (ui.dialogLabel) {
-      ui.dialogLabel.textContent = location.id === "home"
-        ? "出 生 地 · 家 庭 场 景"
-        : location.id === "mountain"
-          ? "第 一 站 · 爬 山 场 景"
-          : "第 二 站 · 工 作 场 景";
-    }
-    if (ui.dialogDescription) {
-      ui.dialogDescription.textContent = location.sceneDescription;
-    }
-    if (ui.completeButton) {
-      const canComplete = Boolean(
-        location.completionLabel && unlockedOrder < location.unlocksOrder,
-      );
-      ui.completeButton.hidden = !canComplete;
-      ui.completeButton.textContent = location.completionLabel ?? "";
-    }
-    ui.dialog?.style.setProperty("--scene-accent", location.accent);
-    if (typeof ui.dialog?.showModal === "function" && !ui.dialog.open) {
-      ui.dialog.showModal();
-    } else {
-      ui.dialog?.setAttribute("open", "");
-    }
+  function completeExternalScene() {
+    if (!activeExternalScene) return;
+    const scene = activeExternalScene;
+    activeExternalScene = null;
+    completeScene(scene);
   }
 
   function onCanvasClick(event) {
-    if (mountainSceneActive) return;
+    if (activeExternalScene) return;
     const point = eventToMap(event);
-    const location = findLocationAtPoint(point, LOCATIONS);
+    const location = findLocationAtPoint(point, locations);
     if (location) {
       const interaction = getLocationInteraction(
         location,
@@ -354,19 +347,25 @@ export function createGame({
         pointerTarget = null;
         targetLocationId = null;
         stalledSeconds = 0;
-        if (getLocationSceneType(location) === "mountain-story" && onEnterMountain) {
-          activeLocation = location;
-          mountainSceneActive = true;
-          if (!tryOpenMountainScene(onEnterMountain, {
-            complete: completeMountainScene,
-            close: closeMountainScene,
+        if (getLocationSceneType(location) === "external" && onEnterScene) {
+          activeExternalScene = location;
+          if (!tryOpenExternalScene(onEnterScene, location, {
+            complete: completeExternalScene,
+            close: closeExternalScene,
           })) {
-            mountainSceneActive = false;
-            activeLocation = null;
-            setStatus("爬山剧情暂时无法恢复，请稍后重试。", 2600);
+            activeExternalScene = null;
+            setStatus(
+              location.openFailureMessage ?? "场景暂时无法恢复，请稍后重试。",
+              2600,
+            );
           }
         } else {
-          openLocationDialog(location);
+          sceneManager.open(location, {
+            canComplete: Boolean(
+              location.completionLabel
+                && unlockedOrder < location.unlocksOrder,
+            ),
+          });
         }
       } else if (interaction.canApproach) {
         pointerTarget = location.approach;
@@ -386,28 +385,6 @@ export function createGame({
     }
   }
 
-  function closeDialog() {
-    if (typeof ui.dialog?.close === "function" && ui.dialog.open) {
-      ui.dialog.close();
-    } else {
-      ui.dialog?.removeAttribute("open");
-    }
-    activeLocation = null;
-  }
-
-  function completeLocation() {
-    if (!activeLocation) return;
-    const completion = resolveLocationCompletion(unlockedOrder, activeLocation);
-    const changed = completion.unlockedOrder !== unlockedOrder;
-    unlockedOrder = completion.unlockedOrder;
-    if (changed) {
-      updateLegend();
-      showLocationCard(hoveredLocation);
-    }
-    closeDialog();
-    setStatus(completion.message, 2600);
-  }
-
   function resize() {
     const rect = canvas.getBoundingClientRect();
     width = Math.max(1, rect.width || canvas.clientWidth || windowTarget.innerWidth);
@@ -424,7 +401,7 @@ export function createGame({
   }
 
   function update(deltaSeconds) {
-    if (mountainSceneActive) return false;
+    if (activeExternalScene) return false;
     let direction = input.getDirection();
     if (direction.x !== 0 || direction.z !== 0) {
       pointerTarget = null;
@@ -434,7 +411,7 @@ export function createGame({
       const targetDirection = directionToTarget(player, pointerTarget, 8);
       direction = targetDirection;
       if (targetDirection.arrived) {
-        const arrivedLocation = LOCATIONS.find(
+        const arrivedLocation = locations.find(
           ({ id }) => id === targetLocationId,
         );
         pointerTarget = null;
@@ -484,14 +461,14 @@ export function createGame({
       }
     }
 
-    nearbyLocation = findNearbyLocation(player, LOCATIONS);
+    nearbyLocation = findNearbyLocation(player, locations);
     if (windowTarget.performance.now() >= statusLockedUntil) {
       setStatus(getExplorationStatus({
         backgroundFailed,
         nearbyLocation,
         nearbyUnlocked: !nearbyLocation
           || isLocationUnlocked(nearbyLocation, unlockedOrder),
-        unlockedOrder,
+        journeyStatus: getSceneJourneyStatus(locations, unlockedOrder),
       }));
     }
     return moving;
@@ -516,7 +493,7 @@ export function createGame({
       elapsedSeconds,
       effectImages.get("cloud-cover"),
     );
-    for (const location of LOCATIONS) {
+    for (const location of locations) {
       if (isLocationUnlocked(location, unlockedOrder)) {
         drawLocationGlow(
           context,
@@ -570,13 +547,11 @@ export function createGame({
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerleave", onPointerLeave);
   canvas.addEventListener("click", onCanvasClick);
-  ui.closeButton?.addEventListener("click", closeDialog);
-  ui.completeButton?.addEventListener("click", completeLocation);
   ui.overviewButton?.addEventListener("click", toggleOverview);
   windowTarget.addEventListener("resize", resize);
   const islandImages = createIslandImageStore(windowTarget, ISLANDS, (island) => {
     backgroundFailed = true;
-    failedAssetName = LOCATIONS.find(({ id }) => id === island.id)?.name
+    failedAssetName = locations.find(({ id }) => id === island.id)?.name
       ?? island.id;
     setStatus(getExplorationStatus({
       backgroundFailed,
@@ -603,12 +578,11 @@ export function createGame({
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("click", onCanvasClick);
-      ui.closeButton?.removeEventListener("click", closeDialog);
-      ui.completeButton?.removeEventListener("click", completeLocation);
       ui.overviewButton?.removeEventListener("click", toggleOverview);
       windowTarget.removeEventListener("resize", resize);
       islandImages.dispose();
       effectImages.dispose();
+      sceneManager.dispose();
       input.dispose();
     },
   });

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as game from "../src/game/createGame.js";
 
 test("爬山地点交给独立剧情，家庭和工作地点保留入口面板", () => {
-  assert.equal(game.getLocationSceneType({ id: "mountain" }), "mountain-story");
+  assert.equal(game.getLocationSceneType({ entryMode: "external" }), "external");
   assert.equal(game.getLocationSceneType({ id: "home" }), "dialog");
   assert.equal(game.getLocationSceneType({ id: "office" }), "dialog");
 });
@@ -16,7 +16,11 @@ test("地图初始解锁顺序默认安全回退，并接受已完成爬山的�
 
 test("重温已完成的爬山剧情仍会得到完成状态", () => {
   assert.deepEqual(
-    game.resolveLocationCompletion(2, { id: "mountain", unlocksOrder: 2 }),
+    game.resolveLocationCompletion(2, {
+      unlocksOrder: 2,
+      completionMessage: "爬山已完成，通往工作岛的桥已解锁。",
+      replayCompletionMessage: "爬山剧情已重温完成。",
+    }),
     {
       unlockedOrder: 2,
       message: "爬山剧情已重温完成。",
@@ -26,7 +30,11 @@ test("重温已完成的爬山剧情仍会得到完成状态", () => {
 
 test("爬山场景同步打开失败会被安全捕获", () => {
   assert.equal(
-    game.tryOpenMountainScene(() => { throw new Error("broken progress"); }, {}),
+    game.tryOpenExternalScene(
+      () => { throw new Error("broken progress"); },
+      { id: "mountain" },
+      {},
+    ),
     false,
   );
 });

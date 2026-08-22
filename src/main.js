@@ -1,10 +1,10 @@
 import "./styles.css";
 import "./scenes/mountain/mountainScene.css";
 import { renderCharacterPreview } from "./entities/character.js";
-import { LOCATIONS } from "./config/world.js";
 import { createGame } from "./game/createGame.js";
 import { createMountainScene } from "./scenes/mountain/createMountainScene.js";
 import { loadMountainProgress } from "./scenes/mountain/progress.js";
+import { getScene } from "./scenes/registry.js";
 
 const canvas = document.querySelector("#world-canvas");
 const compatibilityError = document.querySelector("#compatibility-error");
@@ -15,7 +15,7 @@ let mountainScene = null;
 
 function getInitialUnlockedOrder(characterId) {
   const progress = loadMountainProgress(window.localStorage, characterId);
-  const mountainLocation = LOCATIONS.find(({ id }) => id === "mountain");
+  const mountainLocation = getScene("mountain");
   return progress.completed || progress.isReplay
     ? mountainLocation?.unlocksOrder
     : undefined;
@@ -57,7 +57,7 @@ function startGame(characterId) {
         closeButton: document.querySelector("#dialog-close"),
         overviewButton: document.querySelector("#overview-button"),
       },
-      onEnterMountain: (callbacks) => mountainScene.open(callbacks),
+      onEnterScene: (_scene, callbacks) => mountainScene.open(callbacks),
     });
     characterDialog.close?.();
     characterDialog.removeAttribute("open");
