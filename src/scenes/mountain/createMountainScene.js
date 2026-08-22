@@ -43,13 +43,13 @@ const ACTION_ROUTE_WAYPOINTS = Object.freeze({
 export function resolveMountainFrameState(
   stage,
   progress = {},
-  { selectedOptionId = null, isFeedback = false } = {},
+  { selectedOptionId = null, isRouteFeedback = false } = {},
 ) {
   if (!stage) return null;
   const choiceActions = selectedOptionId
     ? CHOICE_ACTIONS[stage.id]?.[selectedOptionId]
     : null;
-  const waypoint = isFeedback && stage.id === "cave-repair"
+  const waypoint = isRouteFeedback && stage.id === "cave-repair"
     ? ACTION_ROUTE_WAYPOINTS[progress.actionId] ?? stage.waypoint
     : stage.waypoint;
   return {
@@ -59,6 +59,18 @@ export function resolveMountainFrameState(
     showCompanion: stage.scene !== "apartment",
     ...choiceActions,
   };
+}
+
+export function getMountainRouteFeedback(actionId) {
+  return {
+    summit: "雨势稍缓后，你们继续向山顶前行。",
+    retreat: "雨势稍缓后，你们选择沿来路安全下撤。",
+    shelter: "你们继续在岩洞避雨，天气缓和后再结伴返程。",
+  }[actionId] ?? "";
+}
+
+export function getMountainFeedbackText(stage, option) {
+  return stage && option ? option.feedback : "";
 }
 
 function getProgressLabel(stage, answeredCount) {
@@ -96,6 +108,7 @@ export function createMountainScene({
   let frameId = null;
   let isOpen = false;
   let pendingStageId = null;
+  let routeFeedbackPending = false;
   let frameState = null;
 
   function now() {
@@ -147,6 +160,7 @@ export function createMountainScene({
     currentStage = stage;
     frameState = resolveMountainFrameState(stage, progress);
     submitting = false;
+    routeFeedbackPending = false;
     stageStartedAt = now();
     elements.title.textContent = stage.title;
     elements.text.textContent = adaptMountainText(
@@ -173,14 +187,29 @@ export function createMountainScene({
   function showFeedback(option, nextStageId) {
     frameState = resolveMountainFrameState(currentStage, progress, {
       selectedOptionId: option.id,
-      isFeedback: true,
     });
-    elements.text.textContent = adaptMountainText(option.feedback, characterId);
+    elements.text.textContent = adaptMountainText(
+      getMountainFeedbackText(currentStage, option, progress),
+      characterId,
+    );
     elements.progress.textContent = "剧情正在前往下一段旅程";
     elements.choices.replaceChildren?.();
     setHidden(elements.continueButton, false);
     elements.continueButton.textContent = "继续剧情";
     pendingStageId = nextStageId;
+    routeFeedbackPending = currentStage.id === "cave-repair";
+  }
+
+  function showRouteFeedback() {
+    frameState = resolveMountainFrameState(currentStage, progress, {
+      isRouteFeedback: true,
+    });
+    elements.title.textContent = "雨后的去向";
+    elements.text.textContent = getMountainRouteFeedback(progress.actionId);
+    elements.progress.textContent = "雨后的路线";
+    elements.choices.replaceChildren?.();
+    setHidden(elements.continueButton, false);
+    elements.continueButton.textContent = "继续剧情";
   }
 
   function selectOption(stage, option) {
@@ -209,6 +238,11 @@ export function createMountainScene({
   function onContinue() {
     if (currentStage?.kind === "complete") {
       finish();
+      return;
+    }
+    if (routeFeedbackPending) {
+      routeFeedbackPending = false;
+      showRouteFeedback();
       return;
     }
     const nextStage = getMountainStage(pendingStageId);

@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createMountainScene,
+  getMountainFeedbackText,
+  getMountainRouteFeedback,
   resolveMountainFrameState,
 } from "../src/scenes/mountain/createMountainScene.js";
 import {
@@ -198,7 +200,7 @@ test("暴雨行动会决定岩洞修复反馈后的路线画面", () => {
   const resolveRoute = (actionId) => resolveMountainFrameState(
     caveStage,
     { actionId },
-    { selectedOptionId: "hug", isFeedback: true },
+    { isRouteFeedback: true },
   ).waypoint;
 
   assert.equal(resolveRoute("summit"), "summit");
@@ -223,5 +225,59 @@ test("关闭剧情不会触发世界地图完成回调", () => {
   fixture.elements.closeButton.click();
 
   assert.equal(completed, 0);
+  fixture.scene.dispose();
+});
+
+test("暴雨行动会生成不带评价的路线承接句", () => {
+  assert.equal(
+    getMountainRouteFeedback("summit"),
+    "雨势稍缓后，你们继续向山顶前行。",
+  );
+  assert.equal(
+    getMountainRouteFeedback("retreat"),
+    "雨势稍缓后，你们选择沿来路安全下撤。",
+  );
+  assert.equal(
+    getMountainRouteFeedback("shelter"),
+    "你们继续在岩洞避雨，天气缓和后再结伴返程。",
+  );
+});
+
+test("洞内动作反馈与路线承接句保持分离", () => {
+  const caveStage = getMountainStage("cave-repair");
+  const slippingStage = getMountainStage("slip");
+  const caveChoice = caveStage.choices.find(({ id }) => id === "hug");
+  const slippingChoice = slippingStage.choices.find(({ id }) => id === "support");
+
+  assert.equal(
+    getMountainFeedbackText(caveStage, caveChoice, { actionId: "retreat" }),
+    caveChoice.feedback,
+  );
+  assert.equal(
+    getMountainFeedbackText(slippingStage, slippingChoice, { actionId: "summit" }),
+    slippingChoice.feedback,
+  );
+});
+
+test("岩洞修复先保留洞内动作，再展示雨后路线", () => {
+  const progress = {
+    ...advanceMountainProgress(createMountainProgress("boy"), "cave-repair"),
+    actionId: "retreat",
+  };
+  const fixture = createSceneFixture(createMemoryStorage({
+    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
+  }));
+  fixture.scene.open({ complete() {}, close() {} });
+
+  fixture.elements.choices.children[1].click();
+  assert.equal(fixture.elements.title.textContent, "岩洞修复");
+  assert.match(fixture.elements.text.textContent, /怀里慢慢止住了颤抖/);
+
+  fixture.elements.continueButton.click();
+  assert.equal(fixture.elements.title.textContent, "雨后的去向");
+  assert.equal(fixture.elements.text.textContent, "雨势稍缓后，你们选择沿来路安全下撤。");
+
+  fixture.elements.continueButton.click();
+  assert.equal(fixture.elements.title.textContent, "回家消息");
   fixture.scene.dispose();
 });
