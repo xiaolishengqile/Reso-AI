@@ -97,7 +97,8 @@ kbd {
 .controls,
 .status,
 .overview-button,
-.reset-progress-button {
+.reset-progress-button,
+.story-skip-button {
   position: absolute;
   z-index: 5;
 }
@@ -169,7 +170,8 @@ kbd {
 }
 
 .overview-button,
-.reset-progress-button {
+.reset-progress-button,
+.story-skip-button {
   top: 20px;
   right: 26px;
   display: grid;
@@ -189,28 +191,45 @@ kbd {
 
 .reset-progress-button {
   right: 94px;
+  z-index: 30;
   color: #7c4d42;
+}
+
+.story-skip-button {
+  right: 162px;
+  z-index: 30;
+  color: #526d65;
 }
 
 .overview-button:hover,
 .overview-button:focus-visible,
 .overview-button.is-active,
 .reset-progress-button:hover,
-.reset-progress-button:focus-visible {
+.reset-progress-button:focus-visible,
+.story-skip-button:hover,
+.story-skip-button:focus-visible {
   transform: translateY(-2px);
   outline: 3px solid rgba(99, 137, 124, 0.28);
   background: #fff9e6;
 }
 
 .overview-button span,
-.reset-progress-button span {
+.reset-progress-button span,
+.story-skip-button span {
   font: 700 24px/1 system-ui, sans-serif;
 }
 
 .overview-button small,
-.reset-progress-button small {
+.reset-progress-button small,
+.story-skip-button small {
   margin-top: -5px;
   font-size: 10px;
+}
+
+.story-skip-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .map-legend {
@@ -570,6 +589,7 @@ kbd {
   .world-title__subtitle { display: none; }
   .overview-button { top: 14px; right: 18px; }
   .reset-progress-button { top: 14px; right: 86px; }
+  .story-skip-button { top: 14px; right: 154px; }
   .map-legend { top: 84px; right: 18px; }
   .location-card { right: 19px; }
   .controls { bottom: 17px; left: 18px; }

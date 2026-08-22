@@ -1,31 +1,32 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  createMountainScene,
-  getMountainFeedbackText,
-  getMountainRouteFeedback,
-  resolveMountainFrameState,
-} from "../src/scenes/mountain/createMountainScene.js";
+import { createMountainScene } from "../src/scenes/mountain/createMountainScene.js";
 import {
   advanceMountainProgress,
   completeMountainProgress,
   createMountainProgress,
+  MOUNTAIN_PROGRESS_KEY,
   recordMountainSelection,
 } from "../src/scenes/mountain/progress.js";
-import { MOUNTAIN_PROGRESS_KEY } from "../src/scenes/mountain/progress.js";
 import { getMountainStage } from "../src/scenes/mountain/story.js";
 
 class FakeElement {
-  constructor() {
+  constructor({ playResult = Promise.resolve() } = {}) {
     this.children = [];
     this.dataset = {};
-    this.style = { setProperty() {} };
-    this.classList = { toggle() {} };
     this.hidden = false;
     this.disabled = false;
     this.textContent = "";
+    this.src = "";
+    this.alt = "";
+    this.currentTime = 0;
+    this.playbackRate = 1;
     this.attributes = new Map();
     this.listeners = new Map();
+    this.playResult = playResult;
+    this.playCount = 0;
+    this.pauseCount = 0;
+    this.loadCount = 0;
   }
 
   append(...children) {
@@ -44,8 +45,25 @@ class FakeElement {
     this.listeners.delete(type);
   }
 
+  dispatch(type) {
+    this.listeners.get(type)?.({ currentTarget: this, target: this });
+  }
+
   click() {
-    this.listeners.get("click")?.({ currentTarget: this });
+    this.dispatch("click");
+  }
+
+  play() {
+    this.playCount += 1;
+    return this.playResult;
+  }
+
+  pause() {
+    this.pauseCount += 1;
+  }
+
+  load() {
+    this.loadCount += 1;
   }
 
   setAttribute(name, value) {
@@ -65,103 +83,208 @@ function createMemoryStorage(initial = {}) {
   };
 }
 
-function createSceneFixture(storage = createMemoryStorage(), options = {}) {
+function createSceneFixture({
+  storage = createMemoryStorage(),
+  characterId = "boy",
+  video = new FakeElement(),
+} = {}) {
   const elements = {
     root: new FakeElement(),
-    canvas: options.canvas ?? null,
+    video,
+    image: new FakeElement(),
+    panel: new FakeElement(),
+    mediaControls: new FakeElement(),
     title: new FakeElement(),
     text: new FakeElement(),
     choices: new FakeElement(),
     continueButton: new FakeElement(),
     closeButton: new FakeElement(),
+    startButton: new FakeElement(),
+    playButton: new FakeElement(),
+    speedButton: new FakeElement(),
+    skipButton: new FakeElement(),
     saveWarning: new FakeElement(),
     progress: new FakeElement(),
   };
   const scene = createMountainScene({
-    characterId: "boy",
+    characterId,
     elements,
     storage,
     documentTarget: { createElement: () => new FakeElement() },
-    windowTarget: options.windowTarget,
-    drawFrame: options.drawFrame,
+    windowTarget: { performance: { now: () => 1000 } },
   });
   return { elements, scene, storage };
 }
 
-function createFakeAnimationWindow() {
-  let time = 0;
-  let nextFrameId = 1;
-  const callbacks = new Map();
-  return {
-    performance: { now: () => time },
-    requestAnimationFrame(callback) {
-      const frameId = nextFrameId;
-      nextFrameId += 1;
-      callbacks.set(frameId, callback);
-      return frameId;
-    },
-    cancelAnimationFrame(frameId) {
-      callbacks.delete(frameId);
-    },
-    runNextFrame(timestamp) {
-      time = timestamp;
-      const entry = callbacks.entries().next().value;
-      if (!entry) throw new Error("没有待执行的动画帧");
-      callbacks.delete(entry[0]);
-      entry[1](timestamp);
-    },
-    addEventListener() {},
-    removeEventListener() {},
-  };
+function openScene(fixture, callbacks = {}) {
+  fixture.scene.open({ complete() {}, close() {}, ...callbacks });
 }
 
-function createFakeCanvas() {
-  const gradient = { addColorStop() {} };
-  const context = new Proxy({
-    createLinearGradient() { return gradient; },
-  }, {
-    get(target, key) {
-      return key in target ? target[key] : () => {};
-    },
-  });
-  return {
-    width: 600,
-    height: 400,
-    clientWidth: 600,
-    clientHeight: 400,
-    getContext() { return context; },
-    getBoundingClientRect() { return { width: 600, height: 400 }; },
-  };
+function finishInvitationVideos(elements) {
+  elements.video.dispatch("ended");
+  elements.video.dispatch("ended");
+  elements.video.dispatch("ended");
 }
 
-test("打开剧情会恢复到保存的阶段并匹配异性同行者", () => {
+test("入口图片确认后才播放第一段视频", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+
+  assert.equal(fixture.elements.image.src, "./assets/mountain/mountain-entry.png");
+  assert.equal(fixture.elements.image.hidden, false);
+  assert.equal(fixture.elements.video.hidden, true);
+  assert.equal(fixture.elements.startButton.hidden, false);
+  assert.equal(fixture.elements.startButton.textContent, "开始旅程");
+  assert.equal(fixture.elements.choices.children.length, 0);
+
+  fixture.elements.startButton.click();
+
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-1.mp4");
+  assert.equal(fixture.elements.video.hidden, false);
+  assert.equal(fixture.elements.image.hidden, true);
+  assert.equal(fixture.elements.panel.hidden, true);
+  assert.equal(fixture.elements.video.playCount, 1);
+  fixture.scene.dispose();
+});
+
+test("三段邀约视频全部播放完才显示问题", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+  fixture.elements.startButton.click();
+
+  fixture.elements.video.dispatch("ended");
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-3.mp4");
+  assert.equal(fixture.elements.choices.children.length, 0);
+
+  fixture.elements.video.dispatch("ended");
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-4.mp4");
+  assert.equal(fixture.elements.choices.children.length, 0);
+
+  fixture.elements.video.dispatch("ended");
+  assert.equal(fixture.elements.panel.hidden, false);
+  assert.equal(fixture.elements.title.textContent, "周末邀约");
+  assert.equal(fixture.elements.text.textContent, "这个周末，要不要一起去爬山？");
+  assert.equal(fixture.elements.choices.children.length, 3);
+  fixture.scene.dispose();
+});
+
+test("视频播放速度按一倍、一点五倍和两倍循环", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+  fixture.elements.startButton.click();
+
+  assert.equal(fixture.elements.mediaControls.hidden, false);
+  assert.equal(fixture.elements.speedButton.textContent, "1 倍");
+  assert.equal(fixture.elements.video.playbackRate, 1);
+
+  fixture.elements.speedButton.click();
+  assert.equal(fixture.elements.speedButton.textContent, "1.5 倍");
+  assert.equal(fixture.elements.video.playbackRate, 1.5);
+
+  fixture.elements.speedButton.click();
+  assert.equal(fixture.elements.speedButton.textContent, "2 倍");
+  assert.equal(fixture.elements.video.playbackRate, 2);
+
+  fixture.elements.speedButton.click();
+  assert.equal(fixture.elements.speedButton.textContent, "1 倍");
+  assert.equal(fixture.elements.video.playbackRate, 1);
+  fixture.scene.dispose();
+});
+
+test("跳过连续视频时依次进入下一片段，最后才显示问题", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+  fixture.elements.startButton.click();
+
+  fixture.elements.skipButton.click();
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-3.mp4");
+  assert.equal(fixture.elements.panel.hidden, true);
+
+  fixture.elements.skipButton.click();
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-4.mp4");
+  assert.equal(fixture.elements.panel.hidden, true);
+
+  fixture.elements.skipButton.click();
+  assert.equal(fixture.elements.panel.hidden, false);
+  assert.equal(fixture.elements.mediaControls.hidden, true);
+  assert.equal(fixture.elements.title.textContent, "周末邀约");
+  assert.equal(fixture.elements.choices.children.length, 3);
+  fixture.scene.dispose();
+});
+
+test("全局剧情跳过复用视频片段跳过且不会越过问题", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+  fixture.elements.startButton.click();
+
+  assert.equal(typeof fixture.scene.skipCurrentSegment, "function");
+  assert.equal(fixture.scene.skipCurrentSegment(), true);
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-3.mp4");
+  assert.equal(fixture.scene.skipCurrentSegment(), true);
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-4.mp4");
+  assert.equal(fixture.scene.skipCurrentSegment(), true);
+  assert.equal(fixture.elements.choices.children.length, 3);
+  assert.equal(fixture.scene.skipCurrentSegment(), false);
+  assert.equal(fixture.elements.choices.children.length, 3);
+  fixture.scene.dispose();
+});
+
+test("男女玩家共用同一套视频", () => {
+  for (const characterId of ["boy", "girl"]) {
+    const fixture = createSceneFixture({ characterId });
+    openScene(fixture);
+    fixture.elements.startButton.click();
+    assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-1.mp4");
+    fixture.scene.dispose();
+  }
+});
+
+test("恢复进度时先显示入口图片，再继续当前阶段视频", () => {
   const progress = advanceMountainProgress(createMountainProgress("boy"), "fatigue");
-  const fixture = createSceneFixture(createMemoryStorage({
-    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
-  }));
+  const fixture = createSceneFixture({
+    storage: createMemoryStorage({
+      [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
+    }),
+  });
+  openScene(fixture);
 
-  fixture.scene.open({ complete() {}, close() {} });
+  assert.equal(fixture.elements.startButton.textContent, "继续旅程");
+  assert.match(fixture.elements.progress.textContent, /继续上次旅程/);
+  fixture.elements.startButton.click();
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-2.mp4");
 
+  fixture.elements.video.dispatch("ended");
   assert.equal(fixture.elements.title.textContent, "疲惫与抱怨");
   assert.match(fixture.elements.text.textContent, /她/);
-  assert.match(fixture.elements.progress.textContent, /继续上次旅程/);
+  assert.doesNotMatch(fixture.elements.text.textContent, /陡峭崖壁/);
   fixture.scene.dispose();
 });
 
-test("已完成剧情重玩时明确显示为重温旅程", () => {
-  const completed = completeMountainProgress(createMountainProgress("boy"), 2000);
-  const fixture = createSceneFixture(createMemoryStorage({
-    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(completed),
-  }));
+test("已完成剧情重玩时从入口开始并保留正式证据", () => {
+  const invitation = getMountainStage("invitation");
+  const withEvidence = recordMountainSelection(
+    createMountainProgress("boy"),
+    invitation,
+    invitation.choices[0],
+    { answeredAt: 1000 },
+  );
+  const completed = completeMountainProgress(withEvidence, 2000);
+  const fixture = createSceneFixture({
+    storage: createMemoryStorage({
+      [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(completed),
+    }),
+  });
+  openScene(fixture);
 
-  fixture.scene.open({ complete() {}, close() {} });
-
-  assert.equal(fixture.elements.title.textContent, "周末邀约");
-  assert.match(fixture.elements.progress.textContent, /重温旅程/);
+  assert.equal(fixture.elements.startButton.textContent, "重温旅程");
+  fixture.elements.startButton.click();
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-1.mp4");
+  const replay = JSON.parse(fixture.storage.getItem(MOUNTAIN_PROGRESS_KEY));
+  assert.equal(replay.officialEvidence.length, 1);
   fixture.scene.dispose();
 });
 
-test("未知剧情阶段的存档会回退到邀约并保留已有正式证据", () => {
+test("未知剧情阶段会回退到邀约并保留已有正式证据", () => {
   const invitation = getMountainStage("invitation");
   const selected = recordMountainSelection(
     createMountainProgress("boy"),
@@ -170,23 +293,27 @@ test("未知剧情阶段的存档会回退到邀约并保留已有正式证据",
     { answeredAt: 1000 },
   );
   const corrupted = advanceMountainProgress(selected, "missing-stage");
-  const fixture = createSceneFixture(createMemoryStorage({
-    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(corrupted),
-  }));
+  const fixture = createSceneFixture({
+    storage: createMemoryStorage({
+      [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(corrupted),
+    }),
+  });
 
-  assert.doesNotThrow(() => fixture.scene.open({ complete() {}, close() {} }));
-  assert.equal(fixture.elements.title.textContent, "周末邀约");
+  assert.doesNotThrow(() => openScene(fixture));
+  fixture.elements.startButton.click();
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-1.mp4");
   const recovered = JSON.parse(fixture.storage.getItem(MOUNTAIN_PROGRESS_KEY));
   assert.equal(recovered.currentStageId, "invitation");
   assert.equal(recovered.officialEvidence.length, 1);
   fixture.scene.dispose();
 });
 
-test("画像选择只记录一次证据并进入下一阶段", () => {
+test("回答后只记录一次证据并立即播放下一段视频", () => {
   const fixture = createSceneFixture();
-  fixture.scene.open({ complete() {}, close() {} });
+  openScene(fixture);
+  fixture.elements.startButton.click();
+  finishInvitationVideos(fixture.elements);
 
-  assert.equal(fixture.elements.choices.children.length, 3);
   const firstOption = fixture.elements.choices.children[0];
   firstOption.click();
   firstOption.click();
@@ -195,39 +322,92 @@ test("画像选择只记录一次证据并进入下一阶段", () => {
   assert.equal(progress.officialEvidence.length, 1);
   assert.equal(progress.officialEvidence[0].companionMood, "安心");
   assert.equal(progress.currentStageId, "fatigue");
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-2.mp4");
+  assert.equal(fixture.elements.panel.hidden, true);
   fixture.scene.dispose();
 });
 
-test("暴雨行动只保存行动决定，不生成画像证据", () => {
-  const progress = advanceMountainProgress(
-    createMountainProgress("boy"),
-    "storm-action",
-  );
-  const fixture = createSceneFixture(createMemoryStorage({
-    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
-  }));
-  fixture.scene.open({ complete() {}, close() {} });
+test("缺少视频的回家消息用图片并立即显示问题", () => {
+  const progress = advanceMountainProgress(createMountainProgress("boy"), "home-message");
+  const fixture = createSceneFixture({
+    storage: createMemoryStorage({
+      [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
+    }),
+  });
+  openScene(fixture);
+  fixture.elements.startButton.click();
 
-  fixture.elements.choices.children[0].click();
-
-  const saved = JSON.parse(fixture.storage.getItem(MOUNTAIN_PROGRESS_KEY));
-  assert.equal(saved.actionId, "summit");
-  assert.equal(saved.officialEvidence.length, 0);
-  assert.equal(saved.currentStageId, "cave-repair");
+  assert.equal(fixture.elements.image.src, "./assets/mountain/home-message.png");
+  assert.equal(fixture.elements.image.hidden, false);
+  assert.equal(fixture.elements.panel.hidden, false);
+  assert.equal(fixture.elements.mediaControls.hidden, true);
+  assert.equal(fixture.elements.title.textContent, "回家消息");
+  assert.equal(fixture.elements.choices.children.length, 3);
   fixture.scene.dispose();
 });
 
-test("完成阶段只通知世界地图一次", () => {
+test("城市顿悟用图片并显示最后一组问题", () => {
+  const progress = advanceMountainProgress(createMountainProgress("boy"), "city-realization");
+  const fixture = createSceneFixture({
+    storage: createMemoryStorage({
+      [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
+    }),
+  });
+  openScene(fixture);
+  fixture.elements.startButton.click();
+
+  assert.equal(fixture.elements.image.src, "./assets/mountain/city-realization.png");
+  assert.equal(fixture.elements.title.textContent, "城市顿悟");
+  assert.equal(fixture.elements.choices.children.length, 3);
+  fixture.scene.dispose();
+});
+
+test("浏览器阻止自动播放时提供继续播放按钮", async () => {
+  const video = new FakeElement({ playResult: Promise.reject(new Error("blocked")) });
+  const fixture = createSceneFixture({ video });
+  openScene(fixture);
+  fixture.elements.startButton.click();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(fixture.elements.panel.hidden, false);
+  assert.equal(fixture.elements.playButton.hidden, false);
+  assert.match(fixture.elements.text.textContent, /继续播放/);
+
+  video.playResult = Promise.resolve();
+  fixture.elements.playButton.click();
+  assert.equal(video.playCount, 2);
+  fixture.scene.dispose();
+});
+
+test("视频加载失败时跳过媒体并进入对应问题", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+  fixture.elements.startButton.click();
+  fixture.elements.video.dispatch("error");
+
+  assert.equal(fixture.elements.saveWarning.hidden, false);
+  assert.match(fixture.elements.saveWarning.textContent, /视频暂时无法播放/);
+  assert.equal(fixture.elements.title.textContent, "周末邀约");
+  assert.equal(fixture.elements.choices.children.length, 3);
+  fixture.scene.dispose();
+});
+
+test("完成阶段显示图片且只通知世界地图一次", () => {
   const progress = advanceMountainProgress(createMountainProgress("boy"), "complete");
-  const fixture = createSceneFixture(createMemoryStorage({
-    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
-  }));
+  const fixture = createSceneFixture({
+    storage: createMemoryStorage({
+      [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
+    }),
+  });
   let completed = 0;
-  fixture.scene.open({ complete() { completed += 1; }, close() {} });
+  openScene(fixture, { complete() { completed += 1; } });
+  fixture.elements.startButton.click();
 
+  assert.equal(fixture.elements.image.src, "./assets/mountain/city-realization.png");
+  assert.equal(fixture.elements.continueButton.hidden, false);
   fixture.elements.continueButton.click();
   fixture.elements.continueButton.click();
-
   assert.equal(completed, 1);
   fixture.scene.dispose();
 });
@@ -246,9 +426,10 @@ test("完成存档失败时留在当前页面，重试成功后才通知地图",
       base.setItem(key, value);
     },
   };
-  const fixture = createSceneFixture(storage);
+  const fixture = createSceneFixture({ storage });
   let completed = 0;
-  fixture.scene.open({ complete() { completed += 1; }, close() {} });
+  openScene(fixture, { complete() { completed += 1; } });
+  fixture.elements.startButton.click();
 
   fixture.elements.continueButton.click();
   assert.equal(completed, 0);
@@ -263,221 +444,33 @@ test("完成存档失败时留在当前页面，重试成功后才通知地图",
   fixture.scene.dispose();
 });
 
-test("剧情选择会映射滑倒与岩洞修复的人物动作", () => {
-  const slipping = resolveMountainFrameState(
-    getMountainStage("slip"),
-    {},
-    { selectedOptionId: "support", isFeedback: true },
-  );
-  const watching = resolveMountainFrameState(
-    getMountainStage("slip"),
-    {},
-    { selectedOptionId: "freeze", isFeedback: true },
-  );
-  const hugging = resolveMountainFrameState(
-    getMountainStage("cave-repair"),
-    { actionId: "shelter" },
-    { selectedOptionId: "hug", isFeedback: true },
-  );
-  const spacing = resolveMountainFrameState(
-    getMountainStage("cave-repair"),
-    { actionId: "shelter" },
-    { selectedOptionId: "space", isFeedback: true },
-  );
-  const lecturing = resolveMountainFrameState(
-    getMountainStage("cave-repair"),
-    { actionId: "shelter" },
-    { selectedOptionId: "lecture", isFeedback: true },
-  );
+test("重温旅程初始化保存失败时保留警告", () => {
+  const completed = completeMountainProgress(createMountainProgress("boy"), 2000);
+  const storage = {
+    getItem() { return JSON.stringify(completed); },
+    setItem() { throw new Error("quota"); },
+  };
+  const fixture = createSceneFixture({ storage });
 
-  assert.deepEqual(
-    [slipping.playerAction, slipping.companionAction],
-    ["supporting", "slipping"],
-  );
-  assert.deepEqual(
-    [watching.playerAction, watching.companionAction],
-    ["distant", "slipping"],
-  );
-  assert.deepEqual(
-    [hugging.playerAction, hugging.companionAction],
-    ["hugging", "comforting"],
-  );
-  assert.deepEqual(
-    [spacing.playerAction, spacing.companionAction],
-    ["distant", "distant"],
-  );
-  assert.deepEqual(
-    [lecturing.playerAction, lecturing.companionAction],
-    ["lecturing", "tired"],
-  );
-});
+  openScene(fixture);
 
-test("暴雨行动会决定岩洞修复反馈后的路线画面", () => {
-  const caveStage = getMountainStage("cave-repair");
-  const resolveRoute = (actionId) => resolveMountainFrameState(
-    caveStage,
-    { actionId },
-    { isRouteFeedback: true },
-  ).waypoint;
-
-  assert.equal(resolveRoute("summit"), "summit");
-  assert.equal(resolveRoute("retreat"), "return");
-  assert.equal(resolveRoute("shelter"), "shelter");
-});
-
-test("公寓全部阶段只渲染玩家角色", () => {
-  for (const stageId of ["home-message", "city-realization", "complete"]) {
-    assert.equal(
-      resolveMountainFrameState(getMountainStage(stageId), {}).showCompanion,
-      false,
-    );
-  }
+  assert.equal(fixture.elements.saveWarning.hidden, false);
+  assert.match(fixture.elements.saveWarning.textContent, /无法保存/);
+  fixture.scene.dispose();
 });
 
 test("关闭剧情不会触发世界地图完成回调", () => {
   const fixture = createSceneFixture();
   let completed = 0;
-  fixture.scene.open({ complete() { completed += 1; }, close() {} });
-
-  fixture.elements.closeButton.click();
-
-  assert.equal(completed, 0);
-  fixture.scene.dispose();
-});
-
-test("暴雨行动会生成不带评价的路线承接句", () => {
-  assert.equal(
-    getMountainRouteFeedback("summit"),
-    "雨势稍缓后，你们继续向山顶前行。",
-  );
-  assert.equal(
-    getMountainRouteFeedback("retreat"),
-    "雨势稍缓后，你们选择沿来路安全下撤。",
-  );
-  assert.equal(
-    getMountainRouteFeedback("shelter"),
-    "你们继续在岩洞避雨，天气缓和后再结伴返程。",
-  );
-});
-
-test("洞内动作反馈与路线承接句保持分离", () => {
-  const caveStage = getMountainStage("cave-repair");
-  const slippingStage = getMountainStage("slip");
-  const caveChoice = caveStage.choices.find(({ id }) => id === "hug");
-  const slippingChoice = slippingStage.choices.find(({ id }) => id === "support");
-
-  assert.equal(
-    getMountainFeedbackText(caveStage, caveChoice, { actionId: "retreat" }),
-    caveChoice.feedback,
-  );
-  assert.equal(
-    getMountainFeedbackText(slippingStage, slippingChoice, { actionId: "summit" }),
-    slippingChoice.feedback,
-  );
-});
-
-test("岩洞修复先保留洞内动作，再展示雨后路线", () => {
-  const progress = {
-    ...advanceMountainProgress(createMountainProgress("boy"), "cave-repair"),
-    actionId: "retreat",
-  };
-  const fixture = createSceneFixture(createMemoryStorage({
-    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
-  }));
-  fixture.scene.open({ complete() {}, close() {} });
-
-  fixture.elements.choices.children[1].click();
-  assert.equal(fixture.elements.title.textContent, "岩洞修复");
-  assert.match(fixture.elements.text.textContent, /怀里慢慢止住了颤抖/);
-
-  fixture.elements.continueButton.click();
-  assert.equal(fixture.elements.title.textContent, "雨后的去向");
-  assert.equal(fixture.elements.text.textContent, "雨势稍缓后，你们选择沿来路安全下撤。");
-
-  fixture.elements.continueButton.click();
-  assert.equal(fixture.elements.title.textContent, "回家消息");
-  fixture.scene.dispose();
-});
-
-test("阶段入场动画完成后才展示下一阶段的选择", () => {
-  const animationWindow = createFakeAnimationWindow();
-  const frames = [];
-  const fixture = createSceneFixture(createMemoryStorage(), {
-    canvas: createFakeCanvas(),
-    windowTarget: animationWindow,
-    drawFrame(_context, frame) { frames.push({ ...frame }); },
-  });
-  fixture.scene.open({ complete() {}, close() {} });
-
-  fixture.elements.choices.children[0].click();
-  fixture.elements.continueButton.click();
-
-  assert.equal(fixture.elements.choices.children.length, 0);
-  assert.equal(fixture.elements.root.attributes.get("aria-busy"), "true");
-
-  animationWindow.runNextFrame(0);
-  assert.equal(frames.at(-1).fromWaypoint, "cafe-table");
-  assert.equal(frames.at(-1).waypoint, "lower-cliff");
-  assert.equal(frames.at(-1).transitionProgress, 0);
-
-  animationWindow.runNextFrame(400);
-  assert.equal(frames.at(-1).transitionProgress, 0.5);
-
-  animationWindow.runNextFrame(800);
-  assert.equal(fixture.elements.root.attributes.get("aria-busy"), "false");
-  assert.equal(fixture.elements.title.textContent, "疲惫与抱怨");
-  assert.equal(fixture.elements.choices.children.length, 3);
-  fixture.scene.dispose();
-});
-
-test("雨后路线先完成洞内到目标路标的动画，再显示路线文案", () => {
-  const animationWindow = createFakeAnimationWindow();
-  const frames = [];
-  const progress = {
-    ...advanceMountainProgress(createMountainProgress("boy"), "cave-repair"),
-    actionId: "retreat",
-  };
-  const fixture = createSceneFixture(createMemoryStorage({
-    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(progress),
-  }), {
-    canvas: createFakeCanvas(),
-    windowTarget: animationWindow,
-    drawFrame(_context, frame) { frames.push({ ...frame }); },
-  });
-  fixture.scene.open({ complete() {}, close() {} });
-
-  fixture.elements.choices.children[1].click();
-  fixture.elements.continueButton.click();
-  assert.equal(fixture.elements.title.textContent, "岩洞修复");
-  assert.equal(fixture.elements.continueButton.hidden, true);
-
-  animationWindow.runNextFrame(0);
-  assert.equal(frames.at(-1).fromWaypoint, "cave");
-  assert.equal(frames.at(-1).waypoint, "return");
-  assert.equal(frames.at(-1).transitionProgress, 0);
-
-  animationWindow.runNextFrame(800);
-  assert.equal(fixture.elements.title.textContent, "雨后的去向");
-  assert.equal(fixture.elements.text.textContent, "雨势稍缓后，你们选择沿来路安全下撤。");
-  assert.equal(fixture.elements.continueButton.hidden, false);
-  fixture.scene.dispose();
-});
-
-test("入场动画期间仍可关闭剧情", () => {
-  const animationWindow = createFakeAnimationWindow();
-  const fixture = createSceneFixture(createMemoryStorage(), {
-    canvas: createFakeCanvas(),
-    windowTarget: animationWindow,
-    drawFrame() {},
-  });
   let closed = 0;
-  fixture.scene.open({ complete() {}, close() { closed += 1; } });
+  openScene(fixture, {
+    complete() { completed += 1; },
+    close() { closed += 1; },
+  });
 
-  fixture.elements.choices.children[0].click();
-  fixture.elements.continueButton.click();
   fixture.elements.closeButton.click();
-
-  assert.equal(fixture.elements.root.hidden, true);
+  assert.equal(completed, 0);
   assert.equal(closed, 1);
+  assert.equal(fixture.elements.root.hidden, true);
   fixture.scene.dispose();
 });

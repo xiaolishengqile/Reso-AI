@@ -18,6 +18,18 @@
       </header>
 
       <button
+        id="story-skip-button"
+        class="story-skip-button"
+        type="button"
+        aria-label="跳过当前剧情片段"
+        hidden
+        disabled
+      >
+        <span aria-hidden="true">»</span>
+        <small>剧情跳过</small>
+      </button>
+
+      <button
         id="reset-progress-button"
         class="reset-progress-button"
         type="button"
@@ -189,18 +201,40 @@
       </section>
 
       <section id="mountain-scene" class="mountain-scene" aria-label="爬山岛剧情" hidden>
-        <canvas id="mountain-scene-canvas" class="mountain-scene__canvas" aria-hidden="true"></canvas>
-        <div class="mountain-scene__panel">
+        <video
+          id="mountain-scene-video"
+          class="mountain-scene__media"
+          playsinline
+          preload="auto"
+          disablepictureinpicture
+          hidden
+        ></video>
+        <img id="mountain-scene-image" class="mountain-scene__media" alt="" hidden />
+        <div
+          id="mountain-media-controls"
+          class="mountain-scene__media-controls"
+          role="group"
+          aria-label="视频播放控制"
+          hidden
+        >
+          <button id="mountain-speed" class="mountain-scene__media-button" type="button">1 倍</button>
+          <button id="mountain-skip" class="mountain-scene__media-button" type="button">跳过</button>
+        </div>
+        <button id="mountain-close" class="mountain-scene__close" type="button">
+          返回地图
+        </button>
+        <div id="mountain-scene-panel" class="mountain-scene__panel">
           <p id="mountain-progress" class="mountain-scene__progress"></p>
           <h2 id="mountain-stage-title"></h2>
-          <p id="mountain-story-text" aria-live="polite"></p>
+          <p id="mountain-story-text" class="mountain-scene__question" aria-live="polite"></p>
           <div id="mountain-choices" class="mountain-scene__choices" aria-label="剧情选择"></div>
           <p id="mountain-save-warning" class="mountain-scene__warning" role="alert" hidden>
-            当前选择暂未保存，请不要关闭页面，完成旅程后将再次尝试保存。
+            当前进度暂未保存，请不要关闭页面。
           </p>
-          <div class="mountain-scene__footer">
-            <button id="mountain-continue" type="button" hidden></button>
-            <button id="mountain-close" type="button">返回世界地图</button>
+          <div class="mountain-scene__actions">
+            <button id="mountain-start" class="mountain-scene__primary" type="button" hidden></button>
+            <button id="mountain-play" class="mountain-scene__primary" type="button" hidden></button>
+            <button id="mountain-continue" class="mountain-scene__primary" type="button" hidden></button>
           </div>
         </div>
       </section>

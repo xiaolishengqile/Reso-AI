@@ -196,6 +196,32 @@ test("入场先自动行走，抵达后按剧情、问题、反馈的顺序推�
   scene.dispose();
 });
 
+test("全局剧情跳过逐段越过移动、旁白和反馈，但不会替玩家选择", () => {
+  const currentStory = story();
+  const { elements, scene } = fixture();
+  scene.open(currentStory, { complete() {}, close() {} });
+
+  assert.equal(typeof scene.skipCurrentSegment, "function");
+  assert.equal(scene.skipCurrentSegment(), true);
+  assert.equal(elements.title.textContent, "阶段1");
+  assert.equal(elements.root.dataset.storyPhase, "narration");
+
+  assert.equal(scene.skipCurrentSegment(), true);
+  assert.equal(elements.choices.children.length, 3);
+  const question = elements.text.textContent;
+  assert.equal(scene.skipCurrentSegment(), false);
+  assert.equal(elements.text.textContent, question);
+
+  elements.choices.children[0].click();
+  assert.equal(scene.skipCurrentSegment(), true);
+  assert.equal(elements.root.dataset.storyPhase, "moving");
+  assert.equal(scene.skipCurrentSegment(), true);
+  assert.equal(elements.title.textContent, "阶段2");
+  assert.equal(scene.skipCurrentSegment(), true);
+  assert.equal(elements.choices.children.length, 3);
+  scene.dispose();
+});
+
 test("刷新后恢复已保存阶段", () => {
   const currentStory = story();
   const storage = memoryStorage();

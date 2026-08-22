@@ -166,6 +166,16 @@ export function createHomeScene({
     if (currentStage.nextStageId) moveTo(currentStage.nextStageId);
   }
 
+  function skipCurrentSegment() {
+    if (
+      elements.root.hidden
+      || !currentStage
+      || ["choice", "record", "complete"].includes(currentStage.kind)
+    ) return false;
+    continueStory();
+    return true;
+  }
+
   function clickToContinue(event) {
     if (event?.target?.closest?.(INTERACTIVE_CLICK_SELECTOR)) return;
     continueStory();
@@ -264,6 +274,7 @@ export function createHomeScene({
   return Object.freeze({
     open,
     close,
+    skipCurrentSegment,
     dispose() {
       close();
       elements.continueButton?.removeEventListener("click", continueStory);

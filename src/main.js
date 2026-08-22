@@ -10,6 +10,7 @@ import {
   markLocationVisited,
 } from "./game/journeyProgress.js";
 import { requestGameReset } from "./app/progressReset.js";
+import { createSceneSkip } from "./app/sceneSkip.js";
 import { getSceneController, resolveSavedUnlockOrder } from "./app/sceneRouting.js";
 import { loadTravelerProfile } from "./profile/travelerProfile.js";
 import { createHomeScene } from "./scenes/home/createHomeScene.js";
@@ -27,11 +28,13 @@ const compatibilityError = document.querySelector("#compatibility-error");
 const characterDialog = document.querySelector("#character-dialog");
 const characterButtons = [...document.querySelectorAll("[data-character]")];
 const resetProgressButton = document.querySelector("#reset-progress-button");
+const storySkipButton = document.querySelector("#story-skip-button");
 let game = null;
 let homeScene = null;
 let mountainScene = null;
 let storyScene = null;
 let wishScene = null;
+let sceneSkip = null;
 
 function getInitialJourneyState(characterId) {
   const stories = getAllStories();
@@ -71,6 +74,7 @@ function startGame(characterId) {
   if (game) return;
   try {
     const initialJourney = getInitialJourneyState(characterId);
+    sceneSkip = createSceneSkip({ button: storySkipButton });
     homeScene = createHomeScene({
       characterId,
       elements: {
@@ -95,10 +99,17 @@ function startGame(characterId) {
       characterId,
       elements: {
         root: document.querySelector("#mountain-scene"),
-        canvas: document.querySelector("#mountain-scene-canvas"),
+        video: document.querySelector("#mountain-scene-video"),
+        image: document.querySelector("#mountain-scene-image"),
+        panel: document.querySelector("#mountain-scene-panel"),
+        mediaControls: document.querySelector("#mountain-media-controls"),
         title: document.querySelector("#mountain-stage-title"),
         text: document.querySelector("#mountain-story-text"),
         choices: document.querySelector("#mountain-choices"),
+        startButton: document.querySelector("#mountain-start"),
+        playButton: document.querySelector("#mountain-play"),
+        speedButton: document.querySelector("#mountain-speed"),
+        skipButton: document.querySelector("#mountain-skip"),
         continueButton: document.querySelector("#mountain-continue"),
         closeButton: document.querySelector("#mountain-close"),
         saveWarning: document.querySelector("#mountain-save-warning"),
@@ -171,13 +182,15 @@ function startGame(characterId) {
         const controller = getSceneController(scene.id, sceneControllers);
         if (!controller) throw new Error(`场景未实现：${scene.id}`);
         const story = getStory(scene.id);
-        if (story) controller.open(story, callbacks);
-        else controller.open(callbacks);
+        const sceneCallbacks = sceneSkip.activate(controller, callbacks);
+        if (story) controller.open(story, sceneCallbacks);
+        else controller.open(sceneCallbacks);
       },
     });
     characterDialog.close?.();
     characterDialog.removeAttribute("open");
     game.start();
+    sceneSkip.show();
   } catch (error) {
     console.error("创建世界地图失败", error);
     homeScene?.dispose();
@@ -190,6 +203,9 @@ function startGame(characterId) {
     wishScene = null;
     game?.dispose();
     game = null;
+    sceneSkip?.dispose();
+    sceneSkip = null;
+    if (storySkipButton) storySkipButton.hidden = true;
     characterDialog.close?.();
     characterDialog.removeAttribute("open");
     canvas.hidden = true;
@@ -221,5 +237,6 @@ window.addEventListener("beforeunload", () => {
   mountainScene?.dispose();
   storyScene?.dispose();
   wishScene?.dispose();
+  sceneSkip?.dispose();
   game?.dispose();
 }, { once: true });
