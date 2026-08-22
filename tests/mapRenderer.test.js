@@ -107,3 +107,37 @@ test("透明手绘云素材加载完成后会替代程序圆形云层", () => {
   assert.equal(imageCount, 1);
   assert.equal(ellipseCount, 0);
 });
+
+test("爬山岛会围绕自身中心旋转使道路朝向前后桥梁", () => {
+  const transforms = [];
+  const draws = [];
+  const context = {
+    save() {},
+    restore() {},
+    translate(x, z) { transforms.push(["translate", x, z]); },
+    rotate(angle) { transforms.push(["rotate", angle]); },
+    drawImage(...args) { draws.push(args); },
+  };
+  const island = {
+    id: "mountain",
+    unlockOrder: 1,
+    assetUrl: "mountain.png",
+    bounds: { x: 600, z: 560, width: 760, height: 590 },
+    rotation: -0.72,
+  };
+  const image = { complete: true, naturalWidth: 1347 };
+
+  renderer.drawIslandLayers(
+    context,
+    [island],
+    { get: () => image },
+    1,
+    0,
+  );
+
+  assert.deepEqual(transforms, [
+    ["translate", 980, 855],
+    ["rotate", -0.72],
+  ]);
+  assert.deepEqual(draws, [[image, -380, -295, 760, 590]]);
+});

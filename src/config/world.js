@@ -35,7 +35,14 @@ function cloudCover(sceneBounds, opacity = 0.96) {
   });
 }
 
-function sceneIsland(id, unlockOrder, assetUrl, sceneBounds, cover = null) {
+function sceneIsland(
+  id,
+  unlockOrder,
+  assetUrl,
+  sceneBounds,
+  cover = null,
+  rotation = 0,
+) {
   return Object.freeze({
     id,
     kind: "scene",
@@ -43,6 +50,7 @@ function sceneIsland(id, unlockOrder, assetUrl, sceneBounds, cover = null) {
     assetUrl,
     bounds: sceneBounds,
     cloudCover: cover,
+    rotation,
   });
 }
 
@@ -68,6 +76,8 @@ export const ISLANDS = Object.freeze([
     1,
     assetUrl("assets/islands/mountain.png"),
     MOUNTAIN_BOUNDS,
+    null,
+    -0.29,
   ),
   sceneIsland(
     "office",
@@ -76,13 +86,13 @@ export const ISLANDS = Object.freeze([
     OFFICE_BOUNDS,
     cloudCover(OFFICE_BOUNDS, 0.94),
   ),
-  futureIsland(3, bounds(1690, 1060, 620, 480)),
-  futureIsland(4, bounds(2200, 690, 620, 480)),
-  futureIsland(5, bounds(2760, 340, 620, 480)),
-  futureIsland(6, bounds(3260, 520, 620, 480)),
-  futureIsland(7, bounds(3710, 1145, 620, 450)),
-  futureIsland(8, bounds(4190, 940, 620, 460)),
-  futureIsland(9, bounds(4630, 415, 600, 470)),
+  futureIsland(3, bounds(1790, 1020, 620, 480)),
+  futureIsland(4, bounds(2210, 1490, 620, 480)),
+  futureIsland(5, bounds(2760, 520, 620, 480)),
+  futureIsland(6, bounds(3270, 870, 620, 480)),
+  futureIsland(7, bounds(3710, 335, 620, 450)),
+  futureIsland(8, bounds(4260, 1010, 620, 460)),
+  futureIsland(9, bounds(4630, 1415, 600, 470)),
 ]);
 
 function islandWalkEllipse(island) {
@@ -91,6 +101,7 @@ function islandWalkEllipse(island) {
     z: island.bounds.z + island.bounds.height * 0.52,
     radiusX: island.bounds.width * 0.43,
     radiusZ: island.bounds.height * 0.37,
+    rotation: island.rotation ?? 0,
   });
 }
 
@@ -99,9 +110,15 @@ function ellipseEdgePoint(ellipse, toward) {
   const dz = toward.z - ellipse.z;
   const length = Math.hypot(dx, dz);
   const direction = { x: dx / length, z: dz / length };
+  const cosine = Math.cos(ellipse.rotation);
+  const sine = Math.sin(ellipse.rotation);
+  const localDirection = {
+    x: direction.x * cosine + direction.z * sine,
+    z: -direction.x * sine + direction.z * cosine,
+  };
   const distance = 1 / Math.sqrt(
-    direction.x ** 2 / ellipse.radiusX ** 2
-      + direction.z ** 2 / ellipse.radiusZ ** 2,
+    localDirection.x ** 2 / ellipse.radiusX ** 2
+      + localDirection.z ** 2 / ellipse.radiusZ ** 2,
   );
   return Object.freeze({
     x: ellipse.x + direction.x * distance,
@@ -168,12 +185,21 @@ export const LOCKED_GATES = Object.freeze(
     .map((bridge) => gateAcrossBridge(bridge)),
 );
 
-function ellipseArea(centerX, centerZ, radiusX, radiusZ, segments = 16) {
+function ellipseArea(
+  centerX,
+  centerZ,
+  radiusX,
+  radiusZ,
+  rotation = 0,
+  segments = 16,
+) {
   return freezeArea(Array.from({ length: segments }, (_, index) => {
     const angle = (index / segments) * Math.PI * 2;
+    const localX = Math.cos(angle) * radiusX;
+    const localZ = Math.sin(angle) * radiusZ;
     return {
-      x: centerX + Math.cos(angle) * radiusX,
-      z: centerZ + Math.sin(angle) * radiusZ,
+      x: centerX + localX * Math.cos(rotation) - localZ * Math.sin(rotation),
+      z: centerZ + localX * Math.sin(rotation) + localZ * Math.cos(rotation),
     };
   }));
 }
@@ -210,6 +236,7 @@ export const WALKABLE_AREAS = Object.freeze([
       ellipse.z,
       ellipse.radiusX,
       ellipse.radiusZ,
+      ellipse.rotation,
     );
   }),
   ...BRIDGES.map((bridge) => bridgeArea(bridge)),

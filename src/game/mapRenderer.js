@@ -155,7 +155,9 @@ function drawIslandAsset(context, island, image) {
   context.shadowColor = "rgba(52, 77, 76, 0.2)";
   context.shadowBlur = 24;
   context.shadowOffsetY = 16;
-  context.drawImage(image, x, z, width, height);
+  context.translate(x + width / 2, z + height / 2);
+  context.rotate(island.rotation ?? 0);
+  context.drawImage(image, -width / 2, -height / 2, width, height);
   context.restore();
 }
 

@@ -73,7 +73,7 @@ test("玩家出生在家庭岛且移动速度固定为舒适值", () => {
   assert.equal(world.PLAYER_SPEED, 145);
 });
 
-test("十座岛屿按双谷折线排列并用九座相邻桥串联", () => {
+test("十座岛屿以不规则自然路线用九座相邻桥串联", () => {
   const centers = world.ISLANDS.map(({ bounds }) => ({
     x: bounds.x + bounds.width / 2,
     z: bounds.z + bounds.height / 2,
@@ -87,16 +87,9 @@ test("十座岛屿按双谷折线排列并用九座相邻桥串联", () => {
     assert.equal(bridge.requiredOrder, world.ISLANDS[index + 1].unlockOrder);
     assert.ok(centers[index].x < centers[index + 1].x);
   }
-
-  const heights = centers.map(({ z }) => z);
-  assert.ok(heights[0] < heights[1] && heights[1] < heights[2]);
-  assert.ok(heights[2] > heights[3] && heights[3] > heights[4]);
-  assert.ok(heights[4] > heights[5]);
-  assert.ok(heights[5] < heights[6] && heights[6] < heights[7]);
-  assert.ok(heights[7] > heights[8] && heights[8] > heights[9]);
 });
 
-test("双转折链路使用不等间距和不同谷深避免机械对称", () => {
+test("散点链路使用多次转向和不等步长避免形成固定字母", () => {
   const centers = world.ISLANDS.map(({ bounds }) => ({
     x: bounds.x + bounds.width / 2,
     z: bounds.z + bounds.height / 2,
@@ -104,14 +97,56 @@ test("双转折链路使用不等间距和不同谷深避免机械对称", () =>
   const horizontalGaps = centers.slice(1).map((center, index) => (
     center.x - centers[index].x
   ));
-  const firstDescent = centers[2].z - centers[0].z;
-  const secondDescent = centers[7].z - centers[5].z;
-  const firstAscent = centers[2].z - centers[5].z;
-  const secondAscent = centers[7].z - centers[9].z;
+  const verticalSteps = centers.slice(1).map((center, index) => (
+    center.z - centers[index].z
+  ));
+  const verticalDirections = verticalSteps.map((step) => Math.sign(step));
+  const directionChanges = verticalDirections.slice(1).filter(
+    (direction, index) => direction !== verticalDirections[index],
+  ).length;
 
-  assert.ok(Math.max(...horizontalGaps) - Math.min(...horizontalGaps) >= 80);
-  assert.ok(Math.abs(firstDescent - secondDescent) >= 200);
-  assert.ok(Math.abs(firstAscent - secondAscent) >= 200);
+  assert.ok(Math.max(...horizontalGaps) - Math.min(...horizontalGaps) >= 150);
+  assert.ok(Math.max(...verticalSteps.map(Math.abs))
+    - Math.min(...verticalSteps.map(Math.abs)) >= 250);
+  assert.ok(directionChanges >= 5);
+});
+
+test("爬山岛道路轴线与家庭到工作的桥梁方向一致", () => {
+  const mountain = world.ISLANDS[1];
+  const adjacentBridges = world.BRIDGES.slice(0, 2);
+  const pathAngle = Math.atan2(
+    mountain.bounds.height * 0.57,
+    mountain.bounds.width * 0.21,
+  ) + mountain.rotation;
+  const center = {
+    x: mountain.bounds.x + mountain.bounds.width / 2,
+    z: mountain.bounds.z + mountain.bounds.height * 0.52,
+  };
+  const cosine = Math.cos(mountain.rotation);
+  const sine = Math.sin(mountain.rotation);
+  const mountainEndpoints = [adjacentBridges[0].to, adjacentBridges[1].from];
+
+  for (const bridge of adjacentBridges) {
+    const bridgeAngle = Math.atan2(
+      bridge.to.z - bridge.from.z,
+      bridge.to.x - bridge.from.x,
+    );
+    const angleDifference = Math.abs(Math.atan2(
+      Math.sin(pathAngle - bridgeAngle),
+      Math.cos(pathAngle - bridgeAngle),
+    ));
+    assert.ok(angleDifference < 0.2);
+  }
+
+  for (const endpoint of mountainEndpoints) {
+    const dx = endpoint.x - center.x;
+    const dz = endpoint.z - center.z;
+    const localX = dx * cosine + dz * sine;
+    const localZ = -dx * sine + dz * cosine;
+    const ellipseDistance = localX ** 2 / (mountain.bounds.width * 0.43) ** 2
+      + localZ ** 2 / (mountain.bounds.height * 0.37) ** 2;
+    assert.ok(Math.abs(ellipseDistance - 1) < 0.000001);
+  }
 });
 
 test("八座后续门禁与待解锁桥梁逐一对应", () => {
