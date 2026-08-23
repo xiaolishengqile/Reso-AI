@@ -3,6 +3,7 @@ import "./scenes/home/homeScene.css";
 import "./scenes/mountain/mountainScene.css";
 import "./scenes/story/storyScene.css";
 import "./scenes/wish/wishScene.css";
+import "./icebreaker/icebreaker.css";
 import { renderCharacterPreview } from "./entities/character.js";
 import { createGame } from "./game/createGame.js";
 import {
@@ -21,6 +22,7 @@ import { createStoryScene } from "./scenes/story/createStoryScene.js";
 import { getAllStories, getStory } from "./scenes/story/catalog.js";
 import { loadStoryProgress } from "./scenes/story/progress.js";
 import { createWishScene } from "./scenes/wish/createWishScene.js";
+import { createIcebreakerFeature } from "./icebreaker/createIcebreakerFeature.js";
 import { resolveInitialScene } from "./startup.js";
 
 const canvas = document.querySelector("#world-canvas");
@@ -34,6 +36,7 @@ let homeScene = null;
 let mountainScene = null;
 let storyScene = null;
 let wishScene = null;
+let icebreakerFeature = null;
 let sceneSkip = null;
 
 function getInitialJourneyState(characterId) {
@@ -143,6 +146,20 @@ function startGame(characterId) {
         closeButton: document.querySelector("#wish-close"),
       },
     });
+    icebreakerFeature = createIcebreakerFeature({
+      characterId,
+      elements: {
+        button: document.querySelector("#icebreaker-button"),
+        buttonLabel: document.querySelector("#icebreaker-button-label"),
+        dialog: document.querySelector("#icebreaker-dialog"),
+        status: document.querySelector("#icebreaker-status"),
+        matchName: document.querySelector("#icebreaker-match-name"),
+        text: document.querySelector("#icebreaker-text"),
+        retryButton: document.querySelector("#icebreaker-retry"),
+        closeButton: document.querySelector("#icebreaker-close"),
+      },
+    });
+    icebreakerFeature.refresh();
     const sceneControllers = {
       home: homeScene,
       mountain: mountainScene,
@@ -182,6 +199,16 @@ function startGame(characterId) {
         const controller = getSceneController(scene.id, sceneControllers);
         if (!controller) throw new Error(`场景未实现：${scene.id}`);
         const story = getStory(scene.id);
+        if (scene.id === "mountain") {
+          const originalComplete = callbacks.complete;
+          callbacks = {
+            ...callbacks,
+            complete(...args) {
+              icebreakerFeature?.refresh();
+              originalComplete?.(...args);
+            },
+          };
+        }
         const sceneCallbacks = sceneSkip.activate(controller, callbacks);
         if (story) controller.open(story, sceneCallbacks);
         else controller.open(sceneCallbacks);
@@ -201,6 +228,8 @@ function startGame(characterId) {
     storyScene = null;
     wishScene?.dispose();
     wishScene = null;
+    icebreakerFeature?.dispose();
+    icebreakerFeature = null;
     game?.dispose();
     game = null;
     sceneSkip?.dispose();
@@ -237,6 +266,7 @@ window.addEventListener("beforeunload", () => {
   mountainScene?.dispose();
   storyScene?.dispose();
   wishScene?.dispose();
+  icebreakerFeature?.dispose();
   sceneSkip?.dispose();
   game?.dispose();
 }, { once: true });

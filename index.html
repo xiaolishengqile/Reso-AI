@@ -30,6 +30,17 @@
       </button>
 
       <button
+        id="icebreaker-button"
+        class="icebreaker-button"
+        type="button"
+        aria-label="生成破冰话术"
+        hidden
+      >
+        <span aria-hidden="true">✦</span>
+        <small id="icebreaker-button-label">生成破冰话术</small>
+      </button>
+
+      <button
         id="reset-progress-button"
         class="reset-progress-button"
         type="button"
@@ -271,6 +282,20 @@
           </div>
         </div>
       </section>
+
+      <dialog id="icebreaker-dialog" class="icebreaker-dialog" aria-labelledby="icebreaker-title">
+        <div class="icebreaker-dialog__panel">
+          <p class="icebreaker-dialog__eyebrow">虚 拟 匹 配 对 象</p>
+          <h2 id="icebreaker-title">你的破冰话术</h2>
+          <p id="icebreaker-status" class="icebreaker-dialog__status" aria-live="polite"></p>
+          <p id="icebreaker-match-name" class="icebreaker-dialog__name"></p>
+          <blockquote id="icebreaker-text" class="icebreaker-dialog__text"></blockquote>
+          <div class="icebreaker-dialog__actions">
+            <button id="icebreaker-retry" type="button" hidden>重试生成</button>
+            <button id="icebreaker-close" type="button">返回世界地图</button>
+          </div>
+        </div>
+      </dialog>
 
       <section id="compatibility-error" class="compatibility-error" hidden>
         <h2>地图暂时无法展开</h2>

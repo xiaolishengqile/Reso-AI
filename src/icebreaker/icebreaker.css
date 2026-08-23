@@ -1,0 +1,48 @@
+.icebreaker-button {
+  position: absolute;
+  z-index: 30;
+  top: 20px;
+  right: 230px;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  padding: 6px;
+  place-items: center;
+  border: 1.5px solid rgba(87, 63, 51, 0.55);
+  border-radius: 18px 14px 17px 13px;
+  color: #72534a;
+  background: rgba(255, 247, 222, 0.92);
+  box-shadow: 3px 5px 0 rgba(83, 65, 53, 0.14);
+  cursor: pointer;
+  backdrop-filter: blur(7px);
+}
+
+.icebreaker-button:hover,
+.icebreaker-button:focus-visible { transform: translateY(-2px); outline: 3px solid rgba(183, 123, 86, 0.3); background: #fff9e6; }
+.icebreaker-button:disabled { opacity: 0.58; cursor: wait; transform: none; }
+.icebreaker-button span { font: 700 24px/1 system-ui, sans-serif; }
+.icebreaker-button small { margin-top: -5px; font-size: 9px; line-height: 1.05; }
+
+.icebreaker-dialog {
+  width: min(620px, calc(100vw - 48px));
+  padding: 0;
+  border: 2px solid #8b684f;
+  border-radius: 30px 24px 34px 26px;
+  color: #543d34;
+  background: transparent;
+  box-shadow: 10px 14px 0 rgba(80, 59, 48, 0.16), 0 30px 80px rgba(34, 50, 50, 0.38);
+}
+
+.icebreaker-dialog::backdrop { background: rgba(61, 86, 87, 0.48); backdrop-filter: blur(6px); }
+.icebreaker-dialog__panel { padding: 34px 40px 30px; background: repeating-linear-gradient(3deg, transparent 0 8px, rgba(104, 75, 56, 0.045) 9px), linear-gradient(155deg, #fff9e7, #f0ddb5); }
+.icebreaker-dialog__eyebrow { margin: 0; color: #92705e; font-size: 12px; letter-spacing: 0.2em; }
+.icebreaker-dialog h2 { margin: 7px 0 14px; font-size: 31px; letter-spacing: 0.08em; }
+.icebreaker-dialog__status { min-height: 1.5em; margin: 0 0 12px; color: #866755; }
+.icebreaker-dialog__name { margin: 0 0 10px; color: #9c654d; font-size: 20px; font-weight: 700; }
+.icebreaker-dialog__text { margin: 0; padding: 20px 22px; border-left: 4px solid #b77b56; border-radius: 8px 18px 10px 16px; background: rgba(255, 253, 241, 0.72); font-size: 17px; line-height: 1.9; white-space: normal; }
+.icebreaker-dialog__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.icebreaker-dialog__actions button { padding: 10px 22px; border: 1.5px solid #684b3f; border-radius: 999px; color: #fff8e7; background: #6f8e75; box-shadow: 0 4px 0 #4e6c57; cursor: pointer; }
+
+@media (max-width: 1050px) {
+  .icebreaker-button { top: 14px; right: 222px; }
+}
