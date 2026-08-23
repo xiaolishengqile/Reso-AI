@@ -136,7 +136,6 @@ function createMountainController(windowTarget) {
     video: new FakeElement(),
     image: new FakeElement(),
     panel: new FakeElement(),
-    mediaControls: new FakeElement(),
     title: new FakeElement(),
     text: new FakeElement(),
     choices: new FakeElement(),
@@ -144,8 +143,6 @@ function createMountainController(windowTarget) {
     closeButton: new FakeElement(),
     startButton: new FakeElement(),
     playButton: new FakeElement(),
-    speedButton: new FakeElement(),
-    skipButton: new FakeElement(),
     saveWarning: new FakeElement(),
     progress: new FakeElement(),
   };

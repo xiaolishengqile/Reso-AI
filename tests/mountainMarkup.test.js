@@ -13,9 +13,6 @@ test("爬山剧情页面提供全屏媒体与底部问答节点", async () => {
     "mountain-scene-video",
     "mountain-scene-image",
     "mountain-scene-panel",
-    "mountain-media-controls",
-    "mountain-speed",
-    "mountain-skip",
     "mountain-start",
     "mountain-play",
   ]) {
@@ -24,4 +21,5 @@ test("爬山剧情页面提供全屏媒体与底部问答节点", async () => {
   }
   assert.match(css, /object-fit:\s*cover/);
   assert.match(css, /\.mountain-scene__panel\s*\{[^}]*position:\s*absolute[^}]*bottom:/s);
+  assert.doesNotMatch(html, /id=["']mountain-(?:media-controls|speed|skip)["']/);
 });

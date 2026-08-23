@@ -15,7 +15,6 @@ import {
 
 const EVIDENCE_STAGES = MOUNTAIN_STAGES.filter(({ recordsEvidence }) => recordsEvidence);
 const EVIDENCE_STAGE_COUNT = EVIDENCE_STAGES.length;
-const PLAYBACK_RATES = [1, 1.5, 2];
 
 function setHidden(element, hidden) {
   if (!element) return;
@@ -55,7 +54,6 @@ export function createMountainScene({
   let completed = false;
   let isOpen = false;
   let playbackToken = 0;
-  let playbackRateIndex = 0;
   let freeResponseInput = null;
 
   function clearFreeResponseInput() {
@@ -96,7 +94,6 @@ export function createMountainScene({
 
   function setPanelBase() {
     clearFreeResponseInput();
-    setHidden(elements.mediaControls, true);
     setHidden(elements.panel, false);
     setHidden(elements.startButton, true);
     setHidden(elements.playButton, true);
@@ -183,12 +180,10 @@ export function createMountainScene({
     const token = ++playbackToken;
     elements.video.src = source;
     elements.video.currentTime = 0;
-    elements.video.playbackRate = PLAYBACK_RATES[playbackRateIndex];
     elements.video.setAttribute?.("aria-label", getMountainStageMedia(currentStage.id)?.alt ?? "爬山剧情视频");
     setHidden(elements.image, true);
     setHidden(elements.video, false);
     setHidden(elements.panel, true);
-    setHidden(elements.mediaControls, false);
     elements.video.load?.();
     const playResult = elements.video.play?.();
     if (playResult?.catch) {
@@ -240,21 +235,8 @@ export function createMountainScene({
     showWarning("视频暂时无法播放，已跳过本段并进入问题。");
   }
 
-  function updatePlaybackRate() {
-    const rate = PLAYBACK_RATES[playbackRateIndex];
-    elements.video.playbackRate = rate;
-    elements.speedButton.textContent = `${rate} 倍`;
-    elements.speedButton.setAttribute?.("aria-label", `当前播放速度 ${rate} 倍，点击切换`);
-  }
-
-  function cyclePlaybackRate() {
-    if (!isOpen || elements.mediaControls?.hidden) return;
-    playbackRateIndex = (playbackRateIndex + 1) % PLAYBACK_RATES.length;
-    updatePlaybackRate();
-  }
-
   function skipVideo() {
-    if (!isOpen || elements.mediaControls?.hidden) return false;
+    if (!isOpen || !elements.panel?.hidden) return false;
     elements.video?.pause?.();
     onVideoEnded();
     return true;
@@ -306,8 +288,6 @@ export function createMountainScene({
   function open(nextCallbacks = {}) {
     callbacks = nextCallbacks;
     completed = false;
-    playbackRateIndex = 0;
-    updatePlaybackRate();
     clearWarning();
     progress = loadMountainProgress(storage, characterId);
     journeyMode = Number.isFinite(progress.firstCompletedAt)
@@ -338,8 +318,6 @@ export function createMountainScene({
     elements.closeButton?.removeEventListener?.("click", close);
     elements.startButton?.removeEventListener?.("click", onStart);
     elements.playButton?.removeEventListener?.("click", playActiveVideo);
-    elements.speedButton?.removeEventListener?.("click", cyclePlaybackRate);
-    elements.skipButton?.removeEventListener?.("click", skipVideo);
     elements.continueButton?.removeEventListener?.("click", finish);
     elements.video?.removeEventListener?.("ended", onVideoEnded);
     elements.video?.removeEventListener?.("error", onVideoError);
@@ -352,8 +330,6 @@ export function createMountainScene({
   elements.closeButton?.addEventListener?.("click", close);
   elements.startButton?.addEventListener?.("click", onStart);
   elements.playButton?.addEventListener?.("click", playActiveVideo);
-  elements.speedButton?.addEventListener?.("click", cyclePlaybackRate);
-  elements.skipButton?.addEventListener?.("click", skipVideo);
   elements.continueButton?.addEventListener?.("click", finish);
   elements.video?.addEventListener?.("ended", onVideoEnded);
   elements.video?.addEventListener?.("error", onVideoError);
