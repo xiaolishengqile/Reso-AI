@@ -77,8 +77,8 @@ function gatewayWith(contents) {
   return {
     model: "glm-5.3",
     calls: [],
-    async complete(messages) {
-      this.calls.push(messages);
+    async complete(messages, options) {
+      this.calls.push({ messages, options });
       return queue.shift();
     },
   };
@@ -117,6 +117,7 @@ test("标准选项的九个变量由服务端按最终规则覆盖且元数据�
   assert.equal(result.evidenceCount, 7);
   assert.equal(result.generatedAt, 12345);
   assert.equal(result.model, "glm-5.3");
+  assert.equal(gateway.calls[0].options.reasoningEffort, "low");
 });
 
 test("模型引用请求外证据时纠正一次，仍无效则拒绝", async () => {

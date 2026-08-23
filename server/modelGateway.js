@@ -16,7 +16,7 @@ export function createModelGateway({
   apiUrl = DEFAULT_API_URL,
   model = DEFAULT_MODEL,
   fetchImpl = globalThis.fetch,
-  timeoutMs = 45_000,
+  timeoutMs = 75_000,
 } = {}) {
   const configuredKey = typeof apiKey === "string" ? apiKey.trim() : "";
   const configuredUrl = typeof apiUrl === "string" && apiUrl.trim()
@@ -26,7 +26,7 @@ export function createModelGateway({
     ? model.trim()
     : DEFAULT_MODEL;
 
-  async function complete(messages, { signal = null } = {}) {
+  async function complete(messages, { signal = null, reasoningEffort = "high" } = {}) {
     if (!configuredKey) {
       throw new ModelGatewayError(
         "SERVICE_NOT_CONFIGURED",
@@ -45,20 +45,31 @@ export function createModelGateway({
       : timeoutController.signal;
     try {
       signal?.throwIfAborted();
-      const response = await fetchImpl(configuredUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${configuredKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: configuredModel,
-          messages,
-          reasoning_effort: "high",
-        }),
-        signal: requestSignal,
-      });
-      requestSignal.throwIfAborted();
+      let response;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          response = await fetchImpl(configuredUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${configuredKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: configuredModel,
+              messages,
+              reasoning_effort: reasoningEffort === "low" ? "low" : "high",
+            }),
+            signal: requestSignal,
+          });
+          requestSignal.throwIfAborted();
+        } catch (error) {
+          if (requestSignal.aborted || error?.name === "AbortError" || attempt === 1) throw error;
+          continue;
+        }
+        const retryable = response?.status === 429 || response?.status >= 500;
+        if (!response?.ok && retryable && attempt === 0) continue;
+        break;
+      }
       if (!response?.ok) {
         throw new ModelGatewayError("MODEL_UNAVAILABLE", "模型生成服务暂时不可用。");
       }

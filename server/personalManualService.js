@@ -130,7 +130,7 @@ export async function generatePersonalManual(input, { gateway, now = Date.now, s
     try {
       candidate = parseModelJson(await gateway.complete(
         createPersonalManualMessages(request, correction),
-        { signal },
+        { signal, reasoningEffort: "low" },
       ));
     } catch (error) {
       if (signal?.aborted || error?.name === "AbortError") throw error;
