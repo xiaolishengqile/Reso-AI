@@ -34,6 +34,7 @@ npm start
 
 - `ICEBREAKER_RATE_LIMIT_MAX_REQUESTS`：每个来源在窗口内允许的请求数。
 - `ICEBREAKER_RATE_LIMIT_WINDOW_MS`：固定窗口毫秒数。
+- `ICEBREAKER_RATE_LIMIT_MAX_ENTRIES`：内存中最多保留的来源窗口数，默认 10000；服务会定期清理过期项，并在满载时淘汰最旧项。
 - `ICEBREAKER_MAX_CONCURRENT_GENERATIONS`：全局上游生成并发数。
 
 服务默认不信任 `X-Forwarded-For` 等转发地址头。部署在反向代理后时，应在确认代理会清洗客户端自带转发头后，通过 `createAppHandler` 的 `getSourceId` 注入可信来源解析策略；否则所有请求会按代理套接字地址共享限额。限流或并发满载时接口返回稳定的 429 响应和 `Retry-After`。

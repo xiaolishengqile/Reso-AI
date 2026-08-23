@@ -107,6 +107,29 @@ test("固定窗口按真实连接来源限流且默认忽略转发地址", async
   assert.equal(calls, 1);
 });
 
+test("来源窗口清理过期项并在容量满时淘汰最旧项", async () => {
+  let now = 0;
+  const handler = createAppHandler({
+    env: { TOKENDANCE_API_KEY: "test-key" },
+    rateLimit: { maxRequests: 1, windowMs: 1_000, maxEntries: 2, now: () => now },
+    getSourceId: (request) => request.headers["x-test-source"],
+    generateIcebreakerFn: async () => ({ virtualMatchName: "云舟", icebreaker: "话".repeat(180) }),
+  });
+  await withServer(handler, async (origin) => {
+    assert.equal((await postIcebreaker(origin, { "X-Test-Source": "oldest" })).status, 200);
+    now = 100;
+    assert.equal((await postIcebreaker(origin, { "X-Test-Source": "second" })).status, 200);
+    now = 200;
+    assert.equal((await postIcebreaker(origin, { "X-Test-Source": "third" })).status, 200);
+    now = 300;
+    assert.equal((await postIcebreaker(origin, { "X-Test-Source": "oldest" })).status, 200);
+
+    now = 1_500;
+    assert.equal((await postIcebreaker(origin, { "X-Test-Source": "expired" })).status, 200);
+    assert.equal((await postIcebreaker(origin, { "X-Test-Source": "expired" })).status, 429);
+  });
+});
+
 test("受信任来源策略可显式注入", async () => {
   const handler = createAppHandler({
     env: { TOKENDANCE_API_KEY: "test-key" },
@@ -212,13 +235,20 @@ test("生产视频支持单段字节范围与 HEAD", async () => {
       assert.equal(partial.headers.get("content-length"), "4");
       assert.equal(await partial.text(), "2345");
 
+      const uppercaseUnit = await fetch(`${origin}/assets/scene.mp4`, {
+        headers: { Range: "Bytes=0-1" },
+      });
+      assert.equal(uppercaseUnit.status, 206);
+      assert.equal(uppercaseUnit.headers.get("content-range"), "bytes 0-1/10");
+      assert.equal(await uppercaseUnit.text(), "01");
+
       const head = await fetch(`${origin}/assets/scene.mp4`, {
         method: "HEAD",
-        headers: { Range: "bytes=-3" },
+        headers: { Range: "Bytes=0-1" },
       });
       assert.equal(head.status, 206);
-      assert.equal(head.headers.get("content-range"), "bytes 7-9/10");
-      assert.equal(head.headers.get("content-length"), "3");
+      assert.equal(head.headers.get("content-range"), "bytes 0-1/10");
+      assert.equal(head.headers.get("content-length"), "2");
       assert.equal(await head.text(), "");
     });
   } finally {

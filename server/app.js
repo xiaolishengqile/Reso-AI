@@ -9,7 +9,11 @@ import {
 } from "./icebreakerService.js";
 
 const MAX_BODY_BYTES = 32 * 1024;
-const DEFAULT_RATE_LIMIT = Object.freeze({ maxRequests: 5, windowMs: 60_000 });
+const DEFAULT_RATE_LIMIT = Object.freeze({
+  maxRequests: 5,
+  windowMs: 60_000,
+  maxEntries: 10_000,
+});
 const DEFAULT_MAX_CONCURRENT_GENERATIONS = 2;
 
 const CONTENT_TYPES = Object.freeze({
@@ -24,7 +28,7 @@ const CONTENT_TYPES = Object.freeze({
 
 function parseByteRange(header, size) {
   if (header === undefined) return null;
-  const match = /^bytes=(\d*)-(\d*)$/.exec(header);
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(header);
   if (!match || (!match[1] && !match[2]) || size === 0) return false;
   if (!match[1]) {
     const suffixLength = Number(match[2]);
@@ -220,19 +224,34 @@ export function createAppHandler({
     rateLimit.windowMs ?? env.ICEBREAKER_RATE_LIMIT_WINDOW_MS,
     DEFAULT_RATE_LIMIT.windowMs,
   );
+  const maxEntries = positiveInteger(
+    rateLimit.maxEntries ?? env.ICEBREAKER_RATE_LIMIT_MAX_ENTRIES,
+    DEFAULT_RATE_LIMIT.maxEntries,
+  );
   const concurrencyLimit = positiveInteger(
     maxConcurrentGenerations ?? env.ICEBREAKER_MAX_CONCURRENT_GENERATIONS,
     DEFAULT_MAX_CONCURRENT_GENERATIONS,
   );
   const now = typeof rateLimit.now === "function" ? rateLimit.now : Date.now;
   const sourceWindows = new Map();
+  const cleanupIntervalMs = Math.min(windowMs, 60_000);
+  let nextCleanupAt = 0;
   let activeGenerations = 0;
   const controls = {
     takeRateLimit(request) {
       const sourceId = String(getSourceId(request) || "unknown");
       const currentTime = now();
+      if (currentTime >= nextCleanupAt || sourceWindows.size >= maxEntries) {
+        for (const [key, value] of sourceWindows) {
+          if (currentTime >= value.resetAt) sourceWindows.delete(key);
+        }
+        nextCleanupAt = currentTime + cleanupIntervalMs;
+      }
       let window = sourceWindows.get(sourceId);
       if (!window || currentTime >= window.resetAt) {
+        if (sourceWindows.size >= maxEntries) {
+          sourceWindows.delete(sourceWindows.keys().next().value);
+        }
         window = { count: 0, resetAt: currentTime + windowMs };
         sourceWindows.set(sourceId, window);
       }

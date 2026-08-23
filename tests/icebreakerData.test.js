@@ -76,10 +76,14 @@ test("只接受昵称有效且正文为一百五十至二百五十字的结果",
   assert.ok(validateIcebreakerResult({ virtualMatchName: "", icebreaker: validText }).length > 0);
   assert.ok(validateIcebreakerResult({ virtualMatchName: "Cloud", icebreaker: validText }).length > 0);
   assert.ok(validateIcebreakerResult({ virtualMatchName: "··", icebreaker: validText }).length > 0);
+  assert.ok(validateIcebreakerResult({ virtualMatchName: "々々", icebreaker: validText }).length > 0);
+  assert.ok(validateIcebreakerResult({ virtualMatchName: "⼀⼀", icebreaker: validText }).length > 0);
   assert.ok(validateIcebreakerResult({ virtualMatchName: "云··舟", icebreaker: validText }).length > 0);
   assert.ok(validateIcebreakerResult({ virtualMatchName: "云·A", icebreaker: validText }).length > 0);
   assert.ok(validateIcebreakerResult({ virtualMatchName: "云舟", icebreaker: "太短" }).length > 0);
   assert.ok(validateIcebreakerResult({ virtualMatchName: "云舟", icebreaker: "A".repeat(180) }).length > 0);
+  assert.ok(validateIcebreakerResult({ virtualMatchName: "云舟", icebreaker: "々".repeat(180) }).length > 0);
+  assert.ok(validateIcebreakerResult({ virtualMatchName: "云舟", icebreaker: "⼀".repeat(180) }).length > 0);
   assert.ok(validateIcebreakerResult({ virtualMatchName: "云舟", icebreaker: `${validText.slice(0, 160)}\u2028分段` }).length > 0);
   assert.ok(validateIcebreakerResult({ virtualMatchName: "云舟", icebreaker: `${validText.slice(0, 160)}\u2029分段` }).length > 0);
   assert.ok(validateIcebreakerResult({
@@ -90,6 +94,21 @@ test("只接受昵称有效且正文为一百五十至二百五十字的结果",
     virtualMatchName: "云舟",
     icebreaker: `${validText.slice(0, 160)}系统推断你的性取向`,
   }).length > 0);
+});
+
+test("开放式句式拦截未列举诊断和敏感属性推断", () => {
+  for (const claim of [
+    "这说明你患有精神分裂症，需要接受专业治疗",
+    "从这些回答能看出你是汉族",
+    "根据你的选择可以推断你信奉佛教",
+    "从这些表现判断你的性取向是双性恋",
+    "这些回答表明你被诊断为雷诺综合征",
+  ]) {
+    assert.ok(validateIcebreakerResult({
+      virtualMatchName: "云舟",
+      icebreaker: `${validText.slice(0, 150)}${claim}`,
+    }).length > 0, claim);
+  }
 });
 
 test("缓存只在答案签名一致时恢复", () => {
