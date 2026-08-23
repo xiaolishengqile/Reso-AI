@@ -185,6 +185,7 @@ export function createGame({
   ui,
   characterId,
   onEnterScene = null,
+  onSceneComplete = null,
   proximityScene = null,
   initialUnlockedOrder = INITIAL_UNLOCK_ORDER,
   initialVisitedLocationIds = [],
@@ -244,6 +245,7 @@ export function createGame({
     updateLegend();
     if (changed) showLocationCard(hoveredLocation);
     setStatus(completion.message, 2600);
+    onSceneComplete?.(scene);
   }
 
   const sceneManager = createSceneManager({ ui, onComplete: completeScene });

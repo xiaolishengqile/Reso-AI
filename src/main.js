@@ -148,6 +148,7 @@ function startGame(characterId) {
     });
     icebreakerFeature = createIcebreakerFeature({
       characterId,
+      storage: window.localStorage,
       elements: {
         button: document.querySelector("#icebreaker-button"),
         buttonLabel: document.querySelector("#icebreaker-button-label"),
@@ -180,6 +181,9 @@ function startGame(characterId) {
       onVisitLocation: (locationId) => {
         markLocationVisited(window.localStorage, characterId, locationId);
       },
+      onSceneComplete: (scene) => {
+        if (scene.id === "mountain") icebreakerFeature?.refresh();
+      },
       ui: {
         locationCard: document.querySelector("#location-card"),
         locationName: document.querySelector("#location-name"),
@@ -199,16 +203,6 @@ function startGame(characterId) {
         const controller = getSceneController(scene.id, sceneControllers);
         if (!controller) throw new Error(`场景未实现：${scene.id}`);
         const story = getStory(scene.id);
-        if (scene.id === "mountain") {
-          const originalComplete = callbacks.complete;
-          callbacks = {
-            ...callbacks,
-            complete(...args) {
-              icebreakerFeature?.refresh();
-              originalComplete?.(...args);
-            },
-          };
-        }
         const sceneCallbacks = sceneSkip.activate(controller, callbacks);
         if (story) controller.open(story, sceneCallbacks);
         else controller.open(sceneCallbacks);
@@ -267,6 +261,7 @@ window.addEventListener("beforeunload", () => {
   storyScene?.dispose();
   wishScene?.dispose();
   icebreakerFeature?.dispose();
+  icebreakerFeature = null;
   sceneSkip?.dispose();
   game?.dispose();
 }, { once: true });
