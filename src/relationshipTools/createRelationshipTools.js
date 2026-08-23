@@ -3,18 +3,10 @@ import {
   saveIcebreakerCache,
   validateIcebreakerResult,
 } from "../icebreaker/data.js";
+import { createIcebreakerContext } from "./evidenceContext.js";
 import {
-  getPersonalManualState,
-  savePersonalManualCache,
-  validatePersonalManualResult,
-} from "../personalManual/data.js";
-import {
-  createIcebreakerContext,
-  createPersonalManualContext,
-} from "./evidenceContext.js";
-import {
+  renderFixedPersonalManualCard,
   renderIcebreakerCard,
-  renderPersonalManualCard,
   renderRelationshipError,
   renderRelationshipLoading,
 } from "./cardRenderer.js";
@@ -22,10 +14,31 @@ import {
 const BUTTON_TEXT = Object.freeze({
   icebreakerGenerate: "生成破冰话术",
   icebreakerView: "查看破冰话术",
-  manualGenerate: "生成个人说明书",
   manualView: "查看个人说明书",
-  manualUpdate: "更新个人说明书",
 });
+
+const PERSONAL_MANUAL_DELAY_MS = 5000;
+
+function waitForDelay(duration, { signal } = {}) {
+  return new Promise((resolve, reject) => {
+    let timer = null;
+    const abort = () => {
+      clearTimeout(timer);
+      const error = new Error("aborted");
+      error.name = "AbortError";
+      reject(error);
+    };
+    if (signal?.aborted) {
+      abort();
+      return;
+    }
+    timer = setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, duration);
+    signal?.addEventListener("abort", abort, { once: true });
+  });
+}
 
 function publicFailure(error) {
   return typeof error?.publicMessage === "string"
@@ -63,6 +76,7 @@ export function createRelationshipTools({
   elements,
   loadState,
   fetchImpl = globalThis.fetch,
+  delayImpl = waitForDelay,
   documentTarget = globalThis.document,
 } = {}) {
   let disposed = false;
@@ -73,17 +87,16 @@ export function createRelationshipTools({
 
   function contexts() {
     const state = loadState?.();
-    if (!state) return { icebreaker: null, manual: null };
+    if (!state) return { icebreaker: null };
     return {
       icebreaker: createIcebreakerContext({ characterId, ...state }),
-      manual: createPersonalManualContext({ characterId, ...state }),
     };
   }
 
   function refresh() {
     if (disposed) return;
     const current = contexts();
-    const eligible = Boolean(current.icebreaker && current.manual);
+    const eligible = Boolean(current.icebreaker);
     elements.group.hidden = !eligible;
     if (!eligible) return;
     const icebreaker = loadIcebreakerCache(
@@ -91,15 +104,10 @@ export function createRelationshipTools({
       characterId,
       current.icebreaker.signature,
     );
-    const manual = getPersonalManualState(storage, characterId, current.manual);
     elements.icebreakerButton.textContent = icebreaker
       ? BUTTON_TEXT.icebreakerView
       : BUTTON_TEXT.icebreakerGenerate;
-    elements.manualButton.textContent = manual.status === "view"
-      ? BUTTON_TEXT.manualView
-      : manual.status === "update"
-        ? BUTTON_TEXT.manualUpdate
-        : BUTTON_TEXT.manualGenerate;
+    elements.manualButton.textContent = BUTTON_TEXT.manualView;
   }
 
   function openCard(button) {
@@ -187,53 +195,20 @@ export function createRelationshipTools({
     }
   }
 
-  async function generateManual(context, state, button) {
+  async function showFixedManual(button) {
     const version = ++requestVersion;
     const controller = beginRequest();
     openCard(button);
     renderRelationshipLoading(elements, "manual");
     button.disabled = true;
     try {
-      const result = await requestJson(fetchImpl, "/api/personal-manual", context.request, {
-        signal: controller.signal,
-      });
+      await delayImpl(PERSONAL_MANUAL_DELAY_MS, { signal: controller.signal });
       if (disposed || version !== requestVersion) return;
-      const allowedRefs = new Set(context.request.evidence.map(({ evidenceRef }) => evidenceRef));
-      const errors = validatePersonalManualResult(result, allowedRefs);
-      if (errors.length > 0) throw new Error("invalid result");
-      const revision = (state.cache?.revision ?? 0) + 1;
-      const generatedAt = Number.isFinite(result.generatedAt) ? result.generatedAt : Date.now();
-      const saved = savePersonalManualCache(
-        storage,
-        characterId,
-        context,
-        result,
-        revision,
-        generatedAt,
-        result.model ?? "",
-      );
-      renderPersonalManualCard(elements, {
-        ...result,
-        revision,
-        completedIslands: context.completedIslands,
-        evidenceCount: context.evidenceCount,
-        generatedAt,
-      }, documentTarget, saved ? "" : "结果已生成，但刷新后可能无法保留。");
-      refresh();
+      renderFixedPersonalManualCard(elements, documentTarget);
     } catch (error) {
       if (disposed || version !== requestVersion || error?.name === "AbortError") return;
-      if (state.cache) {
-        renderPersonalManualCard(
-          elements,
-          state.cache,
-          documentTarget,
-          `${publicFailure(error)} 上一版仍已保留。`,
-        );
-        showRetry("重试更新", () => generateManual(context, state, button));
-      } else {
-        renderRelationshipError(elements, publicFailure(error));
-        showRetry("重试生成", () => generateManual(context, state, button));
-      }
+      renderRelationshipError(elements, "个人说明书暂时无法打开，请稍后重试。");
+      showRetry("重新打开", () => showFixedManual(button));
     } finally {
       if (requestController === controller) requestController = null;
       button.disabled = false;
@@ -254,16 +229,8 @@ export function createRelationshipTools({
   }
 
   async function onManual(event) {
-    const context = contexts().manual;
-    if (!context) return;
-    const state = getPersonalManualState(storage, characterId, context);
-    openCard(event.currentTarget);
-    if (state.status === "view") {
-      invalidateRequest();
-      renderPersonalManualCard(elements, state.cache, documentTarget);
-      return;
-    }
-    await generateManual(context, state, event.currentTarget);
+    if (!contexts().icebreaker) return;
+    await showFixedManual(event.currentTarget);
   }
 
   function onAction() {

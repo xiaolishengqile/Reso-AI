@@ -1,3 +1,5 @@
+import { FIXED_PERSONAL_MANUAL } from "../personalManual/fixedTemplate.js";
+
 const ISLAND_NAMES = Object.freeze({
   mountain: "爬山岛",
   office: "工作岛",
@@ -40,9 +42,11 @@ function setHeader(elements, { label, title, meta = "", status = "" }) {
 export function renderRelationshipLoading(elements, type) {
   const isManual = type === "manual";
   setHeader(elements, {
-    label: isManual ? "持续成长 · 个人说明书" : "虚拟设定 · 破冰话术",
-    title: isManual ? "正在整理你的个人说明书" : "正在生成破冰话术",
-    status: "正在读取已保存的正式剧情证据，请稍候……",
+    label: isManual ? "固定模板 · 个人说明书" : "虚拟设定 · 破冰话术",
+    title: isManual ? "正在准备你的个人说明书" : "正在生成破冰话术",
+    status: isManual
+      ? "正在整理固定模板，请稍候……"
+      : "正在读取已保存的正式剧情证据，请稍候……",
   });
   elements.body.replaceChildren();
 }
@@ -76,6 +80,32 @@ export function renderIcebreakerCard(elements, result, documentTarget, status = 
     ),
   );
   elements.body.replaceChildren(article);
+}
+
+export function renderFixedPersonalManualCard(elements, documentTarget) {
+  setHeader(elements, {
+    label: "固定模板 · 个人说明书",
+    title: "我的个人说明书",
+    meta: FIXED_PERSONAL_MANUAL.title,
+  });
+
+  const manual = node(documentTarget, "article", "manual-template");
+  const preface = node(documentTarget, "section", "manual-template__preface");
+  preface.append(
+    node(documentTarget, "h3", "", "卷首语"),
+    node(documentTarget, "p", "", FIXED_PERSONAL_MANUAL.preface),
+  );
+  const steps = node(documentTarget, "div", "manual-template__steps");
+  steps.append(...FIXED_PERSONAL_MANUAL.steps.map((step) => {
+    const section = node(documentTarget, "section", "manual-template__step");
+    section.append(
+      node(documentTarget, "h3", "", step.title),
+      node(documentTarget, "p", "", step.content),
+    );
+    return section;
+  }));
+  manual.append(preface, steps);
+  elements.body.replaceChildren(manual);
 }
 
 function renderVariable(variable, documentTarget) {
