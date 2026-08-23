@@ -1,11 +1,25 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {
+  LOCATIONS,
+  MAP_SIZE,
+  WORLD_DECORATIONS,
+} from "../src/config/world.js";
 import { createGame } from "../src/game/createGame.js";
+
+function overviewScreenPoint(point) {
+  const scale = Math.min(1200 / MAP_SIZE.width, 800 / MAP_SIZE.height);
+  return {
+    x: point.x * scale + (1200 - MAP_SIZE.width * scale) / 2,
+    y: point.z * scale + (800 - MAP_SIZE.height * scale) / 2,
+  };
+}
 
 function createContext(canvas) {
   const gradient = { addColorStop() {} };
   return new Proxy({
     createLinearGradient() { return gradient; },
+    createRadialGradient() { return gradient; },
     setTransform() { canvas.frameScales = []; },
     scale(x) {
       canvas.frameScales.push(x);
@@ -130,8 +144,9 @@ test("抵达爬山岛后先显示入口，确认后才进入剧情", () => {
   });
   game.start();
 
-  // 初始全景中爬山岛地标的手工换算屏幕坐标。
-  canvas.click(342, 443);
+  const mountain = LOCATIONS.find(({ id }) => id === "mountain");
+  const mountainScreenPoint = overviewScreenPoint(mountain);
+  canvas.click(mountainScreenPoint.x, mountainScreenPoint.y);
   assert.match(status.textContent, /正在前往「爬山岛」/);
   for (let frame = 0; frame < 600 && !dialog.open; frame += 1) {
     windowTarget.step();
@@ -180,8 +195,9 @@ test("走近老人后自动触发雾谷序章且离开剧情后不会重复触�
   assert.equal(openedCount, 0);
   assert.match(status.textContent, /走近.*老人/);
 
-  // 老人在初始全景中的手工换算屏幕坐标。
-  canvas.click(442, 568);
+  const elder = WORLD_DECORATIONS.find(({ id }) => id === "fog-valley-elder");
+  const elderScreenPoint = overviewScreenPoint(elder);
+  canvas.click(elderScreenPoint.x, elderScreenPoint.y);
   for (let frame = 0; frame < 300 && openedCount === 0; frame += 1) {
     windowTarget.step();
   }
@@ -218,8 +234,9 @@ test("序章待触发时点击雾谷地标会先走向老人而不是立即开�
   game.start();
   windowTarget.step();
 
-  // 雾谷地标在初始全景中的手工换算屏幕坐标。
-  canvas.click(480, 552);
+  const home = LOCATIONS.find(({ id }) => id === "home");
+  const homeScreenPoint = overviewScreenPoint(home);
+  canvas.click(homeScreenPoint.x, homeScreenPoint.y);
   assert.equal(openedCount, 0);
   for (let frame = 0; frame < 300 && openedCount === 0; frame += 1) {
     windowTarget.step();

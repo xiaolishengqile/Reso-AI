@@ -66,6 +66,46 @@ export function drawWorldBackdrop(context, mapSize, elapsedSeconds) {
   context.restore();
 }
 
+const FOG_LAYERS = Object.freeze([
+  { x: 0.08, z: 0.2, radiusX: 0.18, radiusZ: 0.11, speed: 9, phase: 0 },
+  { x: 0.34, z: 0.42, radiusX: 0.22, radiusZ: 0.13, speed: 6, phase: 1.3 },
+  { x: 0.62, z: 0.26, radiusX: 0.2, radiusZ: 0.12, speed: 8, phase: 2.4 },
+  { x: 0.88, z: 0.56, radiusX: 0.24, radiusZ: 0.14, speed: 5, phase: 3.1 },
+  { x: 0.12, z: 0.78, radiusX: 0.26, radiusZ: 0.15, speed: 7, phase: 4.2 },
+]);
+
+export function drawWorldFog(context, mapSize, elapsedSeconds = 0) {
+  context.save();
+  context.globalCompositeOperation = "screen";
+
+  const veil = context.createLinearGradient(0, 0, mapSize.width, mapSize.height);
+  veil.addColorStop(0, "rgba(242, 248, 246, 0.16)");
+  veil.addColorStop(0.5, "rgba(255, 255, 255, 0.035)");
+  veil.addColorStop(1, "rgba(238, 247, 248, 0.14)");
+  context.fillStyle = veil;
+  context.fillRect(0, 0, mapSize.width, mapSize.height);
+
+  for (const layer of FOG_LAYERS) {
+    const radiusX = mapSize.width * layer.radiusX;
+    const radiusZ = mapSize.height * layer.radiusZ;
+    const wrapWidth = mapSize.width + radiusX * 2;
+    const x = ((mapSize.width * layer.x + elapsedSeconds * layer.speed + radiusX)
+      % wrapWidth) - radiusX;
+    const z = mapSize.height * layer.z
+      + Math.sin(elapsedSeconds * 0.09 + layer.phase) * mapSize.height * 0.025;
+    const gradient = context.createRadialGradient(x, z, 0, x, z, radiusX);
+    gradient.addColorStop(0, "rgba(255, 255, 255, 0.3)");
+    gradient.addColorStop(0.58, "rgba(244, 250, 249, 0.13)");
+    gradient.addColorStop(1, "rgba(235, 245, 247, 0)");
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.ellipse(x, z, radiusX, radiusZ, 0, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.restore();
+}
+
 function bridgeGeometry(bridge) {
   const dx = bridge.to.x - bridge.from.x;
   const dz = bridge.to.z - bridge.from.z;

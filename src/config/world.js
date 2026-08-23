@@ -1,4 +1,4 @@
-export const MAP_SIZE = Object.freeze({ width: 5300, height: 2200 });
+export const MAP_SIZE = Object.freeze({ width: 6500, height: 4000 });
 
 export const WORLD_BOUNDS = Object.freeze({
   minX: 0,
@@ -18,8 +18,8 @@ export const WORLD_DECORATIONS = Object.freeze([
     id: "fog-valley-elder",
     sceneId: "home",
     assetUrl: assetUrl("assets/characters/elder-bench.png"),
-    x: 1950,
-    z: 1840,
+    x: 350,
+    z: 3270,
     width: 96,
     height: 118,
     interactionRadius: 110,
@@ -65,9 +65,9 @@ function illustratedIsland(id, unlockOrder, sceneBounds, theme) {
   );
 }
 
-const HOME_BOUNDS = bounds(1750, 1580, 740, 580);
-const MOUNTAIN_BOUNDS = bounds(1080, 1050, 760, 590);
-const OFFICE_BOUNDS = bounds(80, 100, 760, 600);
+const HOME_BOUNDS = bounds(150, 3010, 880, 680);
+const MOUNTAIN_BOUNDS = bounds(860, 2625, 800, 620);
+const OFFICE_BOUNDS = bounds(1535, 2280, 750, 580);
 
 export const ISLANDS = Object.freeze([
   sceneIsland("home", 0, assetUrl("assets/islands/home.png"), HOME_BOUNDS),
@@ -76,7 +76,7 @@ export const ISLANDS = Object.freeze([
     1,
     assetUrl("assets/islands/mountain.png"),
     MOUNTAIN_BOUNDS,
-    -0.29,
+    -0.12,
   ),
   sceneIsland(
     "office",
@@ -84,25 +84,25 @@ export const ISLANDS = Object.freeze([
     assetUrl("assets/islands/office.png"),
     OFFICE_BOUNDS,
   ),
-  illustratedIsland("dining", 3, bounds(1500, 110, 620, 480), {
+  illustratedIsland("dining", 3, bounds(2190, 1993, 700, 540), {
     ground: "#bd8a62", accent: "#f4d091", detail: "#f8ebce", prop: "dining",
   }),
-  illustratedIsland("cohabitation", 4, bounds(2160, 380, 620, 480), {
+  illustratedIsland("cohabitation", 4, bounds(2805, 1697, 650, 505), {
     ground: "#8f9f83", accent: "#e9c8a0", detail: "#dfe9d7", prop: "cohabitation",
   }),
-  illustratedIsland("money", 5, bounds(2670, 900, 620, 480), {
+  illustratedIsland("money", 5, bounds(3375, 1423, 610, 475), {
     ground: "#8c9675", accent: "#e8c46f", detail: "#e6edd2", prop: "money",
   }),
-  illustratedIsland("social", 6, bounds(3300, 1320, 620, 480), {
+  illustratedIsland("social", 6, bounds(3890, 1167, 580, 450), {
     ground: "#7e718b", accent: "#efb3c5", detail: "#e7dcef", prop: "social",
   }),
-  illustratedIsland("travel", 7, bounds(3890, 940, 620, 450), {
+  illustratedIsland("travel", 7, bounds(4375, 910, 550, 425), {
     ground: "#c39c68", accent: "#f3d78b", detail: "#d4edf0", prop: "travel",
   }),
-  illustratedIsland("future", 8, bounds(4320, 260, 620, 460), {
+  illustratedIsland("future", 8, bounds(4830, 675, 520, 400), {
     ground: "#777998", accent: "#edc2aa", detail: "#ddd9f1", prop: "future",
   }),
-  illustratedIsland("wish", 9, bounds(4650, 1010, 600, 470), {
+  illustratedIsland("wish", 9, bounds(5295, 460, 490, 380), {
     ground: "#8b7698", accent: "#f2c5d5", detail: "#f5e9c8", prop: "wish",
   }),
 ]);
@@ -147,7 +147,7 @@ function bridgeBetween(fromIsland, toIsland) {
     toIslandId: toIsland.id,
     from: ellipseEdgePoint(fromEllipse, toEllipse),
     to: ellipseEdgePoint(toEllipse, fromEllipse),
-    width: 110,
+    width: 116 - fromIsland.unlockOrder * 5,
     requiredOrder: toIsland.unlockOrder,
   });
 }
@@ -179,7 +179,7 @@ function ellipseArea(
   }));
 }
 
-function bridgeArea(bridge, overlap = 24) {
+function bridgeArea(bridge, overlap = 48) {
   const dx = bridge.to.x - bridge.from.x;
   const dz = bridge.to.z - bridge.from.z;
   const length = Math.hypot(dx, dz);
@@ -217,7 +217,7 @@ export const WALKABLE_AREAS = Object.freeze([
   ...BRIDGES.map((bridge) => bridgeArea(bridge)),
 ]);
 
-export const PLAYER_START = Object.freeze({ x: 2130, z: 1880 });
+export const PLAYER_START = Object.freeze({ x: 530, z: 3310 });
 export const PLAYER_RADIUS = 15;
 export const PLAYER_SPEED = 145;
 
@@ -225,29 +225,29 @@ export const LOCATIONS = Object.freeze([
   Object.freeze({
     id: "home",
     unlockOrder: 0,
-    x: 2120,
-    z: 1770,
+    x: 520,
+    z: 3200,
     hitRadius: 130,
     interactionRadius: 235,
-    approach: Object.freeze({ x: 2130, z: 1880 }),
+    approach: Object.freeze({ x: 530, z: 3310 }),
   }),
   Object.freeze({
     id: "mountain",
     unlockOrder: 1,
-    x: 1510,
-    z: 1290,
+    x: 1290,
+    z: 2865,
     hitRadius: 145,
     interactionRadius: 285,
-    approach: Object.freeze({ x: 1380, z: 1280 }),
+    approach: Object.freeze({ x: 1160, z: 3089 }),
   }),
   Object.freeze({
     id: "office",
     unlockOrder: 2,
-    x: 500,
-    z: 300,
+    x: 1955,
+    z: 2480,
     hitRadius: 135,
     interactionRadius: 305,
-    approach: Object.freeze({ x: 640, z: 450 }),
+    approach: Object.freeze({ x: 1860, z: 2630 }),
   }),
   ...ISLANDS.slice(3).map((island) => {
     const center = {
@@ -267,7 +267,7 @@ export const LOCATIONS = Object.freeze([
 ]);
 
 export const OBSTACLES = Object.freeze([
-  Object.freeze({ x: 2120, z: 1770, radius: 88 }),
-  Object.freeze({ x: 1510, z: 1290, radius: 90 }),
-  Object.freeze({ x: 500, z: 300, radius: 92 }),
+  Object.freeze({ x: 520, z: 3200, radius: 88 }),
+  Object.freeze({ x: 1290, z: 2865, radius: 90 }),
+  Object.freeze({ x: 1955, z: 2480, radius: 92 }),
 ]);

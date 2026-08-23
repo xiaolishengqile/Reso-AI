@@ -1,5 +1,5 @@
-const FOLLOW_WORLD_SIZE = Object.freeze({ width: 1700, height: 1100 });
-const MAX_FOLLOW_SCALE = 0.82;
+const FOLLOW_WORLD_SIZE = Object.freeze({ width: 1300, height: 840 });
+const MAX_FOLLOW_SCALE = 1.05;
 const CAMERA_RESPONSE = 8;
 const INTRO_OVERVIEW_SECONDS = 1.2;
 

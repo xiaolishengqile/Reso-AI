@@ -21,6 +21,7 @@ import {
   drawTarget,
   drawWorldDecorations,
   drawWorldBackdrop,
+  drawWorldFog,
 } from "./mapRenderer.js";
 import {
   createFollowTransform,
@@ -635,6 +636,7 @@ export function createGame({
       ISLANDS,
       islandImages,
     );
+    drawWorldFog(context, MAP_SIZE, elapsedSeconds);
     drawWorldDecorations(context, WORLD_DECORATIONS, decorationImages);
     for (const location of locations) {
       if (isLocationUnlocked(location, unlockedOrder)) {

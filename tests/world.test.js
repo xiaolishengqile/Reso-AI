@@ -93,95 +93,53 @@ test("十座岛屿沿自然曲线用九座相邻桥串联", () => {
   }
 });
 
-test("岛链使用不等步长缓慢转向而不是规律折返", () => {
+test("岛链从左下向右上连续抬升且使用不等步长", () => {
   const centers = world.ISLANDS.map(({ bounds }) => ({
     x: bounds.x + bounds.width / 2,
     z: bounds.z + bounds.height / 2,
   }));
-  const horizontalGaps = centers.slice(1).map((center, index) => (
-    center.x - centers[index].x
-  ));
-  const verticalSteps = centers.slice(1).map((center, index) => (
-    center.z - centers[index].z
-  ));
-  const horizontalDirections = horizontalGaps.map((step) => Math.sign(step));
-  const verticalDirections = verticalSteps
-    .filter((step) => Math.abs(step) >= 150)
-    .map((step) => Math.sign(step));
-  const directionChanges = verticalDirections.slice(1).filter(
-    (direction, index) => direction !== verticalDirections[index],
-  ).length;
+  const steps = centers.slice(1).map((center, index) => ({
+    x: center.x - centers[index].x,
+    z: center.z - centers[index].z,
+  }));
+  const distances = steps.map(({ x, z }) => Math.hypot(x, z));
+  const [start] = centers;
+  const end = centers.at(-1);
 
-  assert.ok(horizontalDirections.includes(-1));
-  assert.ok(horizontalDirections.includes(1));
-  assert.ok(Math.max(...horizontalGaps) - Math.min(...horizontalGaps) >= 150);
-  assert.ok(Math.max(...verticalSteps.map(Math.abs))
-    - Math.min(...verticalSteps.map(Math.abs)) >= 250);
-  assert.ok(directionChanges >= 2);
-  assert.ok(directionChanges <= 4);
+  assert.ok(steps.every(({ x }) => x > 0));
+  assert.ok(steps.every(({ z }) => z < 0));
+  assert.ok(Math.max(...distances) - Math.min(...distances) >= 100);
+  assert.ok(start.x < world.MAP_SIZE.width * 0.25);
+  assert.ok(start.z > world.MAP_SIZE.height * 0.72);
+  assert.ok(end.x > world.MAP_SIZE.width * 0.75);
+  assert.ok(end.z < world.MAP_SIZE.height * 0.28);
 });
 
-test("家庭岛从右下连接爬山岛入口并由左上通往工作岛", () => {
-  const [home, mountain, office] = world.ISLANDS;
-  const centerOf = ({ bounds }) => ({
-    x: bounds.x + bounds.width / 2,
-    z: bounds.z + bounds.height * 0.52,
-  });
-  const homeCenter = centerOf(home);
-  const mountainCenter = centerOf(mountain);
-  const officeCenter = centerOf(office);
-  const homeBridgeEntrance = world.BRIDGES[0].to;
-  const officeBridgeEntrance = world.BRIDGES[1].from;
+test("岛屿和桥梁由近及远逐步缩小形成纵深", () => {
+  const widths = world.ISLANDS.map(({ bounds }) => bounds.width);
+  const heights = world.ISLANDS.map(({ bounds }) => bounds.height);
+  const bridgeWidths = world.BRIDGES.map(({ width }) => width);
 
-  assert.ok(homeCenter.x > mountainCenter.x);
-  assert.ok(homeCenter.z > mountainCenter.z);
-  assert.ok(officeCenter.x < mountainCenter.x);
-  assert.ok(officeCenter.z < mountainCenter.z);
-  assert.ok(homeBridgeEntrance.x > mountainCenter.x);
-  assert.ok(homeBridgeEntrance.z > mountainCenter.z);
-  assert.ok(officeBridgeEntrance.x < mountainCenter.x);
-  assert.ok(officeBridgeEntrance.z < mountainCenter.z);
+  assert.ok(widths.slice(1).every((width, index) => width <= widths[index]));
+  assert.ok(heights.slice(1).every((height, index) => height <= heights[index]));
+  assert.ok(bridgeWidths.slice(1).every((width, index) => width <= bridgeWidths[index]));
+  assert.ok(widths[0] - widths.at(-1) >= 250);
+  assert.ok(bridgeWidths[0] - bridgeWidths.at(-1) >= 30);
 });
 
-test("爬山岛道路轴线与家庭到工作的桥梁方向一致", () => {
-  const mountain = world.ISLANDS[1];
-  const adjacentBridges = world.BRIDGES.slice(0, 2);
-  const pathAngle = Math.atan2(
-    mountain.bounds.height * 0.57,
-    mountain.bounds.width * 0.21,
-  ) + mountain.rotation;
-  const center = {
-    x: mountain.bounds.x + mountain.bounds.width / 2,
-    z: mountain.bounds.z + mountain.bounds.height * 0.52,
-  };
-  const cosine = Math.cos(mountain.rotation);
-  const sine = Math.sin(mountain.rotation);
-  const mountainEndpoints = [adjacentBridges[0].to, adjacentBridges[1].from];
+test("首尾岛与地图边缘保持留白避免被界面遮挡", () => {
+  const homeBounds = world.ISLANDS[0].bounds;
+  const wishBounds = world.ISLANDS.at(-1).bounds;
 
-  for (const bridge of adjacentBridges) {
-    const bridgeAngle = Math.atan2(
-      bridge.to.z - bridge.from.z,
-      bridge.to.x - bridge.from.x,
-    );
-    const directedDifference = Math.abs(Math.atan2(
-      Math.sin(pathAngle - bridgeAngle),
-      Math.cos(pathAngle - bridgeAngle),
-    ));
-    const angleDifference = Math.min(
-      directedDifference,
-      Math.PI - directedDifference,
-    );
-    assert.ok(angleDifference < 0.2);
-  }
+  assert.ok(homeBounds.z + homeBounds.height <= world.MAP_SIZE.height * 0.93);
+  assert.ok(wishBounds.x + wishBounds.width <= world.MAP_SIZE.width * 0.9);
+  assert.ok(wishBounds.z >= world.MAP_SIZE.height * 0.1);
+});
 
-  for (const endpoint of mountainEndpoints) {
-    const dx = endpoint.x - center.x;
-    const dz = endpoint.z - center.z;
-    const localX = dx * cosine + dz * sine;
-    const localZ = -dx * sine + dz * cosine;
-    const ellipseDistance = localX ** 2 / (mountain.bounds.width * 0.43) ** 2
-      + localZ ** 2 / (mountain.bounds.height * 0.37) ** 2;
-    assert.ok(Math.abs(ellipseDistance - 1) < 0.000001);
+test("桥梁始终连接相邻岛屿的可行走边缘", () => {
+  for (const bridge of world.BRIDGES) {
+    assert.equal(movement.isPointInPolygons(bridge.from, world.WALKABLE_AREAS), true);
+    assert.equal(movement.isPointInPolygons(bridge.to, world.WALKABLE_AREAS), true);
   }
 });
 

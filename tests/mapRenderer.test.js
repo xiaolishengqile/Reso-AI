@@ -38,6 +38,39 @@ test("完成进度不会重新给任何岛屿增加遮挡", () => {
   assert.deepEqual(state.filter(({ showCloud }) => showCloud), []);
 });
 
+test("雾层使用多层半透明渐变并随时间缓慢漂移", () => {
+  assert.equal(typeof renderer.drawWorldFog, "function");
+
+  function renderFog(elapsedSeconds) {
+    const ellipses = [];
+    const colorStops = [];
+    const gradient = {
+      addColorStop(offset, color) { colorStops.push([offset, color]); },
+    };
+    const context = {
+      save() {}, restore() {}, beginPath() {}, fill() {}, fillRect() {},
+      createLinearGradient() { return gradient; },
+      createRadialGradient() { return gradient; },
+      ellipse(x, z, radiusX, radiusZ) {
+        ellipses.push({ x, z, radiusX, radiusZ });
+      },
+    };
+
+    renderer.drawWorldFog(context, { width: 6500, height: 4000 }, elapsedSeconds);
+    return { ellipses, colorStops };
+  }
+
+  const start = renderFog(0);
+  const later = renderFog(4);
+
+  assert.ok(start.ellipses.length >= 5);
+  assert.ok(start.colorStops.some(([, color]) => color.includes("rgba")));
+  assert.notDeepEqual(
+    later.ellipses.map(({ x, z }) => ({ x, z })),
+    start.ellipses.map(({ x, z }) => ({ x, z })),
+  );
+});
+
 test("岛屿图片存储器释放后不再触发在途错误回调", () => {
   class FakeImage extends EventTarget {
     src = "";

@@ -20,7 +20,7 @@ test("静止概览会完整容纳整张地图", async () => {
   assert.ok(transform.offsetY > 0);
 });
 
-test("横向地图的近景保持人物可读尺度并置于视口中央", async () => {
+test("人物近景放大约三成并置于视口中央", async () => {
   const camera = await cameraPromise;
   assert.equal(typeof camera.createFollowTransform, "function");
 
@@ -32,7 +32,7 @@ test("横向地图的近景保持人物可读尺度并置于视口中央", async
     { x: 2650, z: 1100 },
   );
 
-  assert.ok(Math.abs(transform.scale - Math.min(1200 / 1700, 800 / 1100)) < 0.000001);
+  assert.ok(Math.abs(transform.scale - Math.min(1200 / 1300, 800 / 840)) < 0.000001);
   assert.ok(Math.abs(2650 * transform.scale + transform.offsetX - 600) < 0.001);
   assert.ok(Math.abs(1100 * transform.scale + transform.offsetY - 400) < 0.001);
 });
@@ -48,9 +48,8 @@ test("地图内底部对话会把人物焦点抬到画面上半部", async () =>
     0.68,
   );
 
-  assert.ok(Math.abs(transform.scale - 544 / 1100) < 0.001);
-  assert.ok(1900 * transform.scale + transform.offsetY < 544);
-  assert.ok(Math.abs(MAP_SIZE.height * transform.scale + transform.offsetY - 544) < 0.001);
+  assert.ok(Math.abs(transform.scale - 544 / 840) < 0.001);
+  assert.ok(Math.abs(1900 * transform.scale + transform.offsetY - 272) < 0.001);
 });
 
 test("近景跟随在地图边缘不会露出空白", async () => {
@@ -66,7 +65,7 @@ test("近景跟随在地图边缘不会露出空白", async () => {
       { x: 0, z: 0 },
     ),
     {
-      scale: Math.min(1200 / 1700, 800 / 1100),
+      scale: Math.min(1200 / 1300, 800 / 840),
       offsetX: 0,
       offsetY: 0,
     },
@@ -84,7 +83,7 @@ test("超宽屏近景不会把岛屿继续放大到裁出页面", async () => {
     { x: 1510, z: 1290 },
   );
 
-  assert.equal(transform.scale, 0.82);
+  assert.equal(transform.scale, 1.05);
 });
 
 test("镜头会平滑接近目标而不会瞬间跳变", async () => {
@@ -125,7 +124,7 @@ test("拖动云海会平移地图并限制在地图边界内", async () => {
       MAP_SIZE.width,
       MAP_SIZE.height,
     ),
-    { scale: 0.5, offsetX: 0, offsetY: -300 },
+    { scale: 0.5, offsetX: 0, offsetY: -1200 },
   );
 });
 
