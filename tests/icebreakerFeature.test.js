@@ -4,7 +4,7 @@ import { createEvidence } from "../src/profile/evidence.js";
 import { createTravelerProfile, saveTravelerProfile } from "../src/profile/travelerProfile.js";
 import { createMountainProgress, saveMountainProgress } from "../src/scenes/mountain/progress.js";
 import { MOUNTAIN_STAGES } from "../src/scenes/mountain/storyContent.js";
-import { saveIcebreakerCache } from "../src/icebreaker/icebreakerData.js";
+import { loadIcebreakerCache, saveIcebreakerCache } from "../src/icebreaker/icebreakerData.js";
 import { createIcebreakerFeature } from "../src/icebreaker/createIcebreakerFeature.js";
 
 class FakeElement {
@@ -24,6 +24,7 @@ class FakeElement {
   }
   setAttribute(name, value) { this.attributes.set(name, value); }
   click() { this.listeners.get("click")?.({ currentTarget: this }); }
+  dispatch(type, event = {}) { this.listeners.get(type)?.(event); }
   showModal() { this.open = true; }
   close() { this.open = false; }
   focus() { this.focused = true; }
@@ -197,6 +198,30 @@ test("关闭后终止请求并忽略过期结果，且恢复入口焦点", async
   feature.dispose();
 });
 
+test("原生取消事件终止请求并忽略过期结果", async () => {
+  let resolveRequest;
+  let signal;
+  const { feature, elements, storage } = fixture({
+    requestIcebreakerFn: (_request, options) => {
+      signal = options.signal;
+      return new Promise((resolve) => { resolveRequest = resolve; });
+    },
+  });
+  const context = feature.refresh();
+  elements.button.click();
+  let defaultPrevented = false;
+  elements.dialog.dispatch("cancel", {
+    preventDefault() { defaultPrevented = true; },
+  });
+  assert.equal(defaultPrevented, true);
+  assert.equal(signal.aborted, true);
+  resolveRequest(validResult);
+  await flushPromises();
+  assert.equal(elements.matchName.textContent, "");
+  assert.equal(loadIcebreakerCache(storage, context.signature), null);
+  feature.dispose();
+});
+
 test("销毁时解绑事件并清理进行中的 AbortController", () => {
   let signal;
   const { feature, elements } = fixture({
@@ -205,6 +230,7 @@ test("销毁时解绑事件并清理进行中的 AbortController", () => {
       return new Promise(() => {});
     },
   });
+  assert.equal(elements.dialog.listeners.has("cancel"), true);
   feature.refresh();
   elements.button.click();
   feature.dispose();
@@ -212,4 +238,5 @@ test("销毁时解绑事件并清理进行中的 AbortController", () => {
   assert.equal(elements.button.listeners.has("click"), false);
   assert.equal(elements.retryButton.listeners.has("click"), false);
   assert.equal(elements.closeButton.listeners.has("click"), false);
+  assert.equal(elements.dialog.listeners.has("cancel"), false);
 });

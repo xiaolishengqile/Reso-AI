@@ -101,9 +101,15 @@ export function createIcebreakerFeature({
     elements.button.focus?.();
   }
 
+  function handleCancel(event) {
+    event.preventDefault?.();
+    close();
+  }
+
   elements.button.addEventListener?.("click", open);
   elements.retryButton.addEventListener?.("click", generate);
   elements.closeButton.addEventListener?.("click", close);
+  elements.dialog.addEventListener?.("cancel", handleCancel);
 
   return Object.freeze({
     refresh,
@@ -112,6 +118,7 @@ export function createIcebreakerFeature({
       elements.button.removeEventListener?.("click", open);
       elements.retryButton.removeEventListener?.("click", generate);
       elements.closeButton.removeEventListener?.("click", close);
+      elements.dialog.removeEventListener?.("cancel", handleCancel);
     },
   });
 }
