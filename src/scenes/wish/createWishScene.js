@@ -154,8 +154,9 @@ export function createWishScene({
     setHidden(elements.editButton, true);
 
     if (!readiness.ready) {
-      elements.status.textContent = `旅程尚未完成：${readiness.missing.join("；")}`;
+      elements.status.textContent = "现实期待已保存。完成前面的旅程后，即可结合七岛证据生成画像。";
       elements.root.setAttribute?.("aria-busy", "false");
+      setHidden(elements.editButton, false);
       return;
     }
 
@@ -260,7 +261,9 @@ export function createWishScene({
     isOpen = true;
     setHidden(elements.root, false);
     currentPreferences = loadPartnerPreferences(storage, characterId);
-    generate();
+    const readiness = validatePortraitReadiness(loadJourney(storage, characterId));
+    elements.progress.textContent = `已收集 ${readiness.evidenceCount} / 42 组剧情证据`;
+    showPreferenceForm(currentPreferences);
   }
 
   function close() {

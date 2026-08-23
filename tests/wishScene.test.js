@@ -178,9 +178,9 @@ async function flushPromises() {
   await Promise.resolve();
 }
 
-test("证据不足时显示缺失岛屿而不请求生成", async () => {
+test("证据不足时仍可先填写并保存现实期待", async () => {
   let requestCount = 0;
-  const { scene, elements } = fixture({
+  const { scene, elements, storage } = fixture({
     storage: memoryStorage(),
     requestPortrait: async () => { requestCount += 1; },
   });
@@ -189,9 +189,21 @@ test("证据不足时显示缺失岛屿而不请求生成", async () => {
   await flushPromises();
 
   assert.equal(requestCount, 0);
-  assert.match(elements.status.textContent, /尚未完成/);
-  assert.match(elements.status.textContent, /雾谷/);
+  assert.equal(elements.preferenceForm.hidden, false);
+  assert.match(elements.status.textContent, /现实期待|补充/);
+  assert.match(elements.progress.textContent, /0 \/ 42/);
+
+  elements.cityInput.value = "杭州";
+  elements.relationshipInput.value = "steady";
+  elements.distanceInput.value = "same-city";
+  elements.preferenceForm.submit();
+  await flushPromises();
+
+  assert.equal(loadPartnerPreferences(storage, "girl").city, "杭州");
+  assert.match(elements.status.textContent, /现实期待已保存.*完成.*旅程/);
+  assert.equal(elements.preferenceForm.hidden, true);
   assert.equal(elements.retryButton.hidden, true);
+  assert.equal(requestCount, 0);
   scene.dispose();
 });
 
@@ -254,6 +266,8 @@ test("完整证据默认在本地生成十二章节画像", async () => {
   const { scene, elements } = fixture();
 
   scene.open({ close() {} });
+  assert.equal(elements.preferenceForm.hidden, false);
+  elements.preferenceForm.submit();
   await flushPromises();
 
   assert.match(elements.status.textContent, /已经生成/);
@@ -264,20 +278,22 @@ test("完整证据默认在本地生成十二章节画像", async () => {
   scene.dispose();
 });
 
-test("已有现实期待再次进入直接生成并可返回表单修改", async () => {
+test("已有现实期待再次进入时先带出原内容，提交后生成画像", async () => {
   const { scene, elements } = fixture();
 
   scene.open({ close() {} });
-  await flushPromises();
-  assert.equal(elements.editButton.hidden, false);
-
-  elements.editButton.click();
-
   assert.equal(elements.preferenceForm.hidden, false);
   assert.equal(elements.cityInput.value, "杭州");
   assert.equal(elements.minAgeInput.value, "25");
   assert.equal(elements.priorityInputs[0].checked, true);
   assert.equal(elements.result.children.length, 0);
+
+  elements.preferenceForm.submit();
+  await flushPromises();
+
+  assert.equal(elements.preferenceForm.hidden, true);
+  assert.equal(elements.editButton.hidden, false);
+  assert.equal(elements.result.children.length, 12);
   scene.dispose();
 });
 
@@ -295,6 +311,7 @@ test("远程生成失败时保留证据并允许重试", async () => {
   });
 
   scene.open({ close() {} });
+  elements.preferenceForm.submit();
   await flushPromises();
   assert.match(elements.status.textContent, /证据已保存.*生成失败/);
   assert.equal(elements.retryButton.hidden, false);
@@ -319,6 +336,7 @@ test("远程结果缺少证据引用时不会渲染坏数据，而会回退本�
   });
 
   scene.open({ close() {} });
+  elements.preferenceForm.submit();
   await flushPromises();
 
   assert.match(elements.status.textContent, /未通过安全校验.*本地安全画像/);
@@ -350,6 +368,7 @@ test("远程结果使用旧现实期待时回退到当前期待的本地画像",
   });
 
   scene.open({ close() {} });
+  elements.preferenceForm.submit();
   await flushPromises();
 
   assert.match(elements.status.textContent, /未通过安全校验.*本地安全画像/);
@@ -365,6 +384,7 @@ test("关闭结果页只返回地图且异步结果不会再写入页面", async
     requestPortrait: () => new Promise((resolve) => { resolveRequest = resolve; }),
   });
   scene.open({ close() { closed += 1; } });
+  elements.preferenceForm.submit();
   elements.closeButton.click();
   resolveRequest?.({});
   await flushPromises();
