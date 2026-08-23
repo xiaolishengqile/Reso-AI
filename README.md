@@ -6,10 +6,19 @@
 
 ```sh
 npm install
+cp .env.example .env
+# 编辑 .env，填写 TOKENDANCE_API_KEY
 npm run dev
 ```
 
 浏览器打开终端显示的本地地址即可体验。
+
+`TOKENDANCE_API_KEY` 仅由服务端读取；请勿将真实密钥提交到仓库。生产环境先构建，再启动同源服务：
+
+```sh
+npm run build
+npm start
+```
 
 ## 操作方式
 
