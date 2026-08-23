@@ -1,9 +1,13 @@
 import { HOME_STAGES } from "./story.js";
+import {
+  FREE_RESPONSE_OPTION_ID,
+  normalizeFreeResponse,
+} from "../../shared/freeResponse.js";
 
 export const HOME_PROGRESS_KEY = "reso-ai.home-progress";
 
 const PROGRESS_VERSION = 1;
-const CHOICE_IDS = new Set(["A", "B", "C", "D"]);
+const CHOICE_IDS = new Set(["A", "B", "C", "D", FREE_RESPONSE_OPTION_ID]);
 const STAGE_IDS = new Set(HOME_STAGES.map(({ id }) => id));
 const STAGES_REQUIRING_CHOICE = new Set(["elder-response", "traveler-record", "complete"]);
 const EMPTY_DRAFT = Object.freeze({ nickname: "", message: "", mbtiType: "" });
@@ -22,6 +26,7 @@ export function createHomeProgress(characterId) {
     characterId,
     currentStageId: "arrival",
     choiceId: null,
+    freeResponse: "",
     draft: copyDraft(),
     completed: false,
   };
@@ -31,8 +36,13 @@ export function advanceHomeProgress(progress, currentStageId) {
   return STAGE_IDS.has(currentStageId) ? { ...progress, currentStageId } : progress;
 }
 
-export function saveHomeChoice(progress, choiceId) {
-  return CHOICE_IDS.has(choiceId) ? { ...progress, choiceId } : progress;
+export function saveHomeChoice(progress, choiceId, freeResponse = "") {
+  if (!CHOICE_IDS.has(choiceId)) return progress;
+  const normalized = choiceId === FREE_RESPONSE_OPTION_ID
+    ? normalizeFreeResponse(freeResponse)
+    : "";
+  if (choiceId === FREE_RESPONSE_OPTION_ID && !normalized) return progress;
+  return { ...progress, choiceId, freeResponse: normalized };
 }
 
 export function saveHomeDraft(progress, draft) {
@@ -50,6 +60,11 @@ function isValidProgress(progress, characterId) {
     && progress.characterId === characterId
     && STAGE_IDS.has(progress.currentStageId)
     && (progress.choiceId === null || CHOICE_IDS.has(progress.choiceId))
+    && typeof progress.freeResponse === "string"
+    && (
+      progress.choiceId !== FREE_RESPONSE_OPTION_ID
+      || Boolean(normalizeFreeResponse(progress.freeResponse))
+    )
     && (!STAGES_REQUIRING_CHOICE.has(progress.currentStageId) || CHOICE_IDS.has(progress.choiceId))
     && progress.draft
     && ["nickname", "message", "mbtiType"].every((key) => typeof progress.draft[key] === "string")
@@ -62,7 +77,11 @@ export function loadHomeProgress(storage, characterId) {
   try {
     const stored = storage?.getItem?.(HOME_PROGRESS_KEY);
     if (!stored) return createHomeProgress(characterId);
-    const progress = JSON.parse(stored);
+    const parsed = JSON.parse(stored);
+    const progress = {
+      ...parsed,
+      freeResponse: typeof parsed?.freeResponse === "string" ? parsed.freeResponse : "",
+    };
     return isValidProgress(progress, characterId) ? progress : createHomeProgress(characterId);
   } catch {
     return createHomeProgress(characterId);

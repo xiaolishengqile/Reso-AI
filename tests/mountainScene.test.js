@@ -17,6 +17,7 @@ class FakeElement {
     this.hidden = false;
     this.disabled = false;
     this.textContent = "";
+    this.value = "";
     this.src = "";
     this.alt = "";
     this.currentTime = 0;
@@ -87,6 +88,7 @@ function createSceneFixture({
   storage = createMemoryStorage(),
   characterId = "boy",
   video = new FakeElement(),
+  windowTarget = { performance: { now: () => 1000 } },
 } = {}) {
   const elements = {
     root: new FakeElement(),
@@ -111,7 +113,7 @@ function createSceneFixture({
     elements,
     storage,
     documentTarget: { createElement: () => new FakeElement() },
-    windowTarget: { performance: { now: () => 1000 } },
+    windowTarget,
   });
   return { elements, scene, storage };
 }
@@ -164,7 +166,7 @@ test("三段邀约视频全部播放完才显示问题", () => {
   assert.equal(fixture.elements.panel.hidden, false);
   assert.equal(fixture.elements.title.textContent, "周末邀约");
   assert.equal(fixture.elements.text.textContent, "这个周末，要不要一起去爬山？");
-  assert.equal(fixture.elements.choices.children.length, 3);
+  assert.equal(fixture.elements.choices.children.length, 4);
   fixture.scene.dispose();
 });
 
@@ -208,7 +210,7 @@ test("跳过连续视频时依次进入下一片段，最后才显示问题", ()
   assert.equal(fixture.elements.panel.hidden, false);
   assert.equal(fixture.elements.mediaControls.hidden, true);
   assert.equal(fixture.elements.title.textContent, "周末邀约");
-  assert.equal(fixture.elements.choices.children.length, 3);
+  assert.equal(fixture.elements.choices.children.length, 4);
   fixture.scene.dispose();
 });
 
@@ -223,9 +225,9 @@ test("全局剧情跳过复用视频片段跳过且不会越过问题", () => {
   assert.equal(fixture.scene.skipCurrentSegment(), true);
   assert.equal(fixture.elements.video.src, "./assets/mountain/scene-1-4.mp4");
   assert.equal(fixture.scene.skipCurrentSegment(), true);
-  assert.equal(fixture.elements.choices.children.length, 3);
+  assert.equal(fixture.elements.choices.children.length, 4);
   assert.equal(fixture.scene.skipCurrentSegment(), false);
-  assert.equal(fixture.elements.choices.children.length, 3);
+  assert.equal(fixture.elements.choices.children.length, 4);
   fixture.scene.dispose();
 });
 
@@ -327,6 +329,28 @@ test("回答后只记录一次证据并立即播放下一段视频", () => {
   fixture.scene.dispose();
 });
 
+test("爬山岛每道题可提交键盘自由回答并保存原文证据", () => {
+  const fixture = createSceneFixture();
+  openScene(fixture);
+  fixture.elements.startButton.click();
+  finishInvitationVideos(fixture.elements);
+
+  const freeResponse = fixture.elements.choices.children[3];
+  assert.ok(freeResponse, "爬山岛问题应显示自由回答入口");
+  assert.equal(freeResponse.dataset.freeResponse, "true");
+  const input = freeResponse.children[0];
+  const submit = freeResponse.children[1].children[1];
+  input.value = "  我想先看天气，再和她一起决定。  ";
+  submit.click();
+
+  const progress = JSON.parse(fixture.storage.getItem(MOUNTAIN_PROGRESS_KEY));
+  assert.equal(progress.answers[0].optionId, "free-response");
+  assert.equal(progress.officialEvidence[0].optionText, "我想先看天气，再和她一起决定。");
+  assert.match(progress.officialEvidence[0].summary, /我想先看天气/);
+  assert.equal(progress.currentStageId, "fatigue");
+  fixture.scene.dispose();
+});
+
 test("缺少视频的回家消息用图片并立即显示问题", () => {
   const progress = advanceMountainProgress(createMountainProgress("boy"), "home-message");
   const fixture = createSceneFixture({
@@ -342,7 +366,7 @@ test("缺少视频的回家消息用图片并立即显示问题", () => {
   assert.equal(fixture.elements.panel.hidden, false);
   assert.equal(fixture.elements.mediaControls.hidden, true);
   assert.equal(fixture.elements.title.textContent, "回家消息");
-  assert.equal(fixture.elements.choices.children.length, 3);
+  assert.equal(fixture.elements.choices.children.length, 4);
   fixture.scene.dispose();
 });
 
@@ -358,7 +382,7 @@ test("城市顿悟用图片并显示最后一组问题", () => {
 
   assert.equal(fixture.elements.image.src, "./assets/mountain/city-realization.png");
   assert.equal(fixture.elements.title.textContent, "城市顿悟");
-  assert.equal(fixture.elements.choices.children.length, 3);
+  assert.equal(fixture.elements.choices.children.length, 4);
   fixture.scene.dispose();
 });
 
@@ -389,7 +413,7 @@ test("视频加载失败时跳过媒体并进入对应问题", () => {
   assert.equal(fixture.elements.saveWarning.hidden, false);
   assert.match(fixture.elements.saveWarning.textContent, /视频暂时无法播放/);
   assert.equal(fixture.elements.title.textContent, "周末邀约");
-  assert.equal(fixture.elements.choices.children.length, 3);
+  assert.equal(fixture.elements.choices.children.length, 4);
   fixture.scene.dispose();
 });
 

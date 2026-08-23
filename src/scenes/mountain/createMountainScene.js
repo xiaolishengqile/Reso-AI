@@ -8,6 +8,10 @@ import {
   recordMountainSelection,
   saveMountainProgress,
 } from "./progress.js";
+import {
+  createFreeResponseChoice,
+  createFreeResponseInput,
+} from "../../shared/freeResponse.js";
 
 const EVIDENCE_STAGES = MOUNTAIN_STAGES.filter(({ recordsEvidence }) => recordsEvidence);
 const EVIDENCE_STAGE_COUNT = EVIDENCE_STAGES.length;
@@ -52,6 +56,12 @@ export function createMountainScene({
   let isOpen = false;
   let playbackToken = 0;
   let playbackRateIndex = 0;
+  let freeResponseInput = null;
+
+  function clearFreeResponseInput() {
+    freeResponseInput?.destroy();
+    freeResponseInput = null;
+  }
 
   function now() {
     return windowTarget?.performance?.now?.() ?? Date.now();
@@ -85,6 +95,7 @@ export function createMountainScene({
   }
 
   function setPanelBase() {
+    clearFreeResponseInput();
     setHidden(elements.mediaControls, true);
     setHidden(elements.panel, false);
     setHidden(elements.startButton, true);
@@ -133,6 +144,19 @@ export function createMountainScene({
       button.addEventListener("click", () => selectOption(stage, option));
       elements.choices.append?.(button);
     }
+    freeResponseInput = createFreeResponseInput({
+      container: elements.choices,
+      documentTarget,
+      windowTarget,
+      onSubmit: (value) => selectOption(
+        stage,
+        createFreeResponseChoice(
+          stage,
+          value,
+          "你把真实想法说了出来，她认真听完，点头表示理解。",
+        ),
+      ),
+    });
   }
 
   function showComplete() {
@@ -240,6 +264,7 @@ export function createMountainScene({
     if (!isOpen || submitting || stage.id !== currentStage?.id) return;
     submitting = true;
     for (const button of elements.choices.children ?? []) button.disabled = true;
+    freeResponseInput?.setDisabled(true);
 
     const selected = recordMountainSelection(progress, stage, option, {
       elapsedMs: Math.max(0, Math.round(now() - stageStartedAt)),
@@ -268,6 +293,7 @@ export function createMountainScene({
     if (!isOpen) return;
     isOpen = false;
     playbackToken += 1;
+    clearFreeResponseInput();
     elements.video?.pause?.();
     setHidden(elements.root, true);
     if (notifyMap) callbacks?.close?.();

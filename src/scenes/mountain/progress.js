@@ -4,6 +4,7 @@ import {
   validateEvidence,
 } from "../../profile/evidence.js";
 import { getMountainEvidenceDefinition } from "./evidenceSchema.js";
+import { FREE_RESPONSE_OPTION_ID } from "../../shared/freeResponse.js";
 
 export const MOUNTAIN_PROGRESS_KEY = "reso-ai.mountain-progress";
 
@@ -20,16 +21,23 @@ function copyEvidence(evidence) {
 
 function createMountainEvidence(stage, option, details) {
   const definition = getMountainEvidenceDefinition(stage.id, option.id);
-  if (!definition) throw new Error(`缺少爬山岛证据定义：${stage.id}/${option.id}`);
+  const isFreeResponse = option.id === FREE_RESPONSE_OPTION_ID;
+  if (!definition && !isFreeResponse) {
+    throw new Error(`缺少爬山岛证据定义：${stage.id}/${option.id}`);
+  }
   return createEvidence({
     islandId: "mountain",
     stageId: stage.id,
     optionId: option.id,
     optionText: option.text,
-    target: definition.target,
-    summary: definition.summary,
-    signals: definition.signals,
-    contextTags: [stage.scene, ...(stage.contextTags ?? [])],
+    target: isFreeResponse ? option.target : definition.target,
+    summary: isFreeResponse ? option.summary : definition.summary,
+    signals: isFreeResponse ? option.signals : definition.signals,
+    contextTags: [
+      stage.scene,
+      ...(stage.contextTags ?? []),
+      ...(isFreeResponse ? option.contextTags ?? [] : []),
+    ],
     pressure: stage.id === "slip" || stage.id === "storm-thought" ? "high" : "medium",
     companionMood: details.companionMood ?? null,
     elapsedMs: details.elapsedMs ?? null,

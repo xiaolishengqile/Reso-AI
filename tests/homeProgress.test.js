@@ -29,9 +29,24 @@ test("首次进度从自动入谷阶段开始", () => {
     characterId: "girl",
     currentStageId: "arrival",
     choiceId: null,
+    freeResponse: "",
     draft: { nickname: "", message: "", mbtiType: "" },
     completed: false,
   });
+});
+
+test("自由回答会去除首尾空白并随进度恢复", () => {
+  const selected = saveHomeChoice(
+    createHomeProgress("girl"),
+    "free-response",
+    "  我会先确认老人是否需要帮助。  ",
+  );
+  const progressed = advanceHomeProgress(selected, "elder-response");
+  const storage = memoryStorage();
+
+  assert.equal(progressed.freeResponse, "我会先确认老人是否需要帮助。");
+  assert.equal(saveHomeProgress(storage, progressed), true);
+  assert.deepEqual(loadHomeProgress(storage, "girl"), progressed);
 });
 
 test("选择、推进和记录页草稿保持不可变并可恢复", () => {

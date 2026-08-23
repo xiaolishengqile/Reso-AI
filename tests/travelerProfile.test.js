@@ -111,6 +111,28 @@ test("创建正式旅人画像时保留基线、修正分和首次证据", () =>
   }), /无效/);
 });
 
+test("雾谷自由回答保留原文且不擅自修改性格基线", () => {
+  const profile = createTravelerProfile({
+    nickname: "小雾",
+    message: "慢慢走。",
+    mbtiType: "INFP",
+    choiceId: "free-response",
+    analysis: "我会先听完老人的话，再决定要不要接受帮助。",
+    freeResponse: "我会先听完老人的话，再决定要不要接受帮助。",
+  }, 2000);
+
+  assert.deepEqual(profile.scores, profile.baselineScores);
+  assert.equal(profile.freeResponse, "我会先听完老人的话，再决定要不要接受帮助。");
+  assert.equal(profile.officialEvidence[0].choiceId, "free-response");
+  assert.equal(
+    profile.officialEvidence[0].responseText,
+    "我会先听完老人的话，再决定要不要接受帮助。",
+  );
+  const storage = memoryStorage();
+  assert.equal(saveTravelerProfile(storage, profile), true);
+  assert.deepEqual(loadTravelerProfile(storage), profile);
+});
+
 test("首份正式画像可保存恢复，之后不能被不同画像覆盖", () => {
   const storage = memoryStorage();
   const first = createTravelerProfile({

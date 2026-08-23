@@ -15,6 +15,10 @@ import {
   getStoryTravelFrame,
 } from "./storyMap.js";
 import { drawStoryFrame } from "./storyRenderer.js";
+import {
+  createFreeResponseChoice,
+  createFreeResponseInput,
+} from "../../shared/freeResponse.js";
 
 const EVIDENCE_COUNT = 6;
 const TRAVEL_DURATION_MS = 1400;
@@ -57,6 +61,12 @@ export function createStoryScene({
   let submitting = false;
   let completedCallbackSent = false;
   let companionMood = "";
+  let freeResponseInput = null;
+
+  function clearFreeResponseInput() {
+    freeResponseInput?.destroy();
+    freeResponseInput = null;
+  }
 
   function now() {
     return windowTarget?.performance?.now?.() ?? Date.now();
@@ -144,6 +154,7 @@ export function createStoryScene({
     dialoguePhase = "question";
     elements.root.dataset.storyPhase = dialoguePhase;
     elements.text.textContent = adaptStoryText(currentStage.prompt, characterId);
+    clearFreeResponseInput();
     elements.choices.replaceChildren?.();
     setHidden(elements.continueButton, true);
     for (const option of currentStage.choices) {
@@ -158,6 +169,19 @@ export function createStoryScene({
       });
       elements.choices.append?.(button);
     }
+    freeResponseInput = createFreeResponseInput({
+      container: elements.choices,
+      documentTarget,
+      windowTarget,
+      onSubmit: (value) => selectOption(
+        currentStage,
+        createFreeResponseChoice(
+          currentStage,
+          value,
+          "你把真实想法说了出来。{companion}认真听完，说：“谢谢你愿意告诉我。”",
+        ),
+      ),
+    });
   }
 
   function showStage(stage, timestamp = now()) {
@@ -178,6 +202,7 @@ export function createStoryScene({
     elements.root.dataset.storyPhase = dialoguePhase;
     elements.title.textContent = stage.title;
     elements.progress.textContent = progressLabel(stage);
+    clearFreeResponseInput();
     elements.choices.replaceChildren?.();
     setHidden(elements.continueButton, false);
     elements.continueButton.disabled = false;
@@ -194,6 +219,7 @@ export function createStoryScene({
     elements.title.textContent = `前往「${stage.title}」`;
     elements.text.textContent = "你们沿着岛上的道路，走向下一段故事。";
     elements.progress.textContent = progressLabel(stage);
+    clearFreeResponseInput();
     elements.choices.replaceChildren?.();
     setHidden(elements.continueButton, true);
     const destination = getStoryStop(story, stage.id) ?? currentPosition;
@@ -212,6 +238,7 @@ export function createStoryScene({
     elements.title.textContent = stage.title;
     elements.text.textContent = adaptStoryText(option.feedback, characterId);
     elements.progress.textContent = "你们正在消化刚才的选择";
+    clearFreeResponseInput();
     elements.choices.replaceChildren?.();
     setHidden(elements.continueButton, false);
     elements.continueButton.textContent = "继续剧情";
@@ -222,6 +249,7 @@ export function createStoryScene({
     if (!isOpen || submitting || currentStage?.id !== stage.id) return;
     submitting = true;
     for (const button of elements.choices.children ?? []) button.disabled = true;
+    freeResponseInput?.setDisabled(true);
     const evidence = createEvidence({
       islandId: story.id,
       stageId: stage.id,
@@ -247,6 +275,7 @@ export function createStoryScene({
     const closeCallback = callbacks?.close;
     isOpen = false;
     stopAnimation();
+    clearFreeResponseInput();
     setHidden(elements.root, true);
     callbacks = null;
     if (notifyMap) closeCallback?.();

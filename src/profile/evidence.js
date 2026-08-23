@@ -1,3 +1,5 @@
+import { FREE_RESPONSE_OPTION_ID } from "../shared/freeResponse.js";
+
 export const EVIDENCE_VERSION = 1;
 export const EVIDENCE_TARGETS = Object.freeze(["self", "partner", "joint"]);
 
@@ -7,6 +9,10 @@ const TRAVELER_APPROACH = Object.freeze({
   B: Object.freeze({ value: "polite-distance", text: "礼貌回应并保持距离" }),
   C: Object.freeze({ value: "observing", text: "简单回应并先观察环境" }),
   D: Object.freeze({ value: "silent-safety-check", text: "保持沉默并先确认安全" }),
+  [FREE_RESPONSE_OPTION_ID]: Object.freeze({
+    value: "self-described",
+    text: "使用自由回答表达自己的真实想法",
+  }),
 });
 
 function text(value) {
@@ -105,7 +111,9 @@ export function normalizeTravelerEvidence(profile) {
     islandId: "home",
     stageId: original.stageId ?? "elder-choice",
     optionId: choiceId,
-    optionText: approach.text,
+    optionText: choiceId === FREE_RESPONSE_OPTION_ID
+      ? (original.responseText ?? original.analysis)
+      : approach.text,
     target: "self",
     summary: original.analysis,
     signals: [{ dimension: "socialApproach", value: approach.value, weight: 1 }],

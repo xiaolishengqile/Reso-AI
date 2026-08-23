@@ -134,6 +134,42 @@ test("七岛四十二组剧情证据和雾谷资料齐全后才允许生成", ()
   assert.match(validatePortraitReadiness(input).missing.join("\n"), /雾谷/);
 });
 
+test("七岛自由回答可作为正式证据并把原文交给画像生成", () => {
+  const input = completeInput();
+  const officeStage = getAllStories()
+    .find(({ id }) => id === "office")
+    .stages.find(({ recordsEvidence }) => recordsEvidence);
+  const rawText = "我会先解释今天为什么必须加班，再和她商量补偿陪伴时间。";
+  input.storyProgress.office.officialEvidence[0] = createEvidence({
+    islandId: "office",
+    stageId: officeStage.id,
+    optionId: "free-response",
+    optionText: rawText,
+    target: officeStage.choices[0].target,
+    summary: `用户自由回答：${rawText}`,
+    signals: [{
+      dimension: officeStage.choices[0].signals[0].dimension,
+      value: "free-response",
+      weight: 1,
+    }],
+    contextTags: ["工作岛", "自由回答"],
+    pressure: officeStage.pressure,
+    answeredAt: 3000,
+  });
+
+  assert.deepEqual(validatePortraitReadiness(input), {
+    ready: true,
+    missing: [],
+    evidenceCount: 42,
+  });
+  const request = createPortraitRequest({
+    profile: input.profile,
+    evidence: collectOfficialEvidence(input),
+    baselineEvidence: normalizeTravelerEvidence(input.profile),
+  });
+  assert.match(JSON.stringify(request), /今天为什么必须加班/);
+});
+
 test("未知题目、重复题目和角色串档都不能伪装成完整证据", () => {
   const unknown = completeInput();
   unknown.storyProgress.office.officialEvidence[0] = {

@@ -490,6 +490,51 @@ kbd {
   font-size: 12px;
 }
 
+.free-response {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 249, 236, 0.28);
+  border-radius: 0.8rem;
+  background: rgba(255, 249, 236, 0.07);
+}
+
+.free-response__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 4.8rem;
+  resize: vertical;
+  padding: 0.72rem 0.82rem;
+  border: 1px solid rgba(255, 249, 236, 0.42);
+  border-radius: 0.65rem;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  background: rgba(14, 26, 31, 0.5);
+}
+
+.free-response__input::placeholder {
+  color: currentColor;
+  opacity: 0.68;
+}
+
+.free-response__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.free-response__actions button {
+  min-height: 2.7rem;
+  text-align: center;
+}
+
+.free-response__status {
+  min-height: 1.2em;
+  color: #ffe0ae;
+}
+
 .character-dialog__hint {
   display: block;
   margin-top: 15px;

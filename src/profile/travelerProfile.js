@@ -1,3 +1,8 @@
+import {
+  FREE_RESPONSE_OPTION_ID,
+  normalizeFreeResponse,
+} from "../shared/freeResponse.js";
+
 export const TRAVELER_PROFILE_KEY = "reso-ai.traveler-profile";
 
 export const MBTI_TYPES = Object.freeze([
@@ -13,6 +18,7 @@ const CHOICE_ADJUSTMENTS = Object.freeze({
   B: -4,
   C: -7,
   D: -12,
+  [FREE_RESPONSE_OPTION_ID]: 0,
 });
 
 function scorePair(selected, first, second) {
@@ -76,20 +82,28 @@ export function createTravelerProfile(input, now = Date.now()) {
   if (typeof shift !== "number") throw new Error("无效的老人对话选择");
   const analysis = typeof input.analysis === "string" ? input.analysis.trim() : "";
   if (!analysis) throw new Error("老人对话选择缺少分析");
+  const freeResponse = input.choiceId === FREE_RESPONSE_OPTION_ID
+    ? normalizeFreeResponse(input.freeResponse ?? analysis)
+    : "";
+  if (input.choiceId === FREE_RESPONSE_OPTION_ID && !freeResponse) {
+    throw new Error("自由回答不能为空");
+  }
 
   const baselineScores = createMbtiBaseline(validation.value.mbtiType);
   return {
     version: PROFILE_VERSION,
     ...validation.value,
     choiceId: input.choiceId,
+    ...(freeResponse ? { freeResponse } : {}),
     baselineScores,
     scores: applyFogValleyAdjustment(baselineScores, input.choiceId),
     officialEvidence: [{
       island: "home",
       stageId: "elder-choice",
       choiceId: input.choiceId,
-      adjustment: { E: shift, I: -shift },
+      adjustment: { E: shift, I: shift === 0 ? 0 : -shift },
       analysis,
+      ...(freeResponse ? { responseText: freeResponse } : {}),
       confidence: "low",
       recordedAt: now,
     }],
@@ -118,6 +132,11 @@ function isValidProfile(profile) {
     && profile.version === PROFILE_VERSION
     && record.valid
     && typeof CHOICE_ADJUSTMENTS[profile.choiceId] === "number"
+    && typeof (profile.freeResponse ?? "") === "string"
+    && (
+      profile.choiceId !== FREE_RESPONSE_OPTION_ID
+      || Boolean(normalizeFreeResponse(profile.freeResponse))
+    )
     && isValidScores(profile.baselineScores)
     && isValidScores(profile.scores)
     && Array.isArray(profile.officialEvidence)

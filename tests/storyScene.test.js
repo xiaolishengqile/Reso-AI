@@ -7,6 +7,7 @@ import {
 } from "../src/scenes/story/storyRenderer.js";
 import { createChoice } from "../src/scenes/story/story.js";
 import {
+  STORY_PROGRESS_KEY,
   advanceStoryProgress,
   completeStoryProgress,
   createStoryProgress,
@@ -20,6 +21,7 @@ class FakeElement {
     this.hidden = false;
     this.disabled = false;
     this.textContent = "";
+    this.value = "";
     this.attributes = new Map();
     this.listeners = new Map();
   }
@@ -185,7 +187,7 @@ test("入场先自动行走，抵达后按剧情、问题、反馈的顺序推�
   assert.equal(elements.choices.children.length, 0);
   elements.continueButton.click();
   assert.match(elements.text.textContent, /现在怎么办/);
-  assert.equal(elements.choices.children.length, 3);
+  assert.equal(elements.choices.children.length, 4);
   elements.choices.children[0].click();
   assert.match(elements.text.textContent, /对应的局部反馈/);
   assert.equal(elements.continueButton.hidden, false);
@@ -194,6 +196,70 @@ test("入场先自动行走，抵达后按剧情、问题、反馈的顺序推�
   windowTarget.step();
   assert.equal(elements.title.textContent, "阶段2");
   scene.dispose();
+});
+
+test("七岛问题可提交键盘自由回答并把原文保存为画像证据", () => {
+  const currentStory = story();
+  const storage = memoryStorage();
+  const { elements, scene, windowTarget } = fixture(storage);
+  scene.open(currentStory, { complete() {}, close() {} });
+  windowTarget.step();
+  elements.continueButton.click();
+
+  const freeResponse = elements.choices.children[3];
+  assert.ok(freeResponse, "七岛问题应显示自由回答入口");
+  assert.equal(freeResponse.dataset.freeResponse, "true");
+  const input = freeResponse.children[0];
+  const submit = freeResponse.children[1].children[1];
+  input.value = "  我会先说明加班原因，再一起确认今晚的安排。  ";
+  submit.click();
+
+  const saved = JSON.parse(storage.getItem(STORY_PROGRESS_KEY));
+  const progress = saved.players.boy.office;
+  assert.equal(progress.answers[0].optionId, "free-response");
+  assert.equal(progress.officialEvidence[0].optionText, "我会先说明加班原因，再一起确认今晚的安排。");
+  assert.match(progress.officialEvidence[0].summary, /我会先说明加班原因/);
+  assert.match(elements.text.textContent, /真实想法|认真听/);
+  scene.dispose();
+});
+
+test("语音输入会转写到自由回答框并允许继续编辑", () => {
+  class FakeRecognition {
+    static latest = null;
+
+    constructor() {
+      FakeRecognition.latest = this;
+      this.started = false;
+      this.aborted = false;
+    }
+
+    start() { this.started = true; }
+    abort() { this.aborted = true; }
+  }
+
+  const windowTarget = createWindow();
+  windowTarget.SpeechRecognition = FakeRecognition;
+  const { elements, scene } = fixture(memoryStorage(), { windowTarget });
+  scene.open(story(), { complete() {}, close() {} });
+  windowTarget.step();
+  elements.continueButton.click();
+
+  const freeResponse = elements.choices.children[3];
+  assert.ok(freeResponse, "七岛问题应显示自由回答入口");
+  const input = freeResponse.children[0];
+  const voice = freeResponse.children[1].children[0];
+  voice.click();
+  assert.equal(FakeRecognition.latest.started, true);
+
+  FakeRecognition.latest.onresult({
+    resultIndex: 0,
+    results: [{ 0: { transcript: "我希望先听听她的想法" } }],
+  });
+  assert.equal(input.value, "我希望先听听她的想法");
+  input.value += "，再决定。";
+  assert.equal(input.value, "我希望先听听她的想法，再决定。");
+  scene.dispose();
+  assert.equal(FakeRecognition.latest.aborted, true);
 });
 
 test("全局剧情跳过逐段越过移动、旁白和反馈，但不会替玩家选择", () => {
@@ -207,7 +273,7 @@ test("全局剧情跳过逐段越过移动、旁白和反馈，但不会替玩�
   assert.equal(elements.root.dataset.storyPhase, "narration");
 
   assert.equal(scene.skipCurrentSegment(), true);
-  assert.equal(elements.choices.children.length, 3);
+  assert.equal(elements.choices.children.length, 4);
   const question = elements.text.textContent;
   assert.equal(scene.skipCurrentSegment(), false);
   assert.equal(elements.text.textContent, question);
@@ -218,7 +284,7 @@ test("全局剧情跳过逐段越过移动、旁白和反馈，但不会替玩�
   assert.equal(scene.skipCurrentSegment(), true);
   assert.equal(elements.title.textContent, "阶段2");
   assert.equal(scene.skipCurrentSegment(), true);
-  assert.equal(elements.choices.children.length, 3);
+  assert.equal(elements.choices.children.length, 4);
   scene.dispose();
 });
 

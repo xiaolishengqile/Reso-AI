@@ -13,6 +13,10 @@ import {
   saveHomeProgress,
 } from "./progress.js";
 import { getElderChoice, getHomeStage } from "./story.js";
+import {
+  FREE_RESPONSE_OPTION_ID,
+  createFreeResponseInput,
+} from "../../shared/freeResponse.js";
 
 const INTERACTIVE_CLICK_SELECTOR = "button, input, textarea, select, option, label, form";
 
@@ -39,6 +43,7 @@ export function createHomeScene({
   elements,
   storage = globalThis.localStorage,
   documentTarget = globalThis.document,
+  windowTarget = globalThis.window,
 } = {}) {
   if (!["boy", "girl"].includes(characterId)) throw new Error("雾谷剧情需要有效的玩家角色");
   if (!elements) throw new Error("雾谷剧情缺少页面节点");
@@ -50,6 +55,12 @@ export function createHomeScene({
   let callbacks = null;
   let completedCallbackSent = false;
   let pendingProfile = null;
+  let freeResponseInput = null;
+
+  function clearFreeResponseInput() {
+    freeResponseInput?.destroy();
+    freeResponseInput = null;
+  }
 
   function persist(nextProgress) {
     progress = nextProgress;
@@ -66,6 +77,9 @@ export function createHomeScene({
 
   function getStageText(stage) {
     if (stage.kind !== "response") return stage.text;
+    if (progress.choiceId === FREE_RESPONSE_OPTION_ID) {
+      return `你：${progress.freeResponse}\n老人认真听完，温和地点了点头。\n“谢谢你愿意把真实的想法告诉我。雾谷不会替你定义答案，它会记住你此刻的选择。”`;
+    }
     const choice = getElderChoice(progress.choiceId);
     return choice ? `你：${choice.playerLines[0]}\n${choice.response}` : stage.text;
   }
@@ -91,6 +105,7 @@ export function createHomeScene({
     elements.root.dataset.stageKind = stage.kind;
     elements.root.dataset.stageId = stage.id;
     elements.title.textContent = stage.title;
+    clearFreeResponseInput();
     elements.choices.replaceChildren?.();
     setHidden(elements.recordForm, stage.kind !== "record");
     setHidden(elements.continueButton, stage.kind === "choice" || stage.kind === "record");
@@ -112,10 +127,16 @@ export function createHomeScene({
         if (!button) continue;
         button.type = "button";
         button.dataset.choiceId = choice.id;
-        button.textContent = `${choice.id} · ${choice.label}\n${choice.playerLines.join(" / ")}`;
+        button.textContent = `${choice.label}\n${choice.playerLines.join(" / ")}`;
         button.addEventListener("click", () => selectChoice(choice.id));
         elements.choices.append?.(button);
       }
+      freeResponseInput = createFreeResponseInput({
+        container: elements.choices,
+        documentTarget,
+        windowTarget,
+        onSubmit: selectFreeResponse,
+      });
     }
 
     if (stage.kind === "record") {
@@ -139,6 +160,14 @@ export function createHomeScene({
     const choice = getElderChoice(choiceId);
     if (!choice) return;
     const selected = saveHomeChoice(progress, choiceId);
+    persist(advanceHomeProgress(selected, currentStage.nextStageId));
+    showStage(getHomeStage(currentStage.nextStageId));
+  }
+
+  function selectFreeResponse(value) {
+    if (currentStage?.kind !== "choice") return;
+    const selected = saveHomeChoice(progress, FREE_RESPONSE_OPTION_ID, value);
+    if (selected === progress) return;
     persist(advanceHomeProgress(selected, currentStage.nextStageId));
     showStage(getHomeStage(currentStage.nextStageId));
   }
@@ -198,7 +227,8 @@ export function createHomeScene({
     event?.preventDefault?.();
     if (currentStage?.kind !== "record" || !progress.choiceId) return;
     const choice = getElderChoice(progress.choiceId);
-    if (!choice) return;
+    const isFreeResponse = progress.choiceId === FREE_RESPONSE_OPTION_ID;
+    if (!choice && !isFreeResponse) return;
     const draft = readDraft();
     const validation = validateTravelerRecord(draft);
     showErrors(validation.errors);
@@ -215,7 +245,8 @@ export function createHomeScene({
     pendingProfile = existing ?? pendingProfile ?? createTravelerProfile({
       ...validation.value,
       choiceId: progress.choiceId,
-      analysis: choice.analysis,
+      analysis: isFreeResponse ? progress.freeResponse : choice.analysis,
+      freeResponse: isFreeResponse ? progress.freeResponse : "",
     });
     if (!existing && !saveTravelerProfile(storage, pendingProfile)) {
       setHidden(elements.saveWarning, false);
@@ -243,7 +274,7 @@ export function createHomeScene({
     const profile = loadTravelerProfile(storage);
     if (profile && !progress.completed) {
       progress = completeHomeProgress(saveHomeDraft(
-        saveHomeChoice(progress, profile.choiceId),
+        saveHomeChoice(progress, profile.choiceId, profile.freeResponse),
         profile,
       ));
       saveHomeProgress(storage, progress);
@@ -259,6 +290,7 @@ export function createHomeScene({
   }
 
   function close() {
+    clearFreeResponseInput();
     elements.root.hidden = true;
     callbacks = null;
   }

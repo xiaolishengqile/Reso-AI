@@ -1,5 +1,6 @@
 import { validateEvidence } from "./evidence.js";
 import { getAllStories } from "../scenes/story/catalog.js";
+import { FREE_RESPONSE_OPTION_ID } from "../shared/freeResponse.js";
 
 export const PORTRAIT_GENERATOR_VERSION = 2;
 
@@ -119,8 +120,13 @@ export function validatePortraitReadiness(input = {}) {
     for (const item of islandEvidence) {
       const stage = stageById.get(item.stageId);
       const option = stage?.choices.find(({ id }) => id === item.optionId);
+      const freeResponse = item.optionId === FREE_RESPONSE_OPTION_ID
+        && Boolean(item.optionText?.trim());
+      const expectedTarget = option?.target ?? stage?.choices?.[0]?.target ?? "self";
       stageCounts.set(item.stageId, (stageCounts.get(item.stageId) ?? 0) + 1);
-      if (!stage || !option || item.target !== (option.target ?? "self")) schemaMismatch = true;
+      if (!stage || (!option && !freeResponse) || item.target !== expectedTarget) {
+        schemaMismatch = true;
+      }
     }
     if (stages.some(({ id }) => stageCounts.get(id) !== 1)) schemaMismatch = true;
     if (schemaMismatch) {

@@ -113,7 +113,7 @@ test("雾谷旁白在当前地图上逐段点击推进", () => {
   fixture.elements.root.click(fixture.elements.text);
   assert.match(fixture.elements.text.textContent, /第一次来到雾谷吧/);
   fixture.elements.root.click(fixture.elements.text);
-  assert.equal(fixture.elements.choices.children.length, 4);
+  assert.equal(fixture.elements.choices.children.length, 5);
   fixture.elements.choices.children[1].click();
   assert.match(fixture.elements.text.textContent, /你：谢谢，我想先看看/);
   fixture.elements.root.click(fixture.elements.text);
@@ -133,7 +133,7 @@ test("老人发出引路邀请时四个回应立即紧跟出现", () => {
   }
 
   assert.match(fixture.elements.text.textContent, /我可以告诉你该怎么走/);
-  assert.equal(fixture.elements.choices.children.length, 4);
+  assert.equal(fixture.elements.choices.children.length, 5);
   fixture.scene.dispose();
 });
 
@@ -149,7 +149,7 @@ test("全局剧情跳过逐段推进旁白但不会越过选择题", () => {
     fixture.scene.skipCurrentSegment();
   }
   const question = fixture.elements.text.textContent;
-  assert.equal(fixture.elements.choices.children.length, 4);
+  assert.equal(fixture.elements.choices.children.length, 5);
   assert.equal(fixture.scene.skipCurrentSegment(), false);
   assert.equal(fixture.elements.text.textContent, question);
   fixture.scene.dispose();
@@ -164,7 +164,7 @@ test("选项和表单点击不会误推进剧情", () => {
   }
   const choice = fixture.elements.choices.children[0];
   fixture.elements.root.click(choice);
-  assert.equal(fixture.elements.choices.children.length, 4);
+  assert.equal(fixture.elements.choices.children.length, 5);
 
   choice.click();
   const response = fixture.elements.text.textContent;
@@ -176,6 +176,31 @@ test("选项和表单点击不会误推进剧情", () => {
   fixture.elements.root.click(fixture.elements.nickname);
   assert.equal(fixture.elements.text.textContent, recordText);
   assert.equal(fixture.elements.recordForm.hidden, false);
+  fixture.scene.dispose();
+});
+
+test("雾谷选项不显示字母编号并可提交键盘自由回答", () => {
+  const fixture = createFixture();
+  fixture.scene.open({ complete() {} });
+
+  for (let count = 0; count < 8 && fixture.elements.choices.children.length === 0; count += 1) {
+    fixture.elements.root.click(fixture.elements.text);
+  }
+
+  const fixedChoices = fixture.elements.choices.children.slice(0, 4);
+  assert.ok(fixedChoices.every(({ textContent }) => !/^[A-D]\s*[·.、：:|]/.test(textContent)));
+
+  const freeResponse = fixture.elements.choices.children[4];
+  assert.equal(freeResponse.dataset.freeResponse, "true");
+  const input = freeResponse.children[0];
+  const submit = freeResponse.children[1].children[1];
+  input.value = "  我会先谢谢老人，再问清楚路线。  ";
+  submit.click();
+
+  const progress = JSON.parse(fixture.storage.getItem(HOME_PROGRESS_KEY));
+  assert.equal(progress.choiceId, "free-response");
+  assert.equal(progress.freeResponse, "我会先谢谢老人，再问清楚路线。");
+  assert.match(fixture.elements.text.textContent, /我会先谢谢老人，再问清楚路线/);
   fixture.scene.dispose();
 });
 
