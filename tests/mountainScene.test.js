@@ -351,7 +351,7 @@ test("爬山岛每道题可提交键盘自由回答并保存原文证据", () =>
   fixture.scene.dispose();
 });
 
-test("缺少视频的回家消息用图片并立即显示问题", () => {
+test("回家消息播放场景六视频，结束后显示对应问题", () => {
   const progress = advanceMountainProgress(createMountainProgress("boy"), "home-message");
   const fixture = createSceneFixture({
     storage: createMemoryStorage({
@@ -361,10 +361,14 @@ test("缺少视频的回家消息用图片并立即显示问题", () => {
   openScene(fixture);
   fixture.elements.startButton.click();
 
-  assert.equal(fixture.elements.image.src, "./assets/mountain/home-message.png");
-  assert.equal(fixture.elements.image.hidden, false);
+  assert.equal(fixture.elements.video.src, "./assets/mountain/scene-6.mp4");
+  assert.equal(fixture.elements.video.hidden, false);
+  assert.equal(fixture.elements.panel.hidden, true);
+  assert.equal(fixture.elements.mediaControls.hidden, false);
+  assert.equal(fixture.elements.choices.children.length, 0);
+
+  fixture.elements.video.dispatch("ended");
   assert.equal(fixture.elements.panel.hidden, false);
-  assert.equal(fixture.elements.mediaControls.hidden, true);
   assert.equal(fixture.elements.title.textContent, "回家消息");
   assert.equal(fixture.elements.choices.children.length, 4);
   fixture.scene.dispose();

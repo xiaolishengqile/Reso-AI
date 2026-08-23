@@ -25,14 +25,14 @@ test("入口使用大山图片且咖啡馆连续播放三段视频", () => {
   });
 });
 
-test("攀登阶段逐一映射视频且缺失视频阶段使用图片", () => {
+test("攀登和回家消息阶段逐一映射视频，城市顿悟继续使用图片", () => {
   assert.equal(getMountainStageMedia("fatigue").sources[0], "./assets/mountain/scene-2.mp4");
   assert.equal(getMountainStageMedia("slip").sources[0], "./assets/mountain/scene-3.mp4");
   assert.equal(getMountainStageMedia("storm-thought").sources[0], "./assets/mountain/scene-4.mp4");
   assert.equal(getMountainStageMedia("cave-repair").sources[0], "./assets/mountain/scene-5.mp4");
   assert.deepEqual(getMountainStageMedia("home-message"), {
-    type: "image",
-    sources: ["./assets/mountain/home-message.png"],
+    type: "video",
+    sources: ["./assets/mountain/scene-6.mp4"],
     alt: "暴雨旅程结束后的公寓夜晚",
   });
   assert.deepEqual(getMountainStageMedia("city-realization"), {

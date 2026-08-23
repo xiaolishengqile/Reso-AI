@@ -22,7 +22,7 @@ const STAGE_MEDIA = Object.freeze({
   slip: media("video", ["./assets/mountain/scene-3.mp4"], "暴雨中攀爬湿滑崖壁"),
   "storm-thought": media("video", ["./assets/mountain/scene-4.mp4"], "暴雨危机中的生死抉择"),
   "cave-repair": media("video", ["./assets/mountain/scene-5.mp4"], "岩石下避雨与恢复"),
-  "home-message": media("image", ["./assets/mountain/home-message.png"], "暴雨旅程结束后的公寓夜晚"),
+  "home-message": media("video", ["./assets/mountain/scene-6.mp4"], "暴雨旅程结束后的公寓夜晚"),
   "city-realization": media("image", ["./assets/mountain/city-realization.png"], "镜前重新审视城市生活的夜晚"),
   complete: media("image", ["./assets/mountain/city-realization.png"], "镜前重新审视城市生活的夜晚"),
 });
