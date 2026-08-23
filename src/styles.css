@@ -105,10 +105,10 @@ kbd {
 
 .world-title {
   top: clamp(12px, 2vh, 20px);
-  left: 50%;
+  left: 65px;
   width: min(270px, 28vw);
   padding: 10px 28px 11px;
-  transform: translateX(-50%) rotate(-0.8deg);
+  transform: rotate(-0.8deg);
   border: 2px solid rgba(91, 65, 51, 0.62);
   border-radius: 48% 52% 46% 54% / 16% 19% 14% 18%;
   background: linear-gradient(175deg, #fff7dc, #ead9ad);
