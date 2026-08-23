@@ -11,6 +11,7 @@ const VIRTUAL_NAME_PATTERN = /^\p{Unified_Ideograph}+(?:·\p{Unified_Ideograph}+
 const PROHIBITED_WORDS = /人格障碍|心理疾病|焦虑症|抑郁症|躁郁症|双相情感障碍|精神病|强迫症|创伤后应激障碍|有病|自恋型人格|性取向|同性恋|异性恋|宗教信仰|政治立场|种族|民族|残疾|病史|命中注定/u;
 const DIAGNOSIS_CLAIM_PATTERN = /(?:患有|确诊(?:为|患有)?|被诊断为|诊断为)[^，。！？；]{0,24}(?:症|病|障碍|综合征)|(?:需要|应该)[^，。！？；]{0,8}(?:接受|进行)[^，。！？；]{0,8}(?:治疗|用药|就医)/u;
 const SENSITIVE_INFERENCE_PATTERN = /(?:看出|推断|判断|说明|表明|证明|意味着)[^，。！？；]{0,24}(?:你|用户|对方)[^，。！？；]{0,8}(?:(?:是|属于)[^，。！？；]{0,12}(?:族|教徒|性恋)|信奉[^，。！？；]{0,12}教|(?:的)?性取向)|(?:你|用户|对方)(?:(?:是|属于)[^，。！？；]{0,12}(?:族|教徒|性恋)|信奉[^，。！？；]{0,12}教|(?:的)?(?:民族|宗教信仰|性取向)[^，。！？；]{0,8}(?:是|为|属于|信奉))/u;
+const SENSITIVE_ATTRIBUTE_CLAIM_PATTERN = /(?:你|用户|对方|他|她|此人|该用户|这位(?:用户|旅人))[^，。！？；]{0,4}(?:(?:有|患(?:有)?|是|属于)[^，。！？；]{0,16}(?:(?:症|病|综合征|障碍)(?:倾向)?|(?:性恋|性向)(?:倾向)?|教徒|信徒|穆斯林)|信(?:奉)?[^，。！？；]{1,12}(?:教|宗教))/u;
 const PARAGRAPH_SEPARATOR_PATTERN = /[\r\n\u2028\u2029]/u;
 
 function lengthOf(value) {
@@ -37,6 +38,7 @@ export function validateSafeChineseText(value, minimum, maximum) {
     PROHIBITED_WORDS.test(text)
     || DIAGNOSIS_CLAIM_PATTERN.test(text)
     || SENSITIVE_INFERENCE_PATTERN.test(text)
+    || SENSITIVE_ATTRIBUTE_CLAIM_PATTERN.test(text)
   ) errors.push("文字包含不允许的诊断、敏感属性或保证性措辞");
   return errors;
 }

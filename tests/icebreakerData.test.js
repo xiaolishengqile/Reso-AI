@@ -103,11 +103,25 @@ test("开放式句式拦截未列举诊断和敏感属性推断", () => {
     "根据你的选择可以推断你信奉佛教",
     "从这些表现判断你的性取向是双性恋",
     "这些回答表明你被诊断为雷诺综合征",
+    "你有精神分裂症，最好尽快寻求帮助",
+    "你是穆斯林，因此会重视宗教习惯",
+    "你信佛教，所以更在意缘分",
+    "你有双性恋倾向，这影响你的关系选择",
   ]) {
-    assert.ok(validateIcebreakerResult({
+    const errors = validateIcebreakerResult({
       virtualMatchName: "云舟",
       icebreaker: `${validText.slice(0, 150)}${claim}`,
-    }).length > 0, claim);
+    });
+    assert.ok(errors.some((error) => error.includes("诊断、敏感属性")), claim);
+  }
+});
+
+test("普通的节奏与关系沟通陈述不会被敏感属性门禁误伤", () => {
+  for (const statement of ["你有自己的节奏", "你相信关系需要沟通"]) {
+    assert.deepEqual(validateIcebreakerResult({
+      virtualMatchName: "云舟",
+      icebreaker: `${validText}${statement}`,
+    }), [], statement);
   }
 });
 
