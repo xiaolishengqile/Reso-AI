@@ -109,6 +109,25 @@ test("推进与完成保留不可变进度状态", () => {
   assert.equal(completed.completedAt, 3000);
 });
 
+test("第四题四个预设回答都能记录证据并推进到岩洞", () => {
+  const stage = getMountainStage("storm-thought");
+  const recordedOptionIds = stage.choices.map((choice, index) => {
+    const selected = recordMountainSelection(
+      createMountainProgress("girl"),
+      stage,
+      choice,
+      { answeredAt: 2000 + index },
+    );
+    const advanced = advanceMountainProgress(selected, stage.nextStageId);
+
+    assert.equal(validateEvidence(selected.officialEvidence[0]).length, 0);
+    assert.equal(advanced.currentStageId, "cave-repair");
+    return selected.officialEvidence[0].optionId;
+  });
+
+  assert.deepEqual(recordedOptionIds, ["finish", "extreme", "retreat", "protect"]);
+});
+
 test("重玩中刷新仍保留首次通关时间，不会重新锁住后续岛屿", () => {
   const storage = memoryStorage();
   const completed = completeMountainProgress(createMountainProgress("girl"), 2000);

@@ -23,8 +23,8 @@ const DEFINITIONS = Object.freeze({
   }),
   "storm-thought": Object.freeze({
     finish: d("计划受阻时倾向坚持原定目标", [s("decision", "goal-persistence", 3), s("risk", "fixed-plan", 2)]),
-    "sunk-cost": d("计划受阻时会认真衡量已经投入的成本", [s("decision", "loss-averse", 2), s("risk", "sunk-cost", 2)]),
-    thrill: d("不确定情境中容易关注少见体验的吸引力", [s("risk", "thrill-seeking", 3), s("exploration", "novelty", 2)]),
+    extreme: d("不确定情境中容易关注少见体验的吸引力", [s("risk", "thrill-seeking", 3), s("exploration", "novelty", 2)]),
+    retreat: d("危险超过临界时倾向停止原定目标并主动下撤", [s("decision", "safety-boundary", 3), s("risk", "retreat", 2)]),
     protect: d("危险情境中倾向主动承担保护责任", [s("support", "protective", 3), s("responsibility", "take-charge", 2)]),
   }),
   "cave-repair": Object.freeze({
