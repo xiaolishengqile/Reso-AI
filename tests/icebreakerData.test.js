@@ -43,6 +43,12 @@ test("首次完成时间和七组正式证据共同决定破冰入口资格", ()
   assert.equal(createIcebreakerContext({ progress: completeProgress() }).request.evidence.length, 7);
 });
 
+test("非正式证据不能获得破冰入口资格", () => {
+  const progress = completeProgress();
+  progress.officialEvidence[0] = { ...progress.officialEvidence[0], official: false };
+  assert.equal(createIcebreakerContext({ progress }), null);
+});
+
 test("重温状态仍按固定阶段顺序生成最小请求和稳定签名", () => {
   const context = createIcebreakerContext({
     progress: completeProgress(),

@@ -32,7 +32,7 @@ export function createIcebreakerContext({ progress, profile = null } = {}) {
   if (!Number.isFinite(progress?.firstCompletedAt)) return null;
   const byStage = new Map((progress.officialEvidence ?? []).map((item) => [item.stageId, item]));
   const evidence = ICEBREAKER_STAGE_IDS.map((stageId) => byStage.get(stageId));
-  if (evidence.some((item) => !item || item.islandId !== "mountain" || validateEvidence(item).length > 0)) {
+  if (evidence.some((item) => !item || item.official !== true || item.islandId !== "mountain" || validateEvidence(item).length > 0)) {
     return null;
   }
   const requestEvidence = evidence.map((item) => ({
