@@ -104,14 +104,14 @@ test("提示词固定九变量、五章节、证据引用和非诊断措辞", ()
   assert.match(messages[0].content, /不得进行心理诊断/);
 });
 
-test("标准选项的变量一和二由服务端覆盖且元数据可信生成", async () => {
+test("标准选项的九个变量由服务端按最终规则覆盖且元数据可信生成", async () => {
   const gateway = gatewayWith([JSON.stringify(modelResult())]);
   const result = await generatePersonalManual(request(), {
     gateway,
     now: () => 12345,
   });
   const fixed = resolveFixedManualVariables(mountainEvidence());
-  assert.deepEqual(result.variables.slice(0, 2), fixed);
+  assert.deepEqual(result.variables, fixed);
   assert.equal(result.evidenceSignature, request().evidenceSignature);
   assert.deepEqual(result.completedIslands, ["mountain"]);
   assert.equal(result.evidenceCount, 7);
@@ -120,10 +120,14 @@ test("标准选项的变量一和二由服务端覆盖且元数据可信生成",
 });
 
 test("模型引用请求外证据时纠正一次，仍无效则拒绝", async () => {
+  const input = request();
+  const slip = input.evidence.find(({ stageId }) => stageId === "slip");
+  slip.optionId = "free-response";
+  slip.evidenceRef = `${slip.islandId}/${slip.stageId}/${slip.optionId}@${slip.answeredAt}`;
   const invalid = modelResult();
-  invalid.variables[2].evidenceRefs = ["unknown/ref"];
+  invalid.variables[0].evidenceRefs = ["unknown/ref"];
   const gateway = gatewayWith([JSON.stringify(invalid), JSON.stringify(invalid)]);
-  await assert.rejects(generatePersonalManual(request(), { gateway }), {
+  await assert.rejects(generatePersonalManual(input, { gateway }), {
     code: "MODEL_INVALID_RESPONSE",
   });
   assert.equal(gateway.calls.length, 2);

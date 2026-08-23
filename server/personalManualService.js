@@ -104,10 +104,12 @@ export function createPersonalManualMessages(request, correction = "") {
 
 function normalizedCandidate(candidate, fixedVariables) {
   const variables = Array.isArray(candidate.variables) ? candidate.variables : [];
+  const modelById = new Map(variables.map((item) => [item?.id, item]));
+  const fixedById = new Map((fixedVariables ?? []).map((item) => [item.id, item]));
   return {
-    variables: fixedVariables
-      ? [...fixedVariables, ...variables.slice(2)]
-      : variables,
+    variables: MANUAL_VARIABLE_IDS
+      .map((id) => fixedById.get(id) ?? modelById.get(id))
+      .filter(Boolean),
     sections: Array.isArray(candidate.sections) ? candidate.sections : [],
     updateSummary: typeof candidate.updateSummary === "string"
       ? candidate.updateSummary.trim()
