@@ -3,6 +3,7 @@ import "./scenes/home/homeScene.css";
 import "./scenes/mountain/mountainScene.css";
 import "./scenes/story/storyScene.css";
 import "./scenes/wish/wishScene.css";
+import "./relationshipTools/relationshipTools.css";
 import { renderCharacterPreview } from "./entities/character.js";
 import { createGame } from "./game/createGame.js";
 import {
@@ -10,6 +11,7 @@ import {
   markLocationVisited,
 } from "./game/journeyProgress.js";
 import { requestGameReset } from "./app/progressReset.js";
+import { getSafeStorage } from "./app/safeStorage.js";
 import { createSceneSkip } from "./app/sceneSkip.js";
 import { getSceneController, resolveSavedUnlockOrder } from "./app/sceneRouting.js";
 import { loadTravelerProfile } from "./profile/travelerProfile.js";
@@ -21,6 +23,7 @@ import { createStoryScene } from "./scenes/story/createStoryScene.js";
 import { getAllStories, getStory } from "./scenes/story/catalog.js";
 import { loadStoryProgress } from "./scenes/story/progress.js";
 import { createWishScene } from "./scenes/wish/createWishScene.js";
+import { createRelationshipTools } from "./relationshipTools/createRelationshipTools.js";
 import { resolveInitialScene } from "./startup.js";
 
 const canvas = document.querySelector("#world-canvas");
@@ -34,16 +37,29 @@ let homeScene = null;
 let mountainScene = null;
 let storyScene = null;
 let wishScene = null;
+let relationshipTools = null;
 let sceneSkip = null;
 
-function getInitialJourneyState(characterId) {
+function loadRelationshipState(storage, characterId) {
   const stories = getAllStories();
-  const mountainProgress = loadMountainProgress(window.localStorage, characterId);
-  const homeProgress = loadHomeProgress(window.localStorage, characterId);
-  const profile = loadTravelerProfile(window.localStorage);
+  return {
+    profile: loadTravelerProfile(storage),
+    mountainProgress: loadMountainProgress(storage, characterId),
+    storyProgress: Object.fromEntries(stories.map((story) => [
+      story.id,
+      loadStoryProgress(storage, characterId, story.id, story.initialStageId),
+    ])),
+  };
+}
+
+function getInitialJourneyState(characterId, storage) {
+  const stories = getAllStories();
+  const mountainProgress = loadMountainProgress(storage, characterId);
+  const homeProgress = loadHomeProgress(storage, characterId);
+  const profile = loadTravelerProfile(storage);
   const storyProgress = Object.fromEntries(stories.map((story) => [
     story.id,
-    loadStoryProgress(window.localStorage, characterId, story.id, story.initialStageId),
+    loadStoryProgress(storage, characterId, story.id, story.initialStageId),
   ]));
   const completedLocationIds = [
     ...(homeProgress.completed ? ["home"] : []),
@@ -62,7 +78,7 @@ function getInitialJourneyState(characterId) {
     }),
     initialVisitedLocationIds: [
       ...new Set([
-        ...loadVisitedLocationIds(window.localStorage, characterId),
+        ...loadVisitedLocationIds(storage, characterId),
         ...completedLocationIds,
       ]),
     ],
@@ -73,10 +89,12 @@ function getInitialJourneyState(characterId) {
 function startGame(characterId) {
   if (game) return;
   try {
-    const initialJourney = getInitialJourneyState(characterId);
+    const storage = getSafeStorage(window);
+    const initialJourney = getInitialJourneyState(characterId, storage);
     sceneSkip = createSceneSkip({ button: storySkipButton });
     homeScene = createHomeScene({
       characterId,
+      storage,
       elements: {
         root: document.querySelector("#home-scene"),
         title: document.querySelector("#home-stage-title"),
@@ -97,6 +115,7 @@ function startGame(characterId) {
     });
     mountainScene = createMountainScene({
       characterId,
+      storage,
       elements: {
         root: document.querySelector("#mountain-scene"),
         video: document.querySelector("#mountain-scene-video"),
@@ -118,6 +137,7 @@ function startGame(characterId) {
     });
     storyScene = createStoryScene({
       characterId,
+      storage,
       elements: {
         root: document.querySelector("#story-scene"),
         canvas: document.querySelector("#story-scene-canvas"),
@@ -132,6 +152,7 @@ function startGame(characterId) {
     });
     wishScene = createWishScene({
       characterId,
+      storage,
       elements: {
         root: document.querySelector("#wish-scene"),
         status: document.querySelector("#wish-status"),
@@ -153,6 +174,24 @@ function startGame(characterId) {
         formError: document.querySelector("#wish-form-error"),
       },
     });
+    relationshipTools = createRelationshipTools({
+      characterId,
+      storage,
+      loadState: () => loadRelationshipState(storage, characterId),
+      elements: {
+        group: document.querySelector("#relationship-tools"),
+        icebreakerButton: document.querySelector("#icebreaker-button"),
+        manualButton: document.querySelector("#personal-manual-button"),
+        dialog: document.querySelector("#relationship-card"),
+        label: document.querySelector("#relationship-card-label"),
+        title: document.querySelector("#relationship-card-title"),
+        meta: document.querySelector("#relationship-card-meta"),
+        status: document.querySelector("#relationship-card-status"),
+        body: document.querySelector("#relationship-card-body"),
+        actionButton: document.querySelector("#relationship-card-action"),
+        closeButton: document.querySelector("#relationship-card-close"),
+      },
+    });
     const sceneControllers = {
       home: homeScene,
       mountain: mountainScene,
@@ -171,8 +210,9 @@ function startGame(characterId) {
       initialVisitedLocationIds: initialJourney.initialVisitedLocationIds,
       initialCompletedLocationIds: initialJourney.initialCompletedLocationIds,
       onVisitLocation: (locationId) => {
-        markLocationVisited(window.localStorage, characterId, locationId);
+        markLocationVisited(storage, characterId, locationId);
       },
+      onSceneComplete: () => relationshipTools?.refresh(),
       ui: {
         locationCard: document.querySelector("#location-card"),
         locationName: document.querySelector("#location-name"),
@@ -211,6 +251,8 @@ function startGame(characterId) {
     storyScene = null;
     wishScene?.dispose();
     wishScene = null;
+    relationshipTools?.dispose();
+    relationshipTools = null;
     game?.dispose();
     game = null;
     sceneSkip?.dispose();
@@ -225,7 +267,7 @@ function startGame(characterId) {
 
 resetProgressButton?.addEventListener("click", () => {
   requestGameReset({
-    storage: window.localStorage,
+    storage: getSafeStorage(window),
     confirmReset: () => window.confirm("确定清除全部旅程进度并从头开始吗？此操作无法撤销。"),
     reload: () => window.location.reload(),
   });
@@ -247,6 +289,8 @@ window.addEventListener("beforeunload", () => {
   mountainScene?.dispose();
   storyScene?.dispose();
   wishScene?.dispose();
+  relationshipTools?.dispose();
+  relationshipTools = null;
   sceneSkip?.dispose();
   game?.dispose();
 }, { once: true });

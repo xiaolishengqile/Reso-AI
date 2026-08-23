@@ -20,6 +20,8 @@ test("确认重新开始只清除本游戏进度并重新加载页面", () => {
     "reso-ai.story-progress": "stories",
     "reso-ai.journey-visits": "visits",
     "reso-ai.partner-preferences": "preferences",
+    "reso-ai.relationship-tools.icebreaker": "icebreaker",
+    "reso-ai.relationship-tools.personal-manual": "manual",
     "other-app.preference": "keep",
   });
   let reloadCount = 0;
@@ -37,6 +39,8 @@ test("确认重新开始只清除本游戏进度并重新加载页面", () => {
   assert.equal(storage.getItem("reso-ai.story-progress"), null);
   assert.equal(storage.getItem("reso-ai.journey-visits"), null);
   assert.equal(storage.getItem("reso-ai.partner-preferences"), null);
+  assert.equal(storage.getItem("reso-ai.relationship-tools.icebreaker"), null);
+  assert.equal(storage.getItem("reso-ai.relationship-tools.personal-manual"), null);
   assert.equal(storage.getItem("other-app.preference"), "keep");
   assert.equal(reloadCount, 1);
 });

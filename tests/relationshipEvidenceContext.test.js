@@ -125,3 +125,17 @@ test("未首次完成的剧情岛不进入说明书请求", () => {
   assert.deepEqual(context.completedIslands, ["mountain"]);
   assert.equal(context.request.evidence.length, 7);
 });
+
+test("重玩形成的非正式证据不会进入说明书请求", () => {
+  const office = completeStory("office");
+  office.officialEvidence.push(createEvidence({
+    ...evidence("office", "replay-only", "changed", 13000),
+    official: false,
+  }));
+  const context = createPersonalManualContext({
+    characterId: "girl",
+    mountainProgress: completeMountain(),
+    storyProgress: { office },
+  });
+  assert.equal(context.request.evidence.some(({ stageId }) => stageId === "replay-only"), false);
+});

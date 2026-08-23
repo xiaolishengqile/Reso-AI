@@ -4,6 +4,8 @@ import { HOME_PROGRESS_KEY } from "../scenes/home/progress.js";
 import { MOUNTAIN_PROGRESS_KEY } from "../scenes/mountain/progress.js";
 import { STORY_PROGRESS_KEY } from "../scenes/story/progress.js";
 import { JOURNEY_VISITS_KEY } from "../game/journeyProgress.js";
+import { ICEBREAKER_CACHE_KEY } from "../icebreaker/data.js";
+import { PERSONAL_MANUAL_CACHE_KEY } from "../personalManual/data.js";
 
 const GAME_PROGRESS_KEYS = Object.freeze([
   TRAVELER_PROFILE_KEY,
@@ -12,6 +14,8 @@ const GAME_PROGRESS_KEYS = Object.freeze([
   STORY_PROGRESS_KEY,
   JOURNEY_VISITS_KEY,
   PARTNER_PREFERENCES_KEY,
+  ICEBREAKER_CACHE_KEY,
+  PERSONAL_MANUAL_CACHE_KEY,
 ]);
 
 export function requestGameReset({ storage, confirmReset, reload } = {}) {

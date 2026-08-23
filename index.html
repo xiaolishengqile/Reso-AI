@@ -50,6 +50,17 @@
         <small>全岛</small>
       </button>
 
+      <div
+        id="relationship-tools"
+        class="relationship-tools"
+        role="group"
+        aria-label="关系反馈工具"
+        hidden
+      >
+        <button id="icebreaker-button" type="button">生成破冰话术</button>
+        <button id="personal-manual-button" type="button">生成个人说明书</button>
+      </div>
+
       <aside class="map-legend" aria-label="地图地点">
         <span class="map-legend__title">旅行手记</span>
         <ul>
@@ -155,6 +166,37 @@
         <button id="dialog-close" type="button" aria-label="返回世界地图">
           返回世界地图
         </button>
+      </dialog>
+
+      <dialog
+        id="relationship-card"
+        class="relationship-card"
+        aria-labelledby="relationship-card-title"
+      >
+        <div class="relationship-card__panel">
+          <button
+            id="relationship-card-close"
+            class="relationship-card__close"
+            type="button"
+            aria-label="关闭关系反馈卡片"
+          >
+            ×
+          </button>
+          <header class="relationship-card__header">
+            <p id="relationship-card-label" class="relationship-card__label"></p>
+            <h2 id="relationship-card-title"></h2>
+            <p id="relationship-card-meta" class="relationship-card__meta"></p>
+            <p
+              id="relationship-card-status"
+              class="relationship-card__status"
+              aria-live="polite"
+            ></p>
+          </header>
+          <div id="relationship-card-body" class="relationship-card__body"></div>
+          <footer class="relationship-card__actions">
+            <button id="relationship-card-action" type="button" hidden></button>
+          </footer>
+        </div>
       </dialog>
 
       <section

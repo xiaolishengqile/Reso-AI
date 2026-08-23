@@ -88,6 +88,12 @@ test("说明书必须包含完整九变量、五章节与合法证据引用", ()
       ? { ...item, evidenceRefs: ["unknown/ref"] }
       : item),
   }, allowed).length > 0);
+
+  for (const unsafeText of ["这说明你患有焦虑症。", "系统推断你是同性恋。"] ) {
+    const unsafe = validManual([...allowed]);
+    unsafe.variables[0].description = unsafeText;
+    assert.ok(validatePersonalManualResult(unsafe, allowed).length > 0);
+  }
 });
 
 test("说明书缓存区分生成、查看和可更新状态并保留版本", () => {

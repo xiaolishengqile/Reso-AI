@@ -60,7 +60,7 @@ function validMountainEvidence(progress) {
       .map((item) => [item.stageId, item]),
   );
   const ordered = MOUNTAIN_STAGE_IDS.map((stageId) => byStage.get(stageId));
-  return ordered.some((item) => !item || validateEvidence(item).length > 0)
+  return ordered.some((item) => !item || item.official !== true || validateEvidence(item).length > 0)
     ? null
     : ordered;
 }
@@ -122,7 +122,9 @@ export function createPersonalManualContext({
     const progress = storyProgress?.[islandId];
     if (!Number.isFinite(progress?.firstCompletedAt)) continue;
     const valid = (progress.officialEvidence ?? []).filter((item) => (
-      item?.islandId === islandId && validateEvidence(item).length === 0
+      item?.islandId === islandId
+      && item.official === true
+      && validateEvidence(item).length === 0
     ));
     if (valid.length === 0) continue;
     completedIslands.push(islandId);

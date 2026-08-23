@@ -30,7 +30,7 @@ export const MANUAL_SECTION_TITLES = Object.freeze({
 
 const CACHE_VERSION = 1;
 const CONFIDENCE_LEVELS = new Set(["低", "中", "高"]);
-const PROHIBITED = /人格障碍|心理疾病|抑郁症|躁郁症|精神病|有病|自恋型人格|救世主情结|命中注定|百分之百|完美契合|彻底碎裂/;
+const PROHIBITED = /人格障碍|心理疾病|焦虑症|抑郁症|躁郁症|双相情感障碍|精神病|强迫症|创伤后应激障碍|有病|自恋型人格|性取向|同性恋|异性恋|宗教信仰|政治立场|种族|民族|残疾|病史|救世主情结|命中注定|百分之百|完美契合|彻底碎裂/u;
 
 function text(value, maximum = 600) {
   return typeof value === "string" && value.trim() && Array.from(value.trim()).length <= maximum;
