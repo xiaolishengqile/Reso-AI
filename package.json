@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "node server/index.js",
+    "dev:vite": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
+    "start": "NODE_ENV=production node server/index.js",
     "test": "node --test"
   },
   "devDependencies": {
