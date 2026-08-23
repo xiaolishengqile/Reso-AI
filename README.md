@@ -22,12 +22,20 @@ npm run dev
 TOKENDANCE_API_KEY=替换为服务端密钥
 TOKENDANCE_API_URL=https://tokendance.space/gateway/v1/chat/completions
 TOKENDANCE_MODEL=glm-5.3
+ICEBREAKER_RATE_LIMIT_MAX_REQUESTS=5
+ICEBREAKER_RATE_LIMIT_WINDOW_MS=60000
+ICEBREAKER_RATE_LIMIT_MAX_ENTRIES=10000
+ICEBREAKER_MAX_CONCURRENT_GENERATIONS=2
 PORT=5173
 ```
 
 - `TOKENDANCE_API_KEY`：模型服务密钥，必填且只允许保存在服务端。
 - `TOKENDANCE_API_URL`：兼容聊天补全协议的模型接口地址。
 - `TOKENDANCE_MODEL`：破冰话术和个人说明书共同使用的模型名称。
+- `ICEBREAKER_RATE_LIMIT_MAX_REQUESTS`：每个连接来源在固定窗口内允许的请求数。
+- `ICEBREAKER_RATE_LIMIT_WINDOW_MS`：限流窗口的毫秒数。
+- `ICEBREAKER_RATE_LIMIT_MAX_ENTRIES`：最多保留的来源窗口数，超出后淘汰最旧项。
+- `ICEBREAKER_MAX_CONCURRENT_GENERATIONS`：全局允许的模型生成并发数。
 - `PORT`：本地同源服务端口。
 
 浏览器只请求同源的 `/api/icebreaker` 和 `/api/personal-manual`，不会读取、存储或打包模型密钥。不要提交真实 `.env` 文件。
@@ -42,13 +50,15 @@ npm start
 ## 关系反馈工具
 
 - 完成爬山岛七组正式问题后，地图会同时显示“生成破冰话术”和“生成个人说明书”。
-- 破冰话术只读取爬山岛七组首次正式选择，并明确标注匹配对象是剧情虚拟设定。
+- 破冰话术只读取爬山岛七组首次正式选择，并明确标注匹配对象是剧情虚拟设定。模型先返回七个固定顺序的内部写作节点，服务端通过中文、单段、字数和敏感内容校验后再合成最终话术。
 - 个人说明书按最终映射规则固定九个核心变量，再由模型整理为五个可读章节。
 - 完成工作岛及后续岛屿后，个人说明书入口会变成“更新个人说明书”；更新失败时仍保留上一版。
 - 只有用户点击按钮才请求模型；匹配当前证据的成功结果会按角色缓存在浏览器中。
 - 重来旅程会一并清除破冰话术和个人说明书缓存。
 
 输出只描述关系情境、行为倾向和相处方式，不把单次选择当作固定人格，不推断敏感属性，也不进行心理诊断。
+
+同源模型接口默认按真实套接字来源限流，不信任客户端提供的转发地址头，并限制全局上游并发。部署在反向代理后时，只有确认代理会清洗转发地址头，才应通过 `createApp` 的 `getSourceId` 注入可信来源解析策略。限流或并发满载时返回 429 和 `Retry-After`；浏览器关闭卡片后，请求取消会继续传递到上游模型调用。生产视频支持浏览器拖动播放所需的单段字节范围请求。
 
 ## 其他内容
 

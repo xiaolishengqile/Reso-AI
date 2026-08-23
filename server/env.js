@@ -32,6 +32,10 @@ export function loadEnvFile(path, target = process.env) {
 
 export function readServerConfig(env = process.env) {
   const requestedPort = Number.parseInt(env.PORT, 10);
+  const positiveInteger = (value, fallback) => {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+  };
   return Object.freeze({
     apiKey: typeof env.TOKENDANCE_API_KEY === "string"
       ? env.TOKENDANCE_API_KEY.trim()
@@ -46,5 +50,9 @@ export function readServerConfig(env = process.env) {
       ? requestedPort
       : 5173,
     nodeEnv: env.NODE_ENV === "production" ? "production" : "development",
+    rateLimitMaxRequests: positiveInteger(env.ICEBREAKER_RATE_LIMIT_MAX_REQUESTS, 5),
+    rateLimitWindowMs: positiveInteger(env.ICEBREAKER_RATE_LIMIT_WINDOW_MS, 60_000),
+    rateLimitMaxEntries: positiveInteger(env.ICEBREAKER_RATE_LIMIT_MAX_ENTRIES, 10_000),
+    maxConcurrentGenerations: positiveInteger(env.ICEBREAKER_MAX_CONCURRENT_GENERATIONS, 2),
   });
 }

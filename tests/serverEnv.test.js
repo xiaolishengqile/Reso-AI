@@ -12,6 +12,10 @@ test("服务端配置使用公开默认值并规范端口", () => {
     model: "glm-5.3",
     port: 5173,
     nodeEnv: "development",
+    rateLimitMaxRequests: 5,
+    rateLimitWindowMs: 60_000,
+    rateLimitMaxEntries: 10_000,
+    maxConcurrentGenerations: 2,
   });
   assert.equal(readServerConfig({ PORT: "8088" }).port, 8088);
   assert.equal(readServerConfig({ PORT: "70000" }).port, 5173);
@@ -42,6 +46,10 @@ test("配置读取模型字段但不附带无关环境变量", () => {
     TOKENDANCE_API_URL: "https://example.test/chat",
     TOKENDANCE_MODEL: "custom-model",
     NODE_ENV: "production",
+    ICEBREAKER_RATE_LIMIT_MAX_REQUESTS: "8",
+    ICEBREAKER_RATE_LIMIT_WINDOW_MS: "30000",
+    ICEBREAKER_RATE_LIMIT_MAX_ENTRIES: "2000",
+    ICEBREAKER_MAX_CONCURRENT_GENERATIONS: "4",
     UNRELATED_SECRET: "must-not-copy",
   });
   assert.deepEqual(config, {
@@ -50,6 +58,31 @@ test("配置读取模型字段但不附带无关环境变量", () => {
     model: "custom-model",
     port: 5173,
     nodeEnv: "production",
+    rateLimitMaxRequests: 8,
+    rateLimitWindowMs: 30_000,
+    rateLimitMaxEntries: 2_000,
+    maxConcurrentGenerations: 4,
   });
   assert.equal("UNRELATED_SECRET" in config, false);
+});
+
+test("限流和并发配置仅接受正整数", () => {
+  const config = readServerConfig({
+    ICEBREAKER_RATE_LIMIT_MAX_REQUESTS: "0",
+    ICEBREAKER_RATE_LIMIT_WINDOW_MS: "invalid",
+    ICEBREAKER_RATE_LIMIT_MAX_ENTRIES: "-1",
+    ICEBREAKER_MAX_CONCURRENT_GENERATIONS: "0",
+  });
+
+  assert.deepEqual({
+    rateLimitMaxRequests: config.rateLimitMaxRequests,
+    rateLimitWindowMs: config.rateLimitWindowMs,
+    rateLimitMaxEntries: config.rateLimitMaxEntries,
+    maxConcurrentGenerations: config.maxConcurrentGenerations,
+  }, {
+    rateLimitMaxRequests: 5,
+    rateLimitWindowMs: 60_000,
+    rateLimitMaxEntries: 10_000,
+    maxConcurrentGenerations: 2,
+  });
 });

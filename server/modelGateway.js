@@ -26,7 +26,7 @@ export function createModelGateway({
     ? model.trim()
     : DEFAULT_MODEL;
 
-  async function complete(messages) {
+  async function complete(messages, { signal = null } = {}) {
     if (!configuredKey) {
       throw new ModelGatewayError(
         "SERVICE_NOT_CONFIGURED",
@@ -38,9 +38,13 @@ export function createModelGateway({
       throw new ModelGatewayError("MODEL_UNAVAILABLE", "模型生成服务暂时不可用。");
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(() => timeoutController.abort(), timeoutMs);
+    const requestSignal = signal
+      ? AbortSignal.any([signal, timeoutController.signal])
+      : timeoutController.signal;
     try {
+      signal?.throwIfAborted();
       const response = await fetchImpl(configuredUrl, {
         method: "POST",
         headers: {
@@ -48,8 +52,9 @@ export function createModelGateway({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ model: configuredModel, messages }),
-        signal: controller.signal,
+        signal: requestSignal,
       });
+      requestSignal.throwIfAborted();
       if (!response?.ok) {
         throw new ModelGatewayError("MODEL_UNAVAILABLE", "模型生成服务暂时不可用。");
       }
@@ -65,8 +70,9 @@ export function createModelGateway({
       }
       return content.trim();
     } catch (error) {
+      if (signal?.aborted) throw signal.reason ?? new DOMException("请求已取消", "AbortError");
       if (error instanceof ModelGatewayError) throw error;
-      if (error?.name === "AbortError") {
+      if (timeoutController.signal.aborted || error?.name === "AbortError") {
         throw new ModelGatewayError("MODEL_TIMEOUT", "模型生成超时，请稍后重试。", 504);
       }
       throw new ModelGatewayError("MODEL_UNAVAILABLE", "模型生成服务暂时不可用。");

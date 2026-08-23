@@ -80,3 +80,22 @@ test("请求超时会中止上游并返回稳定错误", async () => {
   await assert.rejects(gateway.complete([]), { code: "MODEL_TIMEOUT" });
   assert.equal(aborted, true);
 });
+
+test("下游取消会原样中止上游而不是误报超时", async () => {
+  const controller = new AbortController();
+  let upstreamSignal;
+  const gateway = createModelGateway({
+    apiKey: "test-secret",
+    timeoutMs: 10_000,
+    fetchImpl: async (_url, { signal }) => {
+      upstreamSignal = signal;
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+    },
+  });
+  const pending = gateway.complete([], { signal: controller.signal });
+  controller.abort();
+  await assert.rejects(pending, (error) => error?.name === "AbortError");
+  assert.equal(upstreamSignal.aborted, true);
+});

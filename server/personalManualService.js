@@ -117,7 +117,7 @@ function normalizedCandidate(candidate, fixedVariables) {
   };
 }
 
-export async function generatePersonalManual(input, { gateway, now = Date.now } = {}) {
+export async function generatePersonalManual(input, { gateway, now = Date.now, signal = null } = {}) {
   const request = normalizePersonalManualRequest(input);
   if (!gateway || typeof gateway.complete !== "function") {
     throw new RelationshipServiceError("MODEL_UNAVAILABLE", "模型生成服务暂时不可用。", 502);
@@ -125,10 +125,15 @@ export async function generatePersonalManual(input, { gateway, now = Date.now } 
   const allowedRefs = new Set(request.evidence.map(({ evidenceRef }) => evidenceRef));
   let correction = "";
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    signal?.throwIfAborted();
     let candidate;
     try {
-      candidate = parseModelJson(await gateway.complete(createPersonalManualMessages(request, correction)));
+      candidate = parseModelJson(await gateway.complete(
+        createPersonalManualMessages(request, correction),
+        { signal },
+      ));
     } catch (error) {
+      if (signal?.aborted || error?.name === "AbortError") throw error;
       if (error?.code !== "MODEL_INVALID_RESPONSE" || attempt === 1) throw error;
       correction = "上次输出不是合法 JSON。请修正并只返回九变量、五章节和更新说明。";
       continue;

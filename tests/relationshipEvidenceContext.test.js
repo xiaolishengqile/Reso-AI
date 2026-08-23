@@ -139,3 +139,15 @@ test("重玩形成的非正式证据不会进入说明书请求", () => {
   });
   assert.equal(context.request.evidence.some(({ stageId }) => stageId === "replay-only"), false);
 });
+
+test("非正式爬山证据不会解锁关系反馈工具", () => {
+  const mountainProgress = completeMountain();
+  mountainProgress.officialEvidence[0] = {
+    ...mountainProgress.officialEvidence[0],
+    official: false,
+  };
+  assert.equal(createIcebreakerContext({
+    characterId: "girl",
+    mountainProgress,
+  }), null);
+});

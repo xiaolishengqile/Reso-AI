@@ -259,13 +259,18 @@ test("个人说明书更新失败时继续展示上一版", async () => {
 
 test("关闭卡片使未完成请求失效并把焦点还给入口", async () => {
   let release;
+  let signal;
   const pending = new Promise((resolve) => { release = resolve; });
   const feature = fixture({
     state: completeState(),
-    fetchImpl: async () => pending,
+    fetchImpl: async (_url, options) => {
+      signal = options.signal;
+      return pending;
+    },
   });
   const click = feature.elements.icebreakerButton.click();
   feature.elements.closeButton.click();
+  assert.equal(signal.aborted, true);
   release(apiResponse({ virtualMatchName: "云舟", icebreaker: ICEBREAKER }));
   await click;
   assert.equal(feature.elements.dialog.open, false);

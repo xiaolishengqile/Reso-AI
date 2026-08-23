@@ -33,12 +33,13 @@ function publicFailure(error) {
     : "请求暂时失败，请稍后重试。";
 }
 
-async function requestJson(fetchImpl, url, body) {
+async function requestJson(fetchImpl, url, body, { signal } = {}) {
   if (typeof fetchImpl !== "function") throw new Error("fetch unavailable");
   const response = await fetchImpl(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
   let payload;
   try {
@@ -68,6 +69,7 @@ export function createRelationshipTools({
   let requestVersion = 0;
   let opener = null;
   let retryAction = null;
+  let requestController = null;
 
   function contexts() {
     const state = loadState?.();
@@ -116,8 +118,21 @@ export function createRelationshipTools({
     target?.focus?.();
   }
 
-  function closeCard() {
+  function invalidateRequest() {
     requestVersion += 1;
+    requestController?.abort();
+    requestController = null;
+  }
+
+  function beginRequest() {
+    requestController?.abort();
+    const controller = new AbortController();
+    requestController = controller;
+    return controller;
+  }
+
+  function closeCard() {
+    invalidateRequest();
     retryAction = null;
     elements.actionButton.hidden = true;
     if (elements.dialog.open) elements.dialog.close?.();
@@ -135,11 +150,14 @@ export function createRelationshipTools({
 
   async function generateIcebreaker(context, button) {
     const version = ++requestVersion;
+    const controller = beginRequest();
     openCard(button);
     renderRelationshipLoading(elements, "icebreaker");
     button.disabled = true;
     try {
-      const result = await requestJson(fetchImpl, "/api/icebreaker", context.request);
+      const result = await requestJson(fetchImpl, "/api/icebreaker", context.request, {
+        signal: controller.signal,
+      });
       if (disposed || version !== requestVersion) return;
       const errors = validateIcebreakerResult(result);
       if (errors.length > 0) throw new Error("invalid result");
@@ -160,21 +178,25 @@ export function createRelationshipTools({
       );
       refresh();
     } catch (error) {
-      if (disposed || version !== requestVersion) return;
+      if (disposed || version !== requestVersion || error?.name === "AbortError") return;
       renderRelationshipError(elements, publicFailure(error));
       showRetry("重试生成", () => generateIcebreaker(context, button));
     } finally {
+      if (requestController === controller) requestController = null;
       button.disabled = false;
     }
   }
 
   async function generateManual(context, state, button) {
     const version = ++requestVersion;
+    const controller = beginRequest();
     openCard(button);
     renderRelationshipLoading(elements, "manual");
     button.disabled = true;
     try {
-      const result = await requestJson(fetchImpl, "/api/personal-manual", context.request);
+      const result = await requestJson(fetchImpl, "/api/personal-manual", context.request, {
+        signal: controller.signal,
+      });
       if (disposed || version !== requestVersion) return;
       const allowedRefs = new Set(context.request.evidence.map(({ evidenceRef }) => evidenceRef));
       const errors = validatePersonalManualResult(result, allowedRefs);
@@ -199,7 +221,7 @@ export function createRelationshipTools({
       }, documentTarget, saved ? "" : "结果已生成，但刷新后可能无法保留。");
       refresh();
     } catch (error) {
-      if (disposed || version !== requestVersion) return;
+      if (disposed || version !== requestVersion || error?.name === "AbortError") return;
       if (state.cache) {
         renderPersonalManualCard(
           elements,
@@ -213,6 +235,7 @@ export function createRelationshipTools({
         showRetry("重试生成", () => generateManual(context, state, button));
       }
     } finally {
+      if (requestController === controller) requestController = null;
       button.disabled = false;
     }
   }
@@ -223,7 +246,7 @@ export function createRelationshipTools({
     const cached = loadIcebreakerCache(storage, characterId, context.signature);
     openCard(event.currentTarget);
     if (cached) {
-      requestVersion += 1;
+      invalidateRequest();
       renderIcebreakerCard(elements, cached, documentTarget);
       return;
     }
@@ -236,7 +259,7 @@ export function createRelationshipTools({
     const state = getPersonalManualState(storage, characterId, context);
     openCard(event.currentTarget);
     if (state.status === "view") {
-      requestVersion += 1;
+      invalidateRequest();
       renderPersonalManualCard(elements, state.cache, documentTarget);
       return;
     }
@@ -247,12 +270,18 @@ export function createRelationshipTools({
     retryAction?.();
   }
 
+  function onCancel(event) {
+    event.preventDefault?.();
+    closeCard();
+  }
+
   elements.group.hidden = true;
   elements.actionButton.hidden = true;
   elements.icebreakerButton.addEventListener("click", onIcebreaker);
   elements.manualButton.addEventListener("click", onManual);
   elements.actionButton.addEventListener("click", onAction);
   elements.closeButton.addEventListener("click", closeCard);
+  elements.dialog.addEventListener("cancel", onCancel);
   elements.dialog.addEventListener("close", restoreFocus);
   refresh();
 
@@ -261,11 +290,12 @@ export function createRelationshipTools({
     dispose() {
       if (disposed) return;
       disposed = true;
-      requestVersion += 1;
+      invalidateRequest();
       elements.icebreakerButton.removeEventListener("click", onIcebreaker);
       elements.manualButton.removeEventListener("click", onManual);
       elements.actionButton.removeEventListener("click", onAction);
       elements.closeButton.removeEventListener("click", closeCard);
+      elements.dialog.removeEventListener("cancel", onCancel);
       elements.dialog.removeEventListener("close", restoreFocus);
       if (elements.dialog.open) elements.dialog.close?.();
       elements.group.hidden = true;

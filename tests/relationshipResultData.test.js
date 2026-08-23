@@ -62,9 +62,31 @@ test("破冰结果限制虚拟昵称、单段字数和危险措辞", () => {
   const valid = validIcebreaker();
   assert.deepEqual(validateIcebreakerResult(valid), []);
   assert.ok(validateIcebreakerResult({ ...valid, virtualMatchName: "Cloud" }).length > 0);
+  assert.ok(validateIcebreakerResult({ ...valid, virtualMatchName: "··" }).length > 0);
+  assert.ok(validateIcebreakerResult({ ...valid, virtualMatchName: "々々" }).length > 0);
   assert.ok(validateIcebreakerResult({ ...valid, icebreaker: "太短" }).length > 0);
+  assert.ok(validateIcebreakerResult({ ...valid, icebreaker: "A".repeat(180) }).length > 0);
+  assert.ok(validateIcebreakerResult({ ...valid, icebreaker: "々".repeat(180) }).length > 0);
   assert.ok(validateIcebreakerResult({ ...valid, icebreaker: `${valid.icebreaker}\n下一段` }).length > 0);
+  assert.ok(validateIcebreakerResult({ ...valid, icebreaker: `${valid.icebreaker.slice(0, 160)}\u2028下一段` }).length > 0);
   assert.ok(validateIcebreakerResult({ ...valid, icebreaker: `${valid.icebreaker.slice(0, 160)}命中注定` }).length > 0);
+  for (const claim of [
+    "你有精神分裂症，最好尽快寻求帮助",
+    "你是穆斯林，因此会重视宗教习惯",
+    "你信佛教，所以更在意缘分",
+    "你有双性恋倾向，这影响你的关系选择",
+  ]) {
+    assert.ok(validateIcebreakerResult({
+      ...valid,
+      icebreaker: `${valid.icebreaker.slice(0, 150)}${claim}`,
+    }).length > 0);
+  }
+  for (const statement of ["你有自己的节奏", "你相信关系需要沟通"]) {
+    assert.deepEqual(validateIcebreakerResult({
+      ...valid,
+      icebreaker: `${valid.icebreaker}${statement}`,
+    }), []);
+  }
 });
 
 test("破冰缓存按角色和证据签名隔离", () => {
