@@ -140,7 +140,17 @@ function startGame(characterId) {
         confidence: document.querySelector("#wish-confidence"),
         result: document.querySelector("#wish-result"),
         retryButton: document.querySelector("#wish-retry"),
+        editButton: document.querySelector("#wish-edit"),
         closeButton: document.querySelector("#wish-close"),
+        preferenceForm: document.querySelector("#wish-preference-form"),
+        cityInput: document.querySelector("#wish-city"),
+        minAgeInput: document.querySelector("#wish-min-age"),
+        maxAgeInput: document.querySelector("#wish-max-age"),
+        relationshipInput: document.querySelector("#wish-relationship"),
+        distanceInput: document.querySelector("#wish-distance"),
+        priorityInputs: [...document.querySelectorAll("input[name='wish-priority']")],
+        noteInput: document.querySelector("#wish-note"),
+        formError: document.querySelector("#wish-form-error"),
       },
     });
     const sceneControllers = {

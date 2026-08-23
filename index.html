@@ -262,11 +262,72 @@
           <h2>心仪对象画像</h2>
           <p id="wish-progress" class="wish-scene__progress"></p>
           <p id="wish-status" class="wish-scene__status" aria-live="polite"></p>
-          <p id="wish-summary" class="wish-scene__summary"></p>
-          <p id="wish-confidence" class="wish-scene__confidence"></p>
-          <div id="wish-result" class="wish-scene__result"></div>
+          <form id="wish-preference-form" class="wish-preferences" hidden novalidate>
+            <div class="wish-preferences__intro">
+              <h3>再告诉心愿岛一点</h3>
+              <p>一路的选择已经勾勒出你的相处方式，再补充几项现实期待，就能看见更完整的心仪对象。</p>
+            </div>
+            <div class="wish-preferences__grid">
+              <label class="wish-preferences__field">
+                <span>希望对方主要生活在哪里？</span>
+                <input id="wish-city" type="text" maxlength="20" placeholder="例如：杭州，留空表示不限" autocomplete="address-level2" aria-describedby="wish-form-error" />
+              </label>
+              <div class="wish-preferences__field">
+                <span>可以接受的年龄范围？</span>
+                <div class="wish-preferences__age">
+                  <input id="wish-min-age" type="number" min="18" max="80" inputmode="numeric" placeholder="最小年龄" aria-label="最小年龄" aria-describedby="wish-form-error" />
+                  <span>至</span>
+                  <input id="wish-max-age" type="number" min="18" max="80" inputmode="numeric" placeholder="最大年龄" aria-label="最大年龄" aria-describedby="wish-form-error" />
+                </div>
+                <small>同时留空表示年龄不限</small>
+              </div>
+              <label class="wish-preferences__field">
+                <span>你期待怎样的关系？</span>
+                <select id="wish-relationship" required aria-describedby="wish-form-error">
+                  <option value="">请选择</option>
+                  <option value="steady">稳定恋爱</option>
+                  <option value="marriage">以结婚为目标</option>
+                  <option value="companionship">长期陪伴</option>
+                  <option value="natural">顺其自然</option>
+                </select>
+              </label>
+              <label class="wish-preferences__field">
+                <span>你对异地的接受程度？</span>
+                <select id="wish-distance" required aria-describedby="wish-form-error">
+                  <option value="">请选择</option>
+                  <option value="same-city">只考虑同城</option>
+                  <option value="short-term">可以接受短期异地</option>
+                  <option value="long-term">可以接受长期异地</option>
+                  <option value="flexible">地点不是问题</option>
+                </select>
+              </label>
+            </div>
+            <fieldset class="wish-preferences__priorities" aria-describedby="wish-form-error">
+              <legend>你最看重哪些现实条件？<small>最多选择三项</small></legend>
+              <div class="wish-preferences__chips">
+                <label><input type="checkbox" name="wish-priority" value="stable-work" />工作相对稳定</label>
+                <label><input type="checkbox" name="wish-priority" value="financially-independent" />经济上能够独立</label>
+                <label><input type="checkbox" name="wish-priority" value="no-smoking" />不吸烟</label>
+                <label><input type="checkbox" name="wish-priority" value="light-drinking" />很少饮酒</label>
+                <label><input type="checkbox" name="wish-priority" value="regular-schedule" />作息比较规律</label>
+                <label><input type="checkbox" name="wish-priority" value="family-plan-compatible" />婚育想法接近</label>
+                <label><input type="checkbox" name="wish-priority" value="responsible" />有责任感</label>
+                <label><input type="checkbox" name="wish-priority" value="none" />没有特别限制</label>
+              </div>
+            </fieldset>
+            <label class="wish-preferences__field wish-preferences__note">
+              <span>还有一条最重要的期待吗？<small>选填，最多 50 个字</small></span>
+              <textarea id="wish-note" maxlength="50" rows="2" placeholder="例如：遇到问题愿意沟通，不冷处理。" aria-describedby="wish-form-error"></textarea>
+            </label>
+            <p id="wish-form-error" class="wish-preferences__error" role="alert"></p>
+            <button class="wish-scene__primary-action" type="submit">生成我的心仪对象画像</button>
+          </form>
+          <p id="wish-summary" class="wish-scene__summary" hidden></p>
+          <p id="wish-confidence" class="wish-scene__confidence" hidden></p>
+          <div id="wish-result" class="wish-scene__result" hidden></div>
           <div class="wish-scene__actions">
-            <button id="wish-retry" type="button" hidden>重新生成</button>
+            <button id="wish-retry" class="wish-scene__primary-action" type="button" hidden>重新生成</button>
+            <button id="wish-edit" type="button" hidden>修改现实期待</button>
             <button id="wish-close" type="button">返回世界地图</button>
           </div>
         </div>

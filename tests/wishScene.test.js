@@ -1,12 +1,25 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createEvidence } from "../src/profile/evidence.js";
-import { generateLocalPortrait } from "../src/profile/portrait.js";
-import { createTravelerProfile, saveTravelerProfile } from "../src/profile/travelerProfile.js";
+import { createEvidence, normalizeTravelerEvidence } from "../src/profile/evidence.js";
+import {
+  createPartnerPreferences,
+  loadPartnerPreferences,
+  savePartnerPreferences,
+} from "../src/profile/partnerPreferences.js";
+import { collectOfficialEvidence, generateLocalPortrait } from "../src/profile/portrait.js";
+import {
+  createTravelerProfile,
+  loadTravelerProfile,
+  saveTravelerProfile,
+} from "../src/profile/travelerProfile.js";
 import { createMountainProgress, saveMountainProgress } from "../src/scenes/mountain/progress.js";
 import { MOUNTAIN_STAGES } from "../src/scenes/mountain/storyContent.js";
 import { getAllStories } from "../src/scenes/story/catalog.js";
-import { createStoryProgress, saveStoryProgress } from "../src/scenes/story/progress.js";
+import {
+  createStoryProgress,
+  loadStoryProgress,
+  saveStoryProgress,
+} from "../src/scenes/story/progress.js";
 import { createWishScene } from "../src/scenes/wish/createWishScene.js";
 
 class FakeElement {
@@ -16,6 +29,8 @@ class FakeElement {
     this.disabled = false;
     this.textContent = "";
     this.className = "";
+    this.value = "";
+    this.checked = false;
     this.listeners = new Map();
     this.attributes = new Map();
   }
@@ -25,6 +40,7 @@ class FakeElement {
   removeEventListener(type) { this.listeners.delete(type); }
   setAttribute(name, value) { this.attributes.set(name, value); }
   click() { this.listeners.get("click")?.({ currentTarget: this }); }
+  submit() { this.listeners.get("submit")?.({ preventDefault() {} }); }
 }
 
 function memoryStorage() {
@@ -51,7 +67,7 @@ function makeEvidence(islandId, stage, index) {
   });
 }
 
-function completeStorage() {
+function completeStorage({ withPreferences = true } = {}) {
   const storage = memoryStorage();
   saveTravelerProfile(storage, createTravelerProfile({
     nickname: "小雾",
@@ -80,10 +96,49 @@ function completeStorage() {
       completedAt: 3000,
     });
   }
+  if (withPreferences) {
+    savePartnerPreferences(storage, createPartnerPreferences({
+      characterId: "girl",
+      city: "杭州",
+      minAge: 25,
+      maxAge: 32,
+      relationshipGoal: "steady",
+      distancePreference: "same-city",
+      priorities: ["stable-work", "financially-independent", "no-smoking"],
+      note: "遇到问题愿意沟通",
+    }, 4000));
+  }
   return storage;
 }
 
+function portraitSource(storage) {
+  const profile = loadTravelerProfile(storage);
+  const storyProgress = Object.fromEntries(getAllStories().map((story) => [
+    story.id,
+    loadStoryProgress(storage, "girl", story.id, story.initialStageId),
+  ]));
+  return {
+    profile,
+    evidence: collectOfficialEvidence({ storyProgress }),
+    baselineEvidence: normalizeTravelerEvidence(profile),
+  };
+}
+
 function fixture({ storage = completeStorage(), requestPortrait } = {}) {
+  const priorityInputs = [
+    "stable-work",
+    "financially-independent",
+    "no-smoking",
+    "light-drinking",
+    "regular-schedule",
+    "family-plan-compatible",
+    "responsible",
+    "none",
+  ].map((value) => {
+    const input = new FakeElement();
+    input.value = value;
+    return input;
+  });
   const elements = {
     root: new FakeElement(),
     status: new FakeElement(),
@@ -92,9 +147,21 @@ function fixture({ storage = completeStorage(), requestPortrait } = {}) {
     confidence: new FakeElement(),
     result: new FakeElement(),
     retryButton: new FakeElement(),
+    editButton: new FakeElement(),
     closeButton: new FakeElement(),
+    preferenceForm: new FakeElement(),
+    cityInput: new FakeElement(),
+    minAgeInput: new FakeElement(),
+    maxAgeInput: new FakeElement(),
+    relationshipInput: new FakeElement(),
+    distanceInput: new FakeElement(),
+    priorityInputs,
+    noteInput: new FakeElement(),
+    formError: new FakeElement(),
   };
   elements.root.hidden = true;
+  elements.preferenceForm.hidden = true;
+  elements.editButton.hidden = true;
   const scene = createWishScene({
     characterId: "girl",
     elements,
@@ -102,7 +169,7 @@ function fixture({ storage = completeStorage(), requestPortrait } = {}) {
     requestPortrait,
     documentTarget: { createElement: () => new FakeElement() },
   });
-  return { scene, elements };
+  return { scene, elements, storage };
 }
 
 async function flushPromises() {
@@ -128,6 +195,61 @@ test("证据不足时显示缺失岛屿而不请求生成", async () => {
   scene.dispose();
 });
 
+test("完整证据首次进入先填写轻量表单，提交后融合生成异性画像", async () => {
+  const { scene, elements, storage } = fixture({
+    storage: completeStorage({ withPreferences: false }),
+  });
+
+  scene.open({ close() {} });
+  await flushPromises();
+
+  assert.equal(elements.preferenceForm.hidden, false);
+  assert.equal(elements.result.children.length, 0);
+  assert.match(elements.status.textContent, /现实期待|补充/);
+
+  elements.cityInput.value = "杭州";
+  elements.minAgeInput.value = "25";
+  elements.maxAgeInput.value = "32";
+  elements.relationshipInput.value = "steady";
+  elements.distanceInput.value = "same-city";
+  elements.priorityInputs.slice(0, 3).forEach((input) => { input.checked = true; });
+  elements.noteInput.value = "遇到问题愿意沟通";
+  elements.preferenceForm.submit();
+  await flushPromises();
+
+  assert.equal(elements.preferenceForm.hidden, true);
+  assert.match(elements.summary.textContent, /男性/);
+  assert.match(elements.summary.textContent, /杭州/);
+  assert.equal(elements.result.children.length, 12);
+  assert.equal(loadPartnerPreferences(storage, "girl").city, "杭州");
+  scene.dispose();
+});
+
+test("表单拒绝无效年龄和超过三项现实条件且保留填写内容", async () => {
+  const { scene, elements, storage } = fixture({
+    storage: completeStorage({ withPreferences: false }),
+  });
+  scene.open({ close() {} });
+  elements.minAgeInput.value = "17";
+  elements.maxAgeInput.value = "15";
+  elements.relationshipInput.value = "steady";
+  elements.distanceInput.value = "same-city";
+  elements.priorityInputs.slice(0, 4).forEach((input) => { input.checked = true; });
+
+  elements.preferenceForm.submit();
+  await flushPromises();
+
+  assert.equal(elements.preferenceForm.hidden, false);
+  assert.match(elements.formError.textContent, /年龄/);
+  assert.match(elements.formError.textContent, /三项/);
+  assert.equal(elements.minAgeInput.value, "17");
+  assert.equal(elements.minAgeInput.attributes.get("aria-invalid"), "true");
+  assert.equal(elements.priorityInputs[0].attributes.get("aria-invalid"), "true");
+  assert.equal(elements.relationshipInput.attributes.get("aria-invalid"), "false");
+  assert.equal(loadPartnerPreferences(storage, "girl"), null);
+  scene.dispose();
+});
+
 test("完整证据默认在本地生成十二章节画像", async () => {
   const { scene, elements } = fixture();
 
@@ -139,6 +261,23 @@ test("完整证据默认在本地生成十二章节画像", async () => {
   assert.match(elements.summary.textContent, /关系|伴侣|相处/);
   assert.equal(elements.result.children.length, 12);
   assert.equal(elements.retryButton.hidden, true);
+  scene.dispose();
+});
+
+test("已有现实期待再次进入直接生成并可返回表单修改", async () => {
+  const { scene, elements } = fixture();
+
+  scene.open({ close() {} });
+  await flushPromises();
+  assert.equal(elements.editButton.hidden, false);
+
+  elements.editButton.click();
+
+  assert.equal(elements.preferenceForm.hidden, false);
+  assert.equal(elements.cityInput.value, "杭州");
+  assert.equal(elements.minAgeInput.value, "25");
+  assert.equal(elements.priorityInputs[0].checked, true);
+  assert.equal(elements.result.children.length, 0);
   scene.dispose();
 });
 
@@ -184,6 +323,38 @@ test("远程结果缺少证据引用时不会渲染坏数据，而会回退本�
 
   assert.match(elements.status.textContent, /未通过安全校验.*本地安全画像/);
   assert.equal(elements.result.children.length, 12);
+  scene.dispose();
+});
+
+test("远程结果使用旧现实期待时回退到当前期待的本地画像", async () => {
+  const storage = completeStorage();
+  const source = portraitSource(storage);
+  const stalePreferences = createPartnerPreferences({
+    characterId: "girl",
+    city: "上海",
+    minAge: 30,
+    maxAge: 38,
+    relationshipGoal: "marriage",
+    distancePreference: "long-term",
+    priorities: ["responsible"],
+    note: "",
+  }, 1000);
+  const staleResult = generateLocalPortrait({
+    characterId: "girl",
+    preferences: stalePreferences,
+    ...source,
+  });
+  const { scene, elements } = fixture({
+    storage,
+    requestPortrait: async () => staleResult,
+  });
+
+  scene.open({ close() {} });
+  await flushPromises();
+
+  assert.match(elements.status.textContent, /未通过安全校验.*本地安全画像/);
+  assert.match(elements.summary.textContent, /杭州/);
+  assert.doesNotMatch(elements.summary.textContent, /上海/);
   scene.dispose();
 });
 

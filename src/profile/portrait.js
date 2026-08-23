@@ -1,8 +1,9 @@
 import { validateEvidence } from "./evidence.js";
+import { describePartnerPreferences } from "./partnerPreferences.js";
 import { getAllStories } from "../scenes/story/catalog.js";
 import { FREE_RESPONSE_OPTION_ID } from "../shared/freeResponse.js";
 
-export const PORTRAIT_GENERATOR_VERSION = 2;
+export const PORTRAIT_GENERATOR_VERSION = 3;
 
 export const PORTRAIT_SECTION_TITLES = Object.freeze([
   "一句话关系核心需求",
@@ -312,13 +313,16 @@ function overallConfidence(evidence, aggregated) {
 }
 
 export function generateLocalPortrait({
+  characterId = null,
   profile = null,
+  preferences = null,
   evidence = [],
   baselineEvidence = null,
   generatedAt = Date.now(),
 } = {}) {
   const validEvidence = uniqueByRef(evidence.filter((item) => validateEvidence(item).length === 0));
   const aggregated = aggregatePortraitSignals(validEvidence);
+  const preferenceDetails = describePartnerPreferences(preferences, characterId);
   const sections = PORTRAIT_SECTION_TITLES.map((title, index) => {
     const entries = sectionAggregateEntries(aggregated, index);
     const isConflictSection = index === 10;
@@ -337,6 +341,21 @@ export function generateLocalPortrait({
       content += ` 雾谷的低压力互动只作为起点参考：${baselineEvidence.summary}。`;
       evidenceRefs = unique([...evidenceRefs, evidenceRef(baselineEvidence)]);
     }
+    if (index === 6 && preferenceDetails) {
+      const priorities = preferenceDetails.priorities.length
+        ? preferenceDetails.priorities.join("、")
+        : "没有特别限制";
+      content += ` 现实期待中，你优先看重对方${priorities}；这些条件需要与相处方式同时满足。`;
+    }
+    if (index === 8 && preferenceDetails) {
+      const city = preferenceDetails.city === "地点不限"
+        ? preferenceDetails.city
+        : `主要生活在${preferenceDetails.city}`;
+      content += ` 现实范围为：推荐${preferenceDetails.recommendedGender}，${preferenceDetails.ageRange}，${city}，期待${preferenceDetails.relationshipGoal}，并且${preferenceDetails.distancePreference}。`;
+    }
+    if (index === 10 && preferenceDetails?.note) {
+      content += ` 你还明确提出“${preferenceDetails.note}”，它会作为现实筛选条件与七岛证据共同保留。`;
+    }
     return {
       id: `section-${index + 1}`,
       title,
@@ -352,12 +371,21 @@ export function generateLocalPortrait({
   const coreEntry = aggregateEntries(aggregated)
     .find(({ target }) => target === "partner" || target === "joint");
   const core = coreEntry?.primary.summaries[0] ?? "通过清晰沟通建立可调整的共同规则";
+  const realityDescriptors = preferenceDetails ? [
+    preferenceDetails.ageRange === "年龄不限" ? null : `年龄在${preferenceDetails.ageRange}`,
+    preferenceDetails.city === "地点不限" ? null : `主要生活在${preferenceDetails.city}`,
+    `期待${preferenceDetails.relationshipGoal}`,
+  ].filter(Boolean) : [];
+  const recommendedPartner = preferenceDetails
+    ? `一位${realityDescriptors.join("、")}的${preferenceDetails.recommendedGender}`
+    : "重视关系相容的伴侣";
 
   return {
-    summary: `${profile?.nickname ? `${profile.nickname}更` : "你更"}适合与重视“${core}”的伴侣建立关系，并在现实变化中持续协商相处方式。`,
+    summary: `${profile?.nickname ? `${profile.nickname}更` : "你更"}适合${recommendedPartner}；对方应当重视“${core}”，并愿意在现实变化中持续协商相处方式。`,
     sections,
     confidence: overallConfidence(validEvidence, aggregated),
     evidenceRefs: unique(validEvidence.map(evidenceRef)),
+    preferenceFingerprint: createPreferenceFingerprint(preferenceDetails),
     generatedAt,
     generatorVersion: PORTRAIT_GENERATOR_VERSION,
     source: "local",
@@ -371,6 +399,12 @@ function stableHash(value) {
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function createPreferenceFingerprint(preferenceDetails) {
+  return preferenceDetails
+    ? `preferences-${stableHash(JSON.stringify(preferenceDetails))}`
+    : null;
 }
 
 function createTravelerBaseline(profile, baselineEvidence) {
@@ -396,22 +430,28 @@ function createTravelerBaseline(profile, baselineEvidence) {
 }
 
 export function createPortraitRequest({
+  characterId = null,
   profile = null,
+  preferences = null,
   evidence = [],
   baselineEvidence = null,
 } = {}) {
   const validEvidence = uniqueByRef(evidence.filter((item) => validateEvidence(item).length === 0));
+  const preferenceDetails = describePartnerPreferences(preferences, characterId);
   const refs = [
     ...validEvidence.map((item) => `${evidenceRef(item)}@${item.answeredAt}`),
     baselineEvidence && validateEvidence(baselineEvidence).length === 0
       ? `${evidenceRef(baselineEvidence)}@${baselineEvidence.answeredAt}`
       : "",
+    preferenceDetails ? JSON.stringify(preferenceDetails) : "",
   ];
   return {
-    protocolVersion: 2,
+    protocolVersion: 3,
     requestId: `portrait-${PORTRAIT_GENERATOR_VERSION}-${stableHash(refs.join("|"))}`,
     generatorVersion: PORTRAIT_GENERATOR_VERSION,
     travelerBaseline: createTravelerBaseline(profile, baselineEvidence),
+    partnerPreferences: preferenceDetails,
+    preferenceFingerprint: createPreferenceFingerprint(preferenceDetails),
     evidenceCount: validEvidence.length,
     aggregated: aggregatePortraitSignals(validEvidence),
     requiredSections: PORTRAIT_SECTION_TITLES,
@@ -419,10 +459,14 @@ export function createPortraitRequest({
 }
 
 function validationSources(source) {
-  if (Array.isArray(source)) return { evidence: source, baselineEvidence: null };
+  if (Array.isArray(source)) {
+    return { evidence: source, baselineEvidence: null, preferenceFingerprint: null };
+  }
+  const preferenceDetails = describePartnerPreferences(source?.preferences, source?.characterId);
   return {
     evidence: Array.isArray(source?.evidence) ? source.evidence : [],
     baselineEvidence: source?.baselineEvidence ?? null,
+    preferenceFingerprint: createPreferenceFingerprint(preferenceDetails),
   };
 }
 
@@ -460,7 +504,10 @@ export function validatePortraitResult(result, source = []) {
     });
   }
 
-  const { evidence, baselineEvidence } = validationSources(source);
+  const { evidence, baselineEvidence, preferenceFingerprint } = validationSources(source);
+  if (preferenceFingerprint && result.preferenceFingerprint !== preferenceFingerprint) {
+    errors.push("画像现实期待与当前请求不一致");
+  }
   const validEvidence = evidence.filter((item) => validateEvidence(item).length === 0);
   const validBaseline = baselineEvidence && validateEvidence(baselineEvidence).length === 0
     ? [baselineEvidence]

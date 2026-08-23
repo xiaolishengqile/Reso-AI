@@ -1,4 +1,5 @@
 import { TRAVELER_PROFILE_KEY } from "../profile/travelerProfile.js";
+import { PARTNER_PREFERENCES_KEY } from "../profile/partnerPreferences.js";
 import { HOME_PROGRESS_KEY } from "../scenes/home/progress.js";
 import { MOUNTAIN_PROGRESS_KEY } from "../scenes/mountain/progress.js";
 import { STORY_PROGRESS_KEY } from "../scenes/story/progress.js";
@@ -10,6 +11,7 @@ const GAME_PROGRESS_KEYS = Object.freeze([
   MOUNTAIN_PROGRESS_KEY,
   STORY_PROGRESS_KEY,
   JOURNEY_VISITS_KEY,
+  PARTNER_PREFERENCES_KEY,
 ]);
 
 export function requestGameReset({ storage, confirmReset, reload } = {}) {

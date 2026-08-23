@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createEvidence, normalizeTravelerEvidence } from "../src/profile/evidence.js";
+import { createPartnerPreferences } from "../src/profile/partnerPreferences.js";
 import { createTravelerProfile } from "../src/profile/travelerProfile.js";
 import {
   PORTRAIT_SECTION_TITLES,
@@ -103,6 +104,20 @@ function evidenceForStage(islandId, stage, index) {
     pressure: stage.pressure ?? (stage.id === "slip" ? "high" : "medium"),
     answeredAt: 1000 + index,
   });
+}
+
+function partnerPreferences(overrides = {}) {
+  return createPartnerPreferences({
+    characterId: "girl",
+    city: "杭州",
+    minAge: 25,
+    maxAge: 32,
+    relationshipGoal: "steady",
+    distancePreference: "same-city",
+    priorities: ["stable-work", "financially-independent", "no-smoking"],
+    note: "遇到问题愿意沟通",
+    ...overrides,
+  }, 4000);
 }
 
 test("只收集有效的首次正式剧情证据", () => {
@@ -263,6 +278,62 @@ test("本地生成器始终输出十二个可追溯章节", () => {
     evidence: evidenceList,
     baselineEvidence: normalizeTravelerEvidence(input.profile),
   }), []);
+});
+
+test("本地画像会把现实期待与七岛相处证据融合成异性推荐", () => {
+  const input = completeInput();
+  const evidenceList = collectOfficialEvidence(input);
+  const result = generateLocalPortrait({
+    characterId: "girl",
+    profile: input.profile,
+    preferences: partnerPreferences(),
+    evidence: evidenceList,
+    baselineEvidence: normalizeTravelerEvidence(input.profile),
+    generatedAt: 5000,
+  });
+
+  assert.match(result.summary, /男性/);
+  assert.match(result.summary, /杭州/);
+  assert.match(result.summary, /25—32 岁/);
+  assert.match(result.sections[6].content, /工作相对稳定/);
+  assert.match(result.sections[6].content, /经济上能够独立/);
+  assert.match(result.sections[8].content, /稳定恋爱/);
+  assert.match(result.sections[8].content, /只考虑同城/);
+  assert.match(result.sections[10].content, /遇到问题愿意沟通/);
+  assert.deepEqual(validatePortraitResult(result, {
+    evidence: evidenceList,
+    baselineEvidence: normalizeTravelerEvidence(input.profile),
+  }), []);
+});
+
+test("远程画像请求携带可读的异性现实期待且修改后请求标识会变化", () => {
+  const input = completeInput();
+  const evidenceList = collectOfficialEvidence(input);
+  const request = createPortraitRequest({
+    characterId: "girl",
+    profile: input.profile,
+    preferences: partnerPreferences(),
+    evidence: evidenceList,
+    baselineEvidence: normalizeTravelerEvidence(input.profile),
+  });
+  const changed = createPortraitRequest({
+    characterId: "girl",
+    profile: input.profile,
+    preferences: partnerPreferences({ city: "上海" }),
+    evidence: evidenceList,
+    baselineEvidence: normalizeTravelerEvidence(input.profile),
+  });
+
+  assert.deepEqual(request.partnerPreferences, {
+    recommendedGender: "男性",
+    city: "杭州",
+    ageRange: "25—32 岁",
+    relationshipGoal: "稳定恋爱",
+    distancePreference: "只考虑同城",
+    priorities: ["工作相对稳定", "经济上能够独立", "不吸烟"],
+    note: "遇到问题愿意沟通",
+  });
+  assert.notEqual(request.requestId, changed.requestId);
 });
 
 test("远程请求只包含聚合摘要，不泄露原始选项或存储对象", () => {
