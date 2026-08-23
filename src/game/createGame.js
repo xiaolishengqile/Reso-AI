@@ -245,7 +245,9 @@ export function createGame({
     updateLegend();
     if (changed) showLocationCard(hoveredLocation);
     setStatus(completion.message, 2600);
-    onSceneComplete?.(scene);
+    try {
+      onSceneComplete?.(scene);
+    } catch {}
   }
 
   const sceneManager = createSceneManager({ ui, onComplete: completeScene });

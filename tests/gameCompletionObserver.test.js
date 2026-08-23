@@ -1,15 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { LOCATIONS, MAP_SIZE } from "../src/config/world.js";
 import { createGame } from "../src/game/createGame.js";
-
-function overviewScreenPoint(point) {
-  const scale = Math.min(1200 / MAP_SIZE.width, 800 / MAP_SIZE.height);
-  return {
-    x: point.x * scale + (1200 - MAP_SIZE.width * scale) / 2,
-    y: point.z * scale + (800 - MAP_SIZE.height * scale) / 2,
-  };
-}
+import { createMountainScene } from "../src/scenes/mountain/createMountainScene.js";
+import {
+  advanceMountainProgress,
+  createMountainProgress,
+  MOUNTAIN_PROGRESS_KEY,
+} from "../src/scenes/mountain/progress.js";
 
 function createContext(canvas) {
   const gradient = { addColorStop() {} };
@@ -98,14 +95,84 @@ function createDialog() {
   };
 }
 
-test("外部场景完成后更新地图并通知可选观察者", () => {
+class FakeElement {
+  constructor() {
+    this.attributes = new Map();
+    this.children = [];
+    this.dataset = {};
+    this.disabled = false;
+    this.hidden = false;
+    this.textContent = "";
+  }
+
+  addEventListener(type, listener) {
+    this.listeners ??= new Map();
+    this.listeners.set(type, listener);
+  }
+
+  removeEventListener(type) { this.listeners?.delete(type); }
+
+  click() {
+    this.listeners?.get("click")?.({ currentTarget: this, target: this });
+  }
+  load() {}
+  pause() {}
+  play() { return Promise.resolve(); }
+  replaceChildren(...children) { this.children = children; }
+  setAttribute(name, value) { this.attributes.set(name, value); }
+}
+
+function createMemoryStorage(initial = {}) {
+  const values = new Map(Object.entries(initial));
+  return {
+    getItem(key) { return values.get(key) ?? null; },
+    setItem(key, value) { values.set(key, value); },
+  };
+}
+
+function createMountainController(windowTarget) {
+  const elements = {
+    root: new FakeElement(),
+    video: new FakeElement(),
+    image: new FakeElement(),
+    panel: new FakeElement(),
+    mediaControls: new FakeElement(),
+    title: new FakeElement(),
+    text: new FakeElement(),
+    choices: new FakeElement(),
+    continueButton: new FakeElement(),
+    closeButton: new FakeElement(),
+    startButton: new FakeElement(),
+    playButton: new FakeElement(),
+    speedButton: new FakeElement(),
+    skipButton: new FakeElement(),
+    saveWarning: new FakeElement(),
+    progress: new FakeElement(),
+  };
+  const completedProgress = advanceMountainProgress(
+    createMountainProgress("girl"),
+    "complete",
+  );
+  const storage = createMemoryStorage({
+    [MOUNTAIN_PROGRESS_KEY]: JSON.stringify(completedProgress),
+  });
+  return {
+    elements,
+    scene: createMountainScene({
+      characterId: "girl",
+      elements,
+      storage,
+      documentTarget: { createElement: () => new FakeElement() },
+      windowTarget,
+    }),
+  };
+}
+
+function createFixture(onSceneComplete) {
   const canvas = createCanvas();
   const windowTarget = createWindow();
   const status = { textContent: "" };
-  const dialog = createDialog();
-  const primaryButton = createButton();
-  const completed = [];
-  let sceneCallbacks;
+  const mountain = createMountainController(windowTarget);
   const game = createGame({
     canvas,
     characterId: "girl",
@@ -115,30 +182,69 @@ test("外部场景完成后更新地图并通知可选观察者", () => {
       legendItems: [],
       status,
       overviewButton: createButton(),
-      dialog,
+      dialog: createDialog(),
       dialogTitle: { textContent: "" },
       dialogLabel: { textContent: "" },
       dialogDescription: { textContent: "" },
-      primaryButton,
+      primaryButton: createButton(),
       closeButton: createButton(),
     },
-    onSceneComplete(scene) {
-      assert.match(status.textContent, /桥已解锁|爬山已完成/);
-      completed.push(scene.id);
-    },
+    onSceneComplete,
     onEnterScene(scene, callbacks) {
-      if (scene.id === "mountain") sceneCallbacks = callbacks;
+      if (scene.id === "mountain") mountain.scene.open(callbacks);
     },
   });
   game.start();
-  const mountain = LOCATIONS.find(({ id }) => id === "mountain");
-  const screenPoint = overviewScreenPoint(mountain);
-  canvas.click(screenPoint.x, screenPoint.y);
-  for (let frame = 0; frame < 600 && !dialog.open; frame += 1) windowTarget.step();
-  primaryButton.dispatchEvent(new Event("click"));
-  assert.ok(sceneCallbacks);
-  sceneCallbacks.complete();
+  return { game, mountain, status };
+}
+
+function openCompletedMountain(fixture) {
+  assert.equal(fixture.game.enterScene({ id: "mountain" }), true);
+  fixture.mountain.elements.startButton.click();
+  assert.equal(fixture.mountain.elements.continueButton.hidden, false);
+}
+
+test("关闭真实爬山场景不会通知完成观察者", () => {
+  const completed = [];
+  const fixture = createFixture((scene) => completed.push(scene.id));
+
+  assert.equal(fixture.game.enterScene({ id: "mountain" }), true);
+  fixture.mountain.elements.closeButton.click();
+
+  assert.deepEqual(completed, []);
+  assert.equal(fixture.mountain.elements.root.hidden, true);
+  fixture.game.dispose();
+  fixture.mountain.scene.dispose();
+});
+
+test("真实爬山完成后更新地图并且仅通知观察者一次", () => {
+  const completed = [];
+  const fixture = createFixture((scene) => {
+    assert.match(fixture.status.textContent, /桥已解锁|爬山已完成/);
+    completed.push(scene.id);
+  });
+
+  openCompletedMountain(fixture);
+  fixture.mountain.elements.continueButton.click();
+  fixture.mountain.elements.continueButton.click();
+
   assert.deepEqual(completed, ["mountain"]);
-  assert.match(status.textContent, /桥已解锁|爬山已完成/);
-  game.dispose();
+  assert.match(fixture.status.textContent, /桥已解锁|爬山已完成/);
+  assert.equal(fixture.mountain.elements.root.hidden, true);
+  fixture.game.dispose();
+  fixture.mountain.scene.dispose();
+});
+
+test("完成观察者抛错后真实爬山场景仍会完成并返回地图", () => {
+  const fixture = createFixture(() => {
+    throw new Error("observer failed");
+  });
+
+  openCompletedMountain(fixture);
+  assert.doesNotThrow(() => fixture.mountain.elements.continueButton.click());
+
+  assert.equal(fixture.mountain.elements.root.hidden, true);
+  assert.match(fixture.status.textContent, /桥已解锁|爬山已完成/);
+  fixture.game.dispose();
+  fixture.mountain.scene.dispose();
 });

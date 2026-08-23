@@ -11,6 +11,7 @@ import {
   markLocationVisited,
 } from "./game/journeyProgress.js";
 import { requestGameReset } from "./app/progressReset.js";
+import { getSafeStorage } from "./app/safeStorage.js";
 import { createSceneSkip } from "./app/sceneSkip.js";
 import { getSceneController, resolveSavedUnlockOrder } from "./app/sceneRouting.js";
 import { loadTravelerProfile } from "./profile/travelerProfile.js";
@@ -39,14 +40,14 @@ let wishScene = null;
 let icebreakerFeature = null;
 let sceneSkip = null;
 
-function getInitialJourneyState(characterId) {
+function getInitialJourneyState(characterId, storage) {
   const stories = getAllStories();
-  const mountainProgress = loadMountainProgress(window.localStorage, characterId);
-  const homeProgress = loadHomeProgress(window.localStorage, characterId);
-  const profile = loadTravelerProfile(window.localStorage);
+  const mountainProgress = loadMountainProgress(storage, characterId);
+  const homeProgress = loadHomeProgress(storage, characterId);
+  const profile = loadTravelerProfile(storage);
   const storyProgress = Object.fromEntries(stories.map((story) => [
     story.id,
-    loadStoryProgress(window.localStorage, characterId, story.id, story.initialStageId),
+    loadStoryProgress(storage, characterId, story.id, story.initialStageId),
   ]));
   const completedLocationIds = [
     ...(homeProgress.completed ? ["home"] : []),
@@ -65,7 +66,7 @@ function getInitialJourneyState(characterId) {
     }),
     initialVisitedLocationIds: [
       ...new Set([
-        ...loadVisitedLocationIds(window.localStorage, characterId),
+        ...loadVisitedLocationIds(storage, characterId),
         ...completedLocationIds,
       ]),
     ],
@@ -76,10 +77,12 @@ function getInitialJourneyState(characterId) {
 function startGame(characterId) {
   if (game) return;
   try {
-    const initialJourney = getInitialJourneyState(characterId);
+    const storage = getSafeStorage(window);
+    const initialJourney = getInitialJourneyState(characterId, storage);
     sceneSkip = createSceneSkip({ button: storySkipButton });
     homeScene = createHomeScene({
       characterId,
+      storage,
       elements: {
         root: document.querySelector("#home-scene"),
         title: document.querySelector("#home-stage-title"),
@@ -100,6 +103,7 @@ function startGame(characterId) {
     });
     mountainScene = createMountainScene({
       characterId,
+      storage,
       elements: {
         root: document.querySelector("#mountain-scene"),
         video: document.querySelector("#mountain-scene-video"),
@@ -121,6 +125,7 @@ function startGame(characterId) {
     });
     storyScene = createStoryScene({
       characterId,
+      storage,
       elements: {
         root: document.querySelector("#story-scene"),
         canvas: document.querySelector("#story-scene-canvas"),
@@ -135,6 +140,7 @@ function startGame(characterId) {
     });
     wishScene = createWishScene({
       characterId,
+      storage,
       elements: {
         root: document.querySelector("#wish-scene"),
         status: document.querySelector("#wish-status"),
@@ -148,7 +154,7 @@ function startGame(characterId) {
     });
     icebreakerFeature = createIcebreakerFeature({
       characterId,
-      storage: window.localStorage,
+      storage,
       elements: {
         button: document.querySelector("#icebreaker-button"),
         buttonLabel: document.querySelector("#icebreaker-button-label"),
@@ -179,7 +185,7 @@ function startGame(characterId) {
       initialVisitedLocationIds: initialJourney.initialVisitedLocationIds,
       initialCompletedLocationIds: initialJourney.initialCompletedLocationIds,
       onVisitLocation: (locationId) => {
-        markLocationVisited(window.localStorage, characterId, locationId);
+        markLocationVisited(storage, characterId, locationId);
       },
       onSceneComplete: (scene) => {
         if (scene.id === "mountain") icebreakerFeature?.refresh();
@@ -238,7 +244,7 @@ function startGame(characterId) {
 
 resetProgressButton?.addEventListener("click", () => {
   requestGameReset({
-    storage: window.localStorage,
+    storage: getSafeStorage(window),
     confirmReset: () => window.confirm("确定清除全部旅程进度并从头开始吗？此操作无法撤销。"),
     reload: () => window.location.reload(),
   });
