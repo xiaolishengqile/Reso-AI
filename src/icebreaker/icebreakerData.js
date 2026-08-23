@@ -7,24 +7,42 @@ export const ICEBREAKER_STAGE_IDS = Object.freeze([
 ]);
 
 const CACHE_VERSION = 1;
-const VIRTUAL_NAME_PATTERN = /^[\p{Script=Han}·]{2,12}$/u;
-const PROHIBITED_WORDS = /人格障碍|心理疾病|抑郁症|躁郁症|精神病|有病|自恋型人格|命中注定/;
+const VIRTUAL_NAME_PATTERN = /^[\p{Script=Han}]+(?:·[\p{Script=Han}]+)*$/u;
+const PROHIBITED_WORDS = /人格障碍|心理疾病|焦虑症|抑郁症|躁郁症|双相情感障碍|精神病|强迫症|创伤后应激障碍|有病|自恋型人格|性取向|同性恋|异性恋|宗教信仰|政治立场|种族|民族|残疾|病史|命中注定/u;
+const PARAGRAPH_SEPARATOR_PATTERN = /[\r\n\u2028\u2029]/u;
 
 function lengthOf(value) {
   return Array.from(typeof value === "string" ? value.trim() : "").length;
 }
 
+export function validateSafeChineseText(value, minimum, maximum) {
+  const text = typeof value === "string" ? value.trim() : "";
+  const characters = Array.from(text);
+  const hanCount = characters.filter((character) => /\p{Script=Han}/u.test(character)).length;
+  const meaningfulCount = characters.filter((character) => !/\s/u.test(character)).length;
+  const errors = [];
+  if (
+    characters.length < minimum
+    || characters.length > maximum
+    || PARAGRAPH_SEPARATOR_PATTERN.test(value ?? "")
+  ) {
+    errors.push(`文字需要${minimum}至${maximum}字且保持单段`);
+  }
+  if (meaningfulCount === 0 || hanCount / meaningfulCount < 0.6) {
+    errors.push("文字需要以有意义的中文为主");
+  }
+  if (PROHIBITED_WORDS.test(text)) errors.push("文字包含不允许的诊断、敏感属性或保证性措辞");
+  return errors;
+}
+
 export function validateIcebreakerResult(result) {
   const errors = [];
   if (!result || typeof result !== "object") return ["破冰结果必须是对象"];
-  if (!VIRTUAL_NAME_PATTERN.test(typeof result.virtualMatchName === "string" ? result.virtualMatchName.trim() : "")) {
+  const name = typeof result.virtualMatchName === "string" ? result.virtualMatchName.trim() : "";
+  if (lengthOf(name) < 2 || lengthOf(name) > 12 || !VIRTUAL_NAME_PATTERN.test(name)) {
     errors.push("虚拟昵称需要二至十二个中文字符");
   }
-  const textLength = lengthOf(result.icebreaker);
-  if (textLength < 150 || textLength > 250 || /[\r\n]/.test(result.icebreaker ?? "")) {
-    errors.push("破冰话术需要一百五十至二百五十字的单段文字");
-  }
-  if (PROHIBITED_WORDS.test(result.icebreaker ?? "")) errors.push("破冰话术包含不允许的诊断或保证性措辞");
+  errors.push(...validateSafeChineseText(result.icebreaker, 150, 250));
   return errors;
 }
 

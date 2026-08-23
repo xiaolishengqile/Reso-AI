@@ -73,7 +73,15 @@ function completeStorage() {
 
 const validResult = {
   virtualMatchName: "云舟",
-  icebreaker: "你们在暴雨和计划变化中仍愿意先确认彼此感受，再一起寻找安全的下一步。".repeat(6).slice(0, 180),
+  icebreaker: [
+    "系统先替你筛掉只看表面热闹、却忽略相处节奏的人。",
+    "你和云舟都喜欢山野，但真正难得的是压力来时仍能彼此理解。",
+    "如果暴雨突至、路线受阻，你们会先确认安全，再重新安排计划。",
+    "你偶尔沉默，他也可能急着解决问题，这种碰撞容易让双方紧绷。",
+    "不过他愿意先问你的感受，再说明自己的判断，并用行动修复误会。",
+    "这样的关系不是永远顺利，而是在变化里依然让人感到被看见、被托住。",
+    "如果你也愿意，我们可以从一次轻松的散步聊起，不必急着定义答案。",
+  ].join(""),
 };
 
 function fixture({ storage = completeStorage(), requestIcebreakerFn } = {}) {
