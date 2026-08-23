@@ -77,6 +77,8 @@ function completeState({ office = false } = {}) {
   return {
     profile: { nickname: "小雾" },
     mountainProgress: {
+      completed: true,
+      isReplay: false,
       firstCompletedAt: 9000,
       officialEvidence: selections.map(([stageId, optionId], index) => (
         evidence("mountain", stageId, optionId, 1000 + index)
@@ -151,11 +153,33 @@ function apiResponse(data, { ok = true, message = "请求失败" } = {}) {
   };
 }
 
-test("爬山未完成时隐藏，完成后两个按钮同时出现且不自动请求", () => {
+test("爬山七题未完成时隐藏，完成保存并返回地图后立即显示", () => {
   let calls = 0;
-  const feature = fixture({ fetchImpl: async () => { calls += 1; } });
+  const complete = completeState();
+  const feature = fixture({
+    state: {
+      ...complete,
+      mountainProgress: {
+        ...complete.mountainProgress,
+        completed: false,
+        firstCompletedAt: null,
+        officialEvidence: complete.mountainProgress.officialEvidence.slice(0, 6),
+      },
+    },
+    fetchImpl: async () => { calls += 1; },
+  });
   assert.equal(feature.elements.group.hidden, true);
-  feature.setState(completeState());
+  feature.setState({
+    ...complete,
+    mountainProgress: {
+      ...complete.mountainProgress,
+      completed: false,
+      firstCompletedAt: null,
+    },
+  });
+  feature.controller.refresh();
+  assert.equal(feature.elements.group.hidden, true);
+  feature.setState(complete);
   feature.controller.refresh();
   assert.equal(feature.elements.group.hidden, false);
   assert.equal(feature.elements.icebreakerButton.textContent, "生成破冰话术");

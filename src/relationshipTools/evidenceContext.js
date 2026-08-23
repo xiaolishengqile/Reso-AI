@@ -91,6 +91,7 @@ function compareEvidence(left, right) {
 }
 
 export function createIcebreakerContext({ characterId, mountainProgress, profile = null } = {}) {
+  if (mountainProgress?.completed !== true && mountainProgress?.isReplay !== true) return null;
   const evidence = validMountainEvidence(mountainProgress);
   if (!evidence || typeof characterId !== "string" || !characterId) return null;
   const projected = evidence.map(projectEvidence);

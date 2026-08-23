@@ -27,7 +27,8 @@ function completeMountain() {
   const options = ["planned", "empathize", "support", "protect", "hug", "secure", "build"];
   return {
     firstCompletedAt: 9000,
-    completed: false,
+    completed: true,
+    isReplay: false,
     officialEvidence: [...MOUNTAIN_STAGE_IDS].reverse().map((stageId, reverseIndex) => {
       const index = MOUNTAIN_STAGE_IDS.indexOf(stageId);
       return evidence("mountain", stageId, options[index], 1000 + reverseIndex);
@@ -72,6 +73,19 @@ test("爬山首次完成时间和七组正式证据共同决定入口资格", ()
     characterId: "girl",
     mountainProgress: { ...mountainProgress, officialEvidence: [] },
     storyProgress: {},
+  }), null);
+});
+
+test("未完成的爬山进度即使带有七组证据也不能显示破冰入口", () => {
+  const mountainProgress = {
+    ...completeMountain(),
+    completed: false,
+    isReplay: false,
+  };
+
+  assert.equal(createIcebreakerContext({
+    characterId: "girl",
+    mountainProgress,
   }), null);
 });
 
