@@ -29,8 +29,30 @@ test("共享网关使用服务端授权、配置模型并抽取回复文本", as
   assert.equal(calls[0].url, "https://model.example/chat");
   assert.equal(calls[0].options.headers.Authorization, "Bearer test-secret");
   assert.equal(calls[0].options.headers["Content-Type"], "application/json");
-  assert.equal(JSON.parse(calls[0].options.body).model, "glm-5.3");
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    model: "glm-5.3",
+    messages: [{ role: "user", content: "测试" }],
+    reasoning_effort: "high",
+  });
   assert.equal(gateway.model, "glm-5.3");
+});
+
+test("默认等待窗口不会在十五秒时提前中止模型请求", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  let finishRequest;
+  const gateway = createModelGateway({
+    apiKey: "test-secret",
+    fetchImpl: async () => new Promise((resolve) => {
+      finishRequest = resolve;
+    }),
+  });
+
+  const pending = gateway.complete([]);
+  await Promise.resolve();
+  context.mock.timers.tick(15_000);
+  finishRequest(response({ choices: [{ message: { content: "模型回复" } }] }));
+
+  assert.equal(await pending, "模型回复");
 });
 
 test("缺少密钥时返回稳定的未配置错误且不发请求", async () => {

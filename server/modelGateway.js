@@ -16,7 +16,7 @@ export function createModelGateway({
   apiUrl = DEFAULT_API_URL,
   model = DEFAULT_MODEL,
   fetchImpl = globalThis.fetch,
-  timeoutMs = 15_000,
+  timeoutMs = 45_000,
 } = {}) {
   const configuredKey = typeof apiKey === "string" ? apiKey.trim() : "";
   const configuredUrl = typeof apiUrl === "string" && apiUrl.trim()
@@ -51,7 +51,11 @@ export function createModelGateway({
           Authorization: `Bearer ${configuredKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ model: configuredModel, messages }),
+        body: JSON.stringify({
+          model: configuredModel,
+          messages,
+          reasoning_effort: "high",
+        }),
         signal: requestSignal,
       });
       requestSignal.throwIfAborted();
