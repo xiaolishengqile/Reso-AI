@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
+import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAppHandler } from "../server/app.js";
@@ -90,4 +91,67 @@ test("生产模式提供构建文件并阻止目录穿越", async () => {
   } finally {
     await rm(distDir, { recursive: true, force: true });
   }
+});
+
+test("生产静态目录缺少首页时稳定返回 404", async () => {
+  const distDir = await mkdtemp(join(tmpdir(), "reso-server-"));
+  await mkdir(join(distDir, "assets"));
+  try {
+    await withServer(createAppHandler({ env: {}, distDir }), async (origin) => {
+      assert.equal((await fetch(`${origin}/assets`)).status, 404);
+    });
+  } finally {
+    await rm(distDir, { recursive: true, force: true });
+  }
+});
+
+test("生产静态服务拒绝未知扩展名", async () => {
+  const distDir = await mkdtemp(join(tmpdir(), "reso-server-"));
+  await writeFile(join(distDir, "index.html"), "<h1>人生群岛</h1>");
+  await writeFile(join(distDir, "payload.exe"), "blocked");
+  try {
+    await withServer(createAppHandler({ env: {}, distDir }), async (origin) => {
+      assert.equal((await fetch(`${origin}/payload.exe`)).status, 404);
+    });
+  } finally {
+    await rm(distDir, { recursive: true, force: true });
+  }
+});
+
+test("生产静态服务拒绝畸形百分号路径", async () => {
+  const distDir = await mkdtemp(join(tmpdir(), "reso-server-"));
+  await writeFile(join(distDir, "index.html"), "<h1>人生群岛</h1>");
+  try {
+    await withServer(createAppHandler({ env: {}, distDir }), async (origin) => {
+      assert.equal((await fetch(`${origin}/%`)).status, 400);
+    });
+  } finally {
+    await rm(distDir, { recursive: true, force: true });
+  }
+});
+
+test("开发服务器关闭时会关闭 Vite 实例", async () => {
+  const script = `
+    import { once } from "node:events";
+    import { createHttpServer } from "./server/index.js";
+    let closeCalls = 0;
+    const server = await createHttpServer({
+      development: true,
+      createViteServer: async () => ({
+        middlewares: (request, response) => response.end(),
+        close: async () => { closeCalls += 1; },
+      }),
+    });
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    server.close();
+    await once(server, "close");
+    if (closeCalls !== 1) throw new Error("Vite 未关闭");
+  `;
+  const child = spawn(process.execPath, ["--input-type=module", "--eval", script], {
+    cwd: process.cwd(),
+    stdio: "ignore",
+  });
+  const [code] = await once(child, "close");
+  assert.equal(code, 0);
 });

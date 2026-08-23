@@ -72,17 +72,25 @@ async function serveStatic(request, response, pathname, distDir) {
     return;
   }
   const root = resolve(distDir);
-  const relativePath = pathname === "/"
-    ? "index.html"
-    : decodeURIComponent(pathname).replace(/^\/+/, "");
+  let relativePath;
+  try {
+    relativePath = pathname === "/"
+      ? "index.html"
+      : decodeURIComponent(pathname).replace(/^\/+/, "");
+  } catch {
+    response.writeHead(400);
+    response.end();
+    return;
+  }
   let filePath = resolve(root, relativePath);
   if (filePath !== root && !filePath.startsWith(`${root}${sep}`)) {
     response.writeHead(403);
     response.end();
     return;
   }
+  let info;
   try {
-    const info = await stat(filePath);
+    info = await stat(filePath);
     if (info.isDirectory()) filePath = join(filePath, "index.html");
   } catch {
     if (extname(relativePath)) {
@@ -92,14 +100,21 @@ async function serveStatic(request, response, pathname, distDir) {
     }
     filePath = resolve(root, "index.html");
   }
-  const info = await stat(filePath);
-  if (!info.isFile()) {
+  try {
+    info = await stat(filePath);
+  } catch {
+    response.writeHead(404);
+    response.end();
+    return;
+  }
+  const extension = extname(filePath);
+  if (!info.isFile() || !CONTENT_TYPES[extension]) {
     response.writeHead(404);
     response.end();
     return;
   }
   response.writeHead(200, {
-    "Content-Type": CONTENT_TYPES[extname(filePath)] ?? "application/octet-stream",
+    "Content-Type": CONTENT_TYPES[extension],
     "Content-Length": info.size,
   });
   if (request.method === "HEAD") response.end();
