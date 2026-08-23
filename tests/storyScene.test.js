@@ -5,6 +5,7 @@ import {
   getStoryFrameState,
   getStoryMapViewport,
 } from "../src/scenes/story/storyRenderer.js";
+import * as storyRenderer from "../src/scenes/story/storyRenderer.js";
 import { createChoice } from "../src/scenes/story/story.js";
 import {
   STORY_PROGRESS_KEY,
@@ -429,4 +430,16 @@ test("连续地图镜头会跟随人物，并在地图两端停住", () => {
   assert.ok(left.playerX < 0.2);
   assert.ok(right.sourceX > 0.4);
   assert.ok(right.playerX > 0.85);
+});
+
+test("同行时两人朝前行方向迈步，停下后才转身面对彼此", () => {
+  assert.equal(typeof storyRenderer.getStoryCharacterDirections, "function");
+  assert.deepEqual(storyRenderer.getStoryCharacterDirections(true), {
+    player: { x: 1, z: 0 },
+    companion: { x: 1, z: 0 },
+  });
+  assert.deepEqual(storyRenderer.getStoryCharacterDirections(false), {
+    player: { x: 1, z: 0 },
+    companion: { x: -1, z: 0 },
+  });
 });

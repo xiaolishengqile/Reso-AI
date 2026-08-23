@@ -48,3 +48,54 @@ test("男生和女生使用不同的轮廓特征而不是只替换颜色", () =>
     { hairStyle: "long-wavy", glasses: false, sleeves: "short" },
   );
 });
+
+test("侧向行走使用接触、过渡、反向接触、过渡的连续帧", () => {
+  assert.equal(typeof character.getCharacterAnimationFrame, "function");
+  const direction = { x: 1, z: 0 };
+  const frames = [0, 1 / 6, 2 / 6, 3 / 6].map((elapsedSeconds) => (
+    character.getCharacterAnimationFrame(direction, elapsedSeconds, true)
+  ));
+
+  assert.deepEqual(frames, [
+    { column: 0, row: 1 },
+    { column: 1, row: 1 },
+    { column: 2, row: 1 },
+    { column: 1, row: 1 },
+  ]);
+});
+
+test("绘制已加载角色时从动作图取帧而不是退回几何小人", () => {
+  const drawCalls = [];
+  const context = {
+    save() {}, restore() {}, translate() {}, scale() {}, beginPath() {},
+    ellipse() {}, fill() {}, stroke() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, closePath() {},
+    drawImage(...args) { drawCalls.push(args); },
+  };
+  const spriteImage = {
+    complete: true,
+    naturalWidth: 1536,
+    naturalHeight: 1024,
+  };
+
+  character.drawCharacter(context, {
+    characterId: "boy",
+    position: { x: 10, z: 20 },
+    direction: { x: 1, z: 0 },
+    elapsedSeconds: 1 / 6,
+    moving: true,
+    spriteImage,
+  });
+
+  assert.equal(drawCalls.length, 1);
+  assert.deepEqual(drawCalls[0].slice(1, 5), [512, 512, 512, 512]);
+});
+
+test("男女行走原图朝向不同时仍会面向实际移动方向", () => {
+  assert.equal(typeof character.getCharacterSpriteFlip, "function");
+  const walkFrame = { column: 0, row: 1 };
+  const movingRight = { x: 1, z: 0 };
+
+  assert.equal(character.getCharacterSpriteFlip("boy", walkFrame, movingRight), true);
+  assert.equal(character.getCharacterSpriteFlip("girl", walkFrame, movingRight), false);
+});

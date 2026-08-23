@@ -45,6 +45,18 @@ export function getStoryFrameState(
   };
 }
 
+export function getStoryCharacterDirections(traveling) {
+  return traveling
+    ? {
+      player: { x: 1, z: 0 },
+      companion: { x: 1, z: 0 },
+    }
+    : {
+      player: { x: 1, z: 0 },
+      companion: { x: -1, z: 0 },
+    };
+}
+
 function drawProp(context, prop, width, height, accent) {
   context.fillStyle = accent;
   context.strokeStyle = "rgba(53, 48, 43, 0.5)";
@@ -148,10 +160,11 @@ export function drawStoryFrame(context, frame) {
   context.fillStyle = shade;
   context.fillRect(0, height * 0.48, width, height * 0.52);
   const scale = Math.max(1.45, Math.min(width, height) / 290);
+  const directions = getStoryCharacterDirections(frame.traveling);
   drawCharacter(context, {
     characterId: playerCharacterId,
     position: { x: width * state.playerX, z: height * state.playerY },
-    direction: { x: 1, z: 0 },
+    direction: directions.player,
     elapsedSeconds,
     moving: frame.traveling,
     scale,
@@ -159,8 +172,8 @@ export function drawStoryFrame(context, frame) {
   drawCharacter(context, {
     characterId: companionCharacterId,
     position: { x: width * state.companionX, z: height * state.playerY },
-    direction: { x: -1, z: 0 },
-    elapsedSeconds,
+    direction: directions.companion,
+    elapsedSeconds: elapsedSeconds + (frame.traveling ? 0.08 : 0),
     moving: frame.traveling,
     scale,
   });

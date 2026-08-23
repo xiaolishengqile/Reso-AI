@@ -1,3 +1,11 @@
+const ASSET_BASE_URL = import.meta.env?.BASE_URL ?? "./";
+const WALK_FRAMES = Object.freeze([0, 1, 2, 1]);
+const WALK_FRAMES_PER_SECOND = 6;
+const SPRITE_COLUMNS = 3;
+const SPRITE_ROWS = 2;
+const SPRITE_DRAW_SIZE = 60;
+const spriteImages = new Map();
+
 export const CHARACTER_OPTIONS = Object.freeze([
   Object.freeze({
     id: "boy",
@@ -9,6 +17,8 @@ export const CHARACTER_OPTIONS = Object.freeze([
     hair: "#806451",
     shirt: "#f4ece1",
     trousers: "#5d554d",
+    spriteUrl: `${ASSET_BASE_URL}assets/characters/boy-sprite-v2.png`,
+    walkFacesRight: false,
   }),
   Object.freeze({
     id: "girl",
@@ -20,6 +30,8 @@ export const CHARACTER_OPTIONS = Object.freeze([
     hair: "#765746",
     shirt: "#d98f9b",
     trousers: "#747b84",
+    spriteUrl: `${ASSET_BASE_URL}assets/characters/girl-sprite-v2.png`,
+    walkFacesRight: true,
   }),
 ]);
 
@@ -36,6 +48,62 @@ export function getCharacterFacing(direction) {
     view: direction.z < 0 ? "back" : "front",
     flip: false,
   };
+}
+
+export function getCharacterAnimationFrame(direction, elapsedSeconds = 0, moving = false) {
+  const { view } = getCharacterFacing(direction);
+  if (view === "front") return { column: 0, row: 0 };
+  if (view === "back") return { column: 2, row: 0 };
+  if (!moving) return { column: 1, row: 0 };
+  const index = Math.floor(Math.max(0, elapsedSeconds) * WALK_FRAMES_PER_SECOND)
+    % WALK_FRAMES.length;
+  return { column: WALK_FRAMES[index], row: 1 };
+}
+
+export function getCharacterSpriteFlip(characterId, frame, direction) {
+  const facing = getCharacterFacing(direction);
+  if (facing.view !== "side") return false;
+  const profile = getCharacterProfile(characterId);
+  const nativeFacesRight = frame.row === 1 && profile.walkFacesRight;
+  const shouldFaceRight = !facing.flip;
+  return nativeFacesRight !== shouldFaceRight;
+}
+
+export function getCharacterSpriteImage(characterId, ImageConstructor = globalThis.Image) {
+  const profile = getCharacterProfile(characterId);
+  if (typeof ImageConstructor !== "function") return null;
+  if (!spriteImages.has(profile.id)) {
+    const image = new ImageConstructor();
+    image.decoding = "async";
+    image.src = profile.spriteUrl;
+    spriteImages.set(profile.id, image);
+  }
+  return spriteImages.get(profile.id);
+}
+
+function canDrawSprite(image) {
+  return Boolean(
+    image
+    && image.complete !== false
+    && image.naturalWidth > 0
+    && image.naturalHeight > 0,
+  );
+}
+
+function drawCharacterSprite(context, image, frame) {
+  const frameWidth = image.naturalWidth / SPRITE_COLUMNS;
+  const frameHeight = image.naturalHeight / SPRITE_ROWS;
+  context.drawImage(
+    image,
+    frame.column * frameWidth,
+    frame.row * frameHeight,
+    frameWidth,
+    frameHeight,
+    -SPRITE_DRAW_SIZE / 2,
+    10 - SPRITE_DRAW_SIZE,
+    SPRITE_DRAW_SIZE,
+    SPRITE_DRAW_SIZE,
+  );
 }
 
 function drawBody(context, profile, sway) {
@@ -219,20 +287,39 @@ export function drawCharacter(context, {
   elapsedSeconds = 0,
   moving = false,
   scale = 1,
+  spriteImage = null,
 }) {
   const profile = getCharacterProfile(characterId);
   const facing = getCharacterFacing(direction);
+  const image = spriteImage ?? getCharacterSpriteImage(characterId);
+  const hasSprite = canDrawSprite(image);
+  const animationFrame = getCharacterAnimationFrame(direction, elapsedSeconds, moving);
   const sway = moving ? Math.sin(elapsedSeconds * 11) * 1.2 : 0;
-  const bob = moving ? Math.abs(Math.sin(elapsedSeconds * 11)) * -1.2 : 0;
+  const bob = moving
+    ? (hasSprite ? Math.sin(elapsedSeconds * 12) * -0.35 : Math.abs(Math.sin(elapsedSeconds * 11)) * -1.2)
+    : 0;
+  const flip = hasSprite
+    ? getCharacterSpriteFlip(characterId, animationFrame, direction)
+    : facing.flip;
 
   context.save();
   context.translate(Math.round(position.x), Math.round(position.z + bob));
-  context.scale((facing.flip ? -1 : 1) * scale, scale);
+  context.scale((flip ? -1 : 1) * scale, scale);
 
   context.fillStyle = "rgba(65, 54, 43, 0.22)";
   context.beginPath();
   context.ellipse(0, 9, 13, 4.5, 0, 0, Math.PI * 2);
   context.fill();
+
+  if (hasSprite) {
+    drawCharacterSprite(
+      context,
+      image,
+      animationFrame,
+    );
+    context.restore();
+    return;
+  }
 
   if (profile.id === "girl") drawHairBack(context, profile, facing.view);
   drawBody(context, profile, sway);
@@ -244,11 +331,17 @@ export function drawCharacter(context, {
 export function renderCharacterPreview(canvas, characterId) {
   const context = canvas.getContext("2d");
   if (!context) return;
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  drawCharacter(context, {
-    characterId,
-    position: { x: canvas.width / 2, z: canvas.height - 20 },
-    direction: { x: 0, z: 1 },
-    scale: 2.25,
-  });
+  const spriteImage = getCharacterSpriteImage(characterId);
+  const render = () => {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    drawCharacter(context, {
+      characterId,
+      position: { x: canvas.width / 2, z: canvas.height - 20 },
+      direction: { x: 0, z: 1 },
+      scale: 2.25,
+      spriteImage,
+    });
+  };
+  render();
+  if (!canDrawSprite(spriteImage)) spriteImage?.addEventListener?.("load", render, { once: true });
 }
